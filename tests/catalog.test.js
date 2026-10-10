@@ -9,7 +9,7 @@ const fakeFile=(name,text,size)=>{const bytes=new TextEncoder().encode(text);ret
  assert.equal(C.get('unknown'),null);assert.ok(Object.isFrozen(C.profiles));
  for(const id of ['oob','people','people-low-power','overhead','vitals','small-obstacle']) assert.equal(C.get(id).status,'partial-protocol');
  for(const id of ['gesture','speed'])assert.equal(C.get(id).status,'experimental');
- for(const id of ['level','area','doors','cpd'])assert.equal(C.get(id).status,'unsupported');
+ for(const id of ['area','doors','cpd'])assert.equal(C.get(id).status,'partial-protocol');assert.equal(C.get('level').status,'experimental');
  const normal=C.get('people').binary[0],low=C.get('people-low-power').binary[0];
  assert.equal(normal.basename,low.basename);assert.notEqual(normal.sha256,low.sha256);assert.notEqual(normal.path,low.path);assert.notEqual(normal.size,low.size);
  for(const p of C.profiles)for(const [kind,files]of [['binary',p.binary],['config',p.configs]])for(const a of files){

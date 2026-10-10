@@ -55,8 +55,9 @@ class RadarScene{
   const objects=[];let omitted=0;
   for(const [type,entries] of [['point',this.frame?.points||[]],['track',this.frame?.tracks||[]]])for(const object of entries){if(!inVolume(object,r)){omitted++;continue;}const p=P(object);if(!p||!p.visible){omitted++;continue;}objects.push({type,object,p});}
   objects.sort((a,b)=>a.p.depth-b.p.depth);
-  for(const {type,object,p} of objects){if(type==='point'){c.fillStyle='#65decd';c.globalAlpha=.78;c.beginPath();c.arc(p.x,p.y,2.5,0,TAU);c.fill();c.globalAlpha=1;}else{c.strokeStyle='#82b2ff';c.lineWidth=2;c.beginPath();c.arc(p.x,p.y,9,0,TAU);c.stroke();c.beginPath();c.moveTo(p.x-13,p.y);c.lineTo(p.x-6,p.y);c.moveTo(p.x+6,p.y);c.lineTo(p.x+13,p.y);c.moveTo(p.x,p.y-13);c.lineTo(p.x,p.y-6);c.moveTo(p.x,p.y+6);c.lineTo(p.x,p.y+13);c.stroke();c.font='12px system-ui';c.fillStyle='#bed7ff';c.fillText(`ID ${String(object.id??'?').slice(0,24)}`,p.x+13,p.y-9);}}
+  for(const {type,object,p} of objects){if(type==='point'){c.fillStyle=object.static?'#ffcf76':'#65decd';c.globalAlpha=.78;c.beginPath();c.arc(p.x,p.y,2.5,0,TAU);c.fill();c.globalAlpha=1;}else{c.strokeStyle='#82b2ff';c.lineWidth=2;c.beginPath();c.arc(p.x,p.y,9,0,TAU);c.stroke();c.beginPath();c.moveTo(p.x-13,p.y);c.lineTo(p.x-6,p.y);c.moveTo(p.x+6,p.y);c.lineTo(p.x+13,p.y);c.moveTo(p.x,p.y-13);c.lineTo(p.x,p.y-6);c.moveTo(p.x,p.y+6);c.lineTo(p.x,p.y+13);c.stroke();c.font='12px system-ui';c.fillStyle='#bed7ff';c.fillText(`ID ${String(object.id??'?').slice(0,24)}`,p.x+13,p.y-9);}}
   c.restore();c.font='11px system-ui';c.fillStyle='#91a7bf';c.fillText(`ORTHOGRAPHIC · ${this.magnification.toFixed(2)}× · meters`,16,24);c.fillText(`X ±${r}  /  Y 0–${r}  /  Z ±${r}`,16,42);if(omitted)c.fillText(`${omitted} point/track records outside view or invalid`,16,height-17);
+  if(this.frame?.points?.some(p=>p.static)){c.fillStyle='#ffcf76';c.fillText('Amber: static cloud · teal: dynamic cloud',16,60);}
   if(!this.frame){c.textAlign='center';c.fillStyle='#b4c4d7';c.fillText('No decoded frame · drag to explore sensor axes',width/2,height*.82);c.textAlign='start';}
  }
 }

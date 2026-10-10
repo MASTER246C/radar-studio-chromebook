@@ -1,11 +1,12 @@
 {
-  "release": "v0.3",
+  "release": "v0.4",
   "date_utc": "2026-10-10",
   "target_board": "Texas Instruments IWR6843AOPEVM (IWR6843AOP)",
   "catalog_toolbox_version": "4.00.00.05",
   "catalog_artifacts": 37,
   "vendor_binary_or_config_contents_included": false,
-  "deterministic_test_suites": "8 passed; node tests/run-all.js",
+  "deterministic_test_suites": "11 passed; node tests/run-all.js",
+  "independent_scoped_review": "No runtime correctness blocker found; source and deterministic tests reviewed",
   "hardware_tested_for_new_profiles": false,
   "real_browser_rendering_verified": false,
   "files": [
@@ -16,8 +17,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size_bytes": 4045,
-      "sha256": "74908e5a6a4ae9a6f42ffdefa159d38e3eb75831d10c1bbde2bc4d037c97d3f2"
+      "size_bytes": 5910,
+      "sha256": "8b26427d82cb2d1dbc1aac691418b7af277539358a8e1974fb8703fa2d54c0a1"
     },
     {
       "path": "CHANGELOG.txt",
@@ -31,18 +32,23 @@
     },
     {
       "path": "DEMO_CATALOG.md",
-      "size_bytes": 20484,
-      "sha256": "82c726ad6cea30aa21a5b8dafa5d27880c3c7a3caebd80c0a5a7bf074eb895b4"
+      "size_bytes": 21222,
+      "sha256": "c11abaa1bab6f7f305be7c6bbbf5fc489b9f3c0fce947a7f1380350ee9b2871a"
     },
     {
       "path": "DEVELOPING.md",
-      "size_bytes": 7118,
-      "sha256": "58f35869b7421334a2b9a7dc7e36b1a9bd14cf217ac5fa5d8e9bbd697d0579b2"
+      "size_bytes": 7700,
+      "sha256": "d211fdda83e5458392c1a9b7e400cd602eb018be679e34575c50f391679d6d68"
     },
     {
       "path": "DOWNLOADS.md",
       "size_bytes": 7278,
       "sha256": "ff52dda4288a369a3d8dbe21e1b5bc85a3008670deb05efdf52db7bb5ded9b7e"
+    },
+    {
+      "path": "LEGACY_PROTOCOL_EVIDENCE.md",
+      "size_bytes": 9453,
+      "sha256": "946b6e1d51b42774f077be4f5b526835e87231b01618accd5a07cc33417e70c2"
     },
     {
       "path": "LICENSE",
@@ -56,58 +62,58 @@
     },
     {
       "path": "LOCAL_IMPORT.md",
-      "size_bytes": 4141,
-      "sha256": "e928caefb0449e8b892f8f8fc430c576b6599cc12dda9ef970d86ae0d96851da"
+      "size_bytes": 4508,
+      "sha256": "4f48125986d3f039a6725688ec87df00d6b3259b7f087a40a0a2d2b8d10f9e9c"
     },
     {
       "path": "PROTOCOL_EVIDENCE.md",
-      "size_bytes": 6060,
-      "sha256": "5ea2eb30e26866500b8ecdbd161d5dc9df6608d6fd5a799af480d78f1cc4be77"
+      "size_bytes": 5790,
+      "sha256": "5a1c14f37c5a19bcce052ad051adbc6be160a2270f22c199537abebeb575d5e6"
     },
     {
       "path": "PROVENANCE.txt",
-      "size_bytes": 2064,
-      "sha256": "a6631839d44bb2d8571388b31f6027c969ada216b942cf4c1d78f7ee32cde809"
+      "size_bytes": 2294,
+      "sha256": "609c968256ea3e526189aa871e9cd45c57f8446ca8dd5958b686dda8eb38b39b"
     },
     {
       "path": "QUICKSTART.md",
-      "size_bytes": 8655,
-      "sha256": "2a9870aac96b9a83e4e1ffaf8de5cc2479c6e3c37d2cc939ae860f62f1bafe9e"
+      "size_bytes": 9221,
+      "sha256": "d5d142e1ea6d894ce7556390f7c5781faa4bcbf917d2f375a663b2f782fa705d"
     },
     {
       "path": "README.md",
-      "size_bytes": 7016,
-      "sha256": "78b25e326d5155c93a70e73f39dbc98c5e77cb3624dfdc29a9ad7a9cceca6a91"
+      "size_bytes": 8159,
+      "sha256": "968c1acb2f8fe8791774842ae45f57926b5bd5032e6c64a0994f735cbac01b7c"
     },
     {
       "path": "TECHNICAL_NOTES.md",
-      "size_bytes": 8747,
-      "sha256": "6f50a29f29429bff53a43b1d1bae23388c3fff63b061971057266439a770fbd4"
+      "size_bytes": 8895,
+      "sha256": "aaece785e64c37930e3c5595efbde8345010f8b7fc7c1520fa445b185b7b320f"
     },
     {
       "path": "TEST_PLAN.md",
-      "size_bytes": 3488,
-      "sha256": "3f28a35097a48ac79395fadbb3f4f4936ef068e5e38e84212d99c54b6cc16490"
+      "size_bytes": 4393,
+      "sha256": "14d40e9b53f7440b10ac4ae19e4b8ce6f347e8efc0c0fa6083de63a5c8012eeb"
     },
     {
       "path": "TROUBLESHOOTING.md",
-      "size_bytes": 11567,
-      "sha256": "bbc27daf5a0167a054968742c77350ff827fbbf820da95a2198ceb9bd3e944a4"
+      "size_bytes": 12343,
+      "sha256": "c15d10b7cd64eb9f3808dc89b79c3066ee09cd874d3f5e2b6f4878123c31074f"
     },
     {
       "path": "UPGRADE.md",
-      "size_bytes": 1258,
-      "sha256": "b97f063494e14d9599e19455e19e5c7939607e9bf3d693e3f406f786cf2a6ff5"
+      "size_bytes": 1311,
+      "sha256": "3fc8168354b31ca899504d5fee5a8f98022b2fc80f1aea20fda28f4d51d8b467"
     },
     {
       "path": "VERIFICATION.txt",
-      "size_bytes": 1533,
-      "sha256": "b8ad1b9db81ce8f6f42e780608f1e4f21d0880c2ce5eadd43bdf0569217d2c04"
+      "size_bytes": 2270,
+      "sha256": "d278753f0e61c765496b514e51f0c80cb8627f26b022ea0f677ed2267a6d7a9d"
     },
     {
       "path": "app.js",
-      "size_bytes": 22118,
-      "sha256": "c83f25887ffa9805bbe20a03e9f15216c58c30cf406c55731b450648354d06d5"
+      "size_bytes": 23035,
+      "sha256": "380ac95201b9409518d1b8dbc560472a6f3aee991ab9e1b981dab87d638f2fea"
     },
     {
       "path": "catalog_ui.js",
@@ -115,14 +121,19 @@
       "sha256": "30b5cd82810785d38fa8e274e2f512eebd67b29be8d3ce54deb9fe2769f7deec"
     },
     {
+      "path": "cpd_protocol.js",
+      "size_bytes": 5256,
+      "sha256": "1057b69a3fba3376b867bfe591aeb0a136ea13cb30ef9b4a97af469520c02f6b"
+    },
+    {
       "path": "demo-catalog.json",
-      "size_bytes": 27409,
-      "sha256": "f64174fc62eaf1942d3a1c263db62cdd02129c104ab0df02a40994cfd2411ab4"
+      "size_bytes": 28171,
+      "sha256": "457e85afea8ac67b7acdc150ceff18527898db5d73e5bc9ab4b16b4e8c1f992d"
     },
     {
       "path": "demo_catalog.js",
-      "size_bytes": 29859,
-      "sha256": "41da0fceffd8d611eeb6c656aec3f9070e72bc72327e6a1bc79ef2678e4c20f5"
+      "size_bytes": 30621,
+      "sha256": "8ce66f9ea367f2a561550f3c6af80f345a8dda62308b3508019eff7afab82d5a"
     },
     {
       "path": "favicon.ico",
@@ -136,18 +147,23 @@
     },
     {
       "path": "index.html",
-      "size_bytes": 5910,
-      "sha256": "a8a796c6a6cb4daa83d9222ce4618cd7d61aee7ff5a3601af2f250d71bddd40d"
+      "size_bytes": 6071,
+      "sha256": "1a574af997b8457c685afcb55d4e8e217d339de2cd4c68e2a51eb53d2bebcd81"
+    },
+    {
+      "path": "legacy_panels.js",
+      "size_bytes": 11172,
+      "sha256": "6617b41450943d9918c70faa271e895ba6db90497006930617be38c48d28e4e5"
     },
     {
       "path": "radar_protocol.js",
-      "size_bytes": 9568,
-      "sha256": "cd11ee23c975f21f89345eb848aaa5efacb74e195d448b54c71c288791ffe280"
+      "size_bytes": 17836,
+      "sha256": "f1e6a76d2396709002e815813ca8f827e8d7b0cd01265f7a47a09e7dde3ba365"
     },
     {
       "path": "radar_scene.js",
-      "size_bytes": 7999,
-      "sha256": "565d26e156c1d1db652a01bf323b7c29a7a6306be2ddf32ffb425eba95feb2f1"
+      "size_bytes": 8154,
+      "sha256": "d3587f805d5df3e4d5637ca3b8a33dd555d52ee12e5f993927c4c4641d4115f5"
     },
     {
       "path": "start-local.sh",
@@ -170,6 +186,11 @@
       "sha256": "41c58c5877841cfa4c981d6134c0925b1096c93132187ccce5edc6b7e3cf63ea"
     },
     {
+      "path": "tests/build_cpd_fixtures.py",
+      "size_bytes": 2705,
+      "sha256": "477201ee8ea4995520c3c55e2679362125802c5029780692745bf241df954f89"
+    },
+    {
       "path": "tests/build_expansion_fixtures.py",
       "size_bytes": 1054,
       "sha256": "0ca517ce12072ac548681422172ddb01a8704f63b3ba4a6985d510a6c0ee9a94"
@@ -180,9 +201,24 @@
       "sha256": "3c1e0b2c3df4a6e0376298f85a9370de88509a6210cdc57961ef068bda10c03a"
     },
     {
+      "path": "tests/build_legacy_fixtures.py",
+      "size_bytes": 6121,
+      "sha256": "dfd7cf47024c90cc7f6f952c227dd5b88e395f63f840a7924bb02829f0a4a327"
+    },
+    {
       "path": "tests/catalog.test.js",
-      "size_bytes": 5119,
-      "sha256": "c7156e912aef0b83bcd927da8102e0493ddf5bc0fda89e7898d93f4da3d9caa5"
+      "size_bytes": 5167,
+      "sha256": "70101b9e2ae6b40ed9a816a34bb00e4e76221d7fa12536f6a92983dd9693677e"
+    },
+    {
+      "path": "tests/cpd-fixtures.json",
+      "size_bytes": 32761,
+      "sha256": "95ef2ebe46723498f75dc9a8747ecef0b36df47ed20a0c595f53e23491e56ce9"
+    },
+    {
+      "path": "tests/cpd.test.js",
+      "size_bytes": 5153,
+      "sha256": "5159698ec7a16a8f5247e8fa7ff78095d3eda276e3943ef2d83a198b1f842755"
     },
     {
       "path": "tests/expansion-fixtures.json",
@@ -191,13 +227,28 @@
     },
     {
       "path": "tests/expansion.test.js",
-      "size_bytes": 2816,
-      "sha256": "c417013b8f3dc0f4106ec09c9a4f645fa832d1fd06d307120d14678e2ce6f6a3"
+      "size_bytes": 2787,
+      "sha256": "5e2db3134a6c4c023900db6f18eed4052b9ba26e48e41564f30201e32d883660"
     },
     {
       "path": "tests/fixtures.json",
       "size_bytes": 2886,
       "sha256": "35a0b586dbaab44466ea370fd441a2f8d56713de6ba5ad8d8f4caa39a5b5db01"
+    },
+    {
+      "path": "tests/legacy-fixtures.json",
+      "size_bytes": 43268,
+      "sha256": "76d5caa1ca53874c1541d9d05ca84666ae136d48c76a2544e0385383b911a720"
+    },
+    {
+      "path": "tests/legacy.test.js",
+      "size_bytes": 11138,
+      "sha256": "850e850779b1e091349f24de39fd71a4d2aa8dfe93c4821dfc38d235592a6751"
+    },
+    {
+      "path": "tests/legacy_panels.test.js",
+      "size_bytes": 14149,
+      "sha256": "1d38e52ae2bb0ffdd34dcd342c661ac33341b45dc17d314c8970aa38eda0bd44"
     },
     {
       "path": "tests/protocol.test.js",
@@ -206,13 +257,13 @@
     },
     {
       "path": "tests/run-all.js",
-      "size_bytes": 503,
-      "sha256": "c3ec96e2b6f8d7c70568744cc3ec6cd3d1041a4b11aa4a3b5c16bed97550e4ad"
+      "size_bytes": 535,
+      "sha256": "5081a1ec4daf2bb511981caa8dae35cc3e845c2815307f4943e9a2cdd6ecb6f3"
     },
     {
       "path": "tests/scene.test.js",
-      "size_bytes": 3739,
-      "sha256": "ab383956c0f440abce39e7d7b6389fe979987728fcf65c5816f0ff4fbfc497b7"
+      "size_bytes": 3932,
+      "sha256": "c9e5d54b17a57f8f91cb0b0071e9354a93ff094f3563d1f9daa9a3ddb7111b35"
     },
     {
       "path": "tests/telemetry.test.js",
@@ -226,8 +277,8 @@
     },
     {
       "path": "tests/ui.test.js",
-      "size_bytes": 11205,
-      "sha256": "de7ff5b09da00e493c0957f9520f41380c9f486b51d0e3482b3008d23b33b994"
+      "size_bytes": 12021,
+      "sha256": "3b96677c2ca5795b11c6e12a8b7a459d532bac4b697828ecd23be176f2671afd"
     },
     {
       "path": "tests/vitals.test.js",
@@ -244,6 +295,5 @@
       "size_bytes": 1306,
       "sha256": "638bcddf56eed6d3e3963d6bd5cb8a595343837a3e452742abcad3205cf8dafe"
     }
-  ],
-  "manifest_note": "This manifest excludes itself. SHA256 identifies packaged bytes, not a safety or hardware-compatibility certification."
+  ]
 }

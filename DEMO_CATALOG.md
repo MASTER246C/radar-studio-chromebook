@@ -1,6 +1,6 @@
 # Official TI IWR6843AOPEVM demo catalog
 
-This is a metadata catalog of 12 TI demo families, **not a claim that all 12 are supported** by the browser. It ships no vendor firmware, chirp configuration contents, or vendor source code. Exact original files remain in TI's distribution.
+This is a metadata catalog of 12 TI demo families, **not a claim of complete TI demo support for all 12** by the browser. It ships no vendor firmware, chirp configuration contents, or vendor source code. Exact original files remain in TI's distribution.
 
 ## Scope and provenance
 
@@ -16,10 +16,10 @@ This is a metadata catalog of 12 TI demo families, **not a claim that all 12 are
 ## Coverage meanings
 
 - **partial-protocol**: selected standard/tracking fields are decoded; the full TI demo GUI, all TLVs and setup workflow are not reproduced.
-- **experimental**: a dedicated browser gesture/speed view and selected packet fields are implemented; only synthetic software tests support them.
+- **experimental**: a dedicated browser gesture/speed/level view and selected packet fields are implemented; only synthetic software tests support them.
 - **unsupported**: catalog/integrity inspection only. Do not run that format through a supported demo's parser.
 
-Area scanner and automated doors require separate 44-byte headers and 40-byte tracking records; high-accuracy level sensing requires a 36-byte header, legacy Q20 detected objects and complex FFT interpretation. Child presence needs a dedicated zone/feature/classification/cuboid workflow. All four remain unsupported. A common magic word or TLV number does not make these wire formats interchangeable.
+Area scanner and automated doors use explicit 44-byte headers and 40-byte tracking records; high-accuracy level uses 36-byte headers and Q20 range fields. CPD uses 48-byte checksum headers and compressed point clouds. These selected fields are implemented in v0.4, while the complete TI application workflows remain absent. A common magic word or TLV number does not make the formats interchangeable.
 
 See [LOCAL_IMPORT.md](LOCAL_IMPORT.md) for beginner download/extract/inspection steps. The machine-readable mirror is [demo-catalog.json](demo-catalog.json). The dependency-free browser API is `DemoCatalog.profiles`, `.metadata`, `.get(id)` and asynchronous `.inspectFile(file)`; `matchMetadata` is a pure identity matcher used by tests. Inspection returns metadata, never file contents.
 
@@ -205,9 +205,9 @@ No fixed CFG file is cataloged. Gesture configuration is built into firmware.
 
 ## High Accuracy Level Sensing (`level`)
 
-- Browser status: **unsupported**. Unsupported separate 36-byte header, legacy Q20 range objects and complex FFT data. Not standard float Cartesian TLV 1.
+- Browser status: **experimental**. Dedicated 36-byte header and signed Q20 range fields, retained range history and optional raw complex FFT-input magnitude. Not a calibrated tank-level or volume estimate; no transformed range spectrum.
 - TI hardware claim: TI guide lists IWR6843AOP EVM and requires AoP ES2.0. Exact Rev G operation has not been tested here.
-- Tests: Catalog/integrity tests only; browser decoder unsupported.
+- Tests: Source-derived synthetic fixtures and mocked software checks only; no physical hardware, recorded device capture or real-browser verification.
 - Source availability: Firmware C included
 - Guide: `source/ti/examples/Industrial_and_Personal_Electronics/Level_Sensing/high_accuracy/docs/high_accuracy_user_guide.html`.
 
@@ -225,9 +225,9 @@ No fixed CFG file is cataloged. Gesture configuration is built into firmware.
 
 ## Area Scanner (`area`)
 
-- Browser status: **unsupported**. Unsupported separate 44-byte header and 40-byte track records. Static points and warning/critical zones need a dedicated parser/UI.
+- Browser status: **partial-protocol**. Dedicated 44-byte header; spherical dynamic points, Cartesian static points, separate side information and 40-byte tracks. Raw sensor-coordinate 3D with static/dynamic colors. No warning/critical zone or prediction logic.
 - TI hardware claim: TI guide specifies IWR6843AOP ES2.0, Rev F or later.
-- Tests: Catalog/integrity tests only; browser decoder unsupported.
+- Tests: Source-derived synthetic fixtures and mocked software checks only; no physical hardware, recorded device capture or real-browser verification.
 - Source availability: Firmware C + MATLAB parser included
 - Guide: `source/ti/examples/Industrial_and_Personal_Electronics/Area_Scanner/docs/area_scanner_users_guide.html`.
 
@@ -263,9 +263,9 @@ No fixed CFG file is cataloged. Gesture configuration is built into firmware.
 
 ## Automated Doors and Gates (`doors`)
 
-- Browser status: **unsupported**. Unsupported separate 44-byte header and 40-byte track records; door state/projection UI absent. No actuator control.
+- Browser status: **partial-protocol**. Dedicated 44-byte header; spherical dynamic points, Cartesian static points and 40-byte tracks. Raw sensor-coordinate display only. No door-state/prediction UI or actuator control.
 - TI hardware claim: TI guide lists IWR6843AOPEVM and requires AoP ES2.0. Exact Rev G operation has not been tested here.
-- Tests: Catalog/integrity tests only; browser decoder unsupported.
+- Tests: Source-derived synthetic fixtures and mocked software checks only; no physical hardware, recorded device capture or real-browser verification.
 - Source availability: Firmware C + MATLAB parser included
 - Guide: `source/ti/examples/Industrial_and_Personal_Electronics/Automated_Doors_And_Gates/docs/automated_doors_user_guide.html`.
 
@@ -303,9 +303,9 @@ No fixed CFG file is cataloged. Gesture configuration is built into firmware.
 
 ## Child Presence Detection with Classification (`cpd`)
 
-- Browser status: **unsupported**. Unsupported dedicated zone/features/classification and cuboid workflow. No child-presence safety guarantee.
+- Browser status: **partial-protocol**. Dedicated 48-byte checksum header and inclusive-length TLV6 compressed raw point cloud. The included TI MATLAB host performs occupancy/classification; that host algorithm, vehicle/cuboid transforms and safety decisions are not implemented.
 - TI hardware claim: TI guide lists xWR6843AOP ES2.0 evaluation board. Exact Rev G operation has not been tested here.
-- Tests: Catalog/integrity tests only; browser decoder unsupported.
+- Tests: Source-derived synthetic fixtures and mocked software checks only; no physical hardware, recorded device capture or real-browser verification.
 - Source availability: Firmware C + MATLAB visualizer included
 - Guide: `source/ti/examples/Automotive_InCabin_Security_and_Safety/AWR6843_CPD_with_Classification/docs/AWR6843_CPD_with_Classification_users_guide.html`.
 

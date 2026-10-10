@@ -109,9 +109,9 @@ An early user reported live operation of v0.1; that is not broad device certific
 
 For an actionable report, include app version, Chromebook/ChromeOS version, board revision, firmware and config version/names, port labels, first CLI error, byte/frame counts, decoder diagnostics, and whether the issue occurs in live, replay or synthetic mode. Never include account credentials. Screenshots of the version label and counters can be useful.
 
-## v0.3 catalogue and import checks
+## Catalogue and import checks
 
-**Unsupported profile:** Area Scanner/Doors use different 44-byte headers; High Accuracy Level Sensing uses a different 36-byte layout; Child Presence Classification has unimplemented dedicated semantics. They are catalogue entries, not usable viewer modes in v0.3. No decoder is guessed.
+**Wrong profile:** v0.4 implements selected 36/44/48-byte fields for these demos, but never auto-detects the profile. Select the exact matching demo and read its partial/experimental coverage. CPD classification remains unimplemented even though raw points are displayed.
 
 **Gesture CFG controls disabled:** intentional for the catalogued official build, which starts from its hard-coded configuration. Do not send a generic people-tracking CFG. Select the gesture profile and listen to its data output. Raw ANN values are not confirmed gestures or TI postprocessed decisions.
 
@@ -124,3 +124,10 @@ For an actionable report, include app version, Chromebook/ChromeOS version, boar
 **SHA-256 unavailable:** use localhost or approved HTTPS with Web Crypto. The metadata inspector reads local BIN/CFG bytes but never flashes, uploads, stores them persistently or loads the separate configuration sender. File inspection has a 16 MiB cap.
 
 Switching profiles while a connection/configuration transition is active is refused. Finish that action first. Changing a profile otherwise stops local listening/playback and clears retained histories, without a firmware write or radar command.
+
+
+## v0.4 legacy demo formats
+
+Select the exact demo profile before listening or replay. Area/Doors use 44-byte frames; Level uses 36; CPD uses 48 and a checksum. The shared magic word does not make these formats interchangeable. A wrong profile can yield rejected packets or meaningless fields; compare with the exact firmware/config identity and TI reference tool.
+
+Area/Doors amber points are the reported static cloud; teal points are the dynamic cloud. They are not warnings or door commands. Level frame number may stay zero by firmware design; received-frame count and level freshness indicate updates. Its optional FFT chart shows raw complex input magnitude versus sample index, not distance bins. CPD displays raw points only and cannot report child presence or occupancy classification.

@@ -1,31 +1,75 @@
 /* Experimental prototype informed by TI mmWave Applications Visualizer protocol files.
  * See PROVENANCE.txt. No hardware compatibility or medical accuracy claim.
- * All multi-byte values explicitly little-endian; TLV length excludes its header.
+ * All multi-byte values explicitly little-endian. Modern/area/level TLV lengths
+ * exclude the TLV header; the delegated CPD protocol uses inclusive TLV lengths.
  */
 (function (root) {
 'use strict';
-const SUPPORTED_PROFILES = Object.freeze(['oob','people','people-low-power','overhead','vitals','small-obstacle','gesture','speed']);
-function requireProfile(profile){if(!SUPPORTED_PROFILES.includes(profile))throw Error('Unsupported demo framing: '+profile+'; no decoder is implemented for this profile.');}
+// Framing is selected by the user, never inferred from a platform or TLV id.
+// All offsets below are bytes from the start of the magic word.
+const modern=Object.freeze({family:'modern',headerBytes:40,totalOffset:12,countOffset:32,pointsOffset:28,subFrameOffset:36});
+const area=Object.freeze({family:'area',headerBytes:44,totalOffset:12,countOffset:32,pointsOffset:28,subFrameOffset:36,staticPointsOffset:40});
+const level=Object.freeze({family:'level',headerBytes:36,totalOffset:12,countOffset:32,pointsOffset:28,subFrameOffset:null});
+const PROFILE_FRAMING=Object.freeze({oob:modern,people:modern,'people-low-power':modern,overhead:modern,vitals:modern,'small-obstacle':modern,gesture:modern,speed:modern,area,doors:area,level,cpd:Object.freeze({family:'cpd',headerBytes:48})});
+const SUPPORTED_PROFILES = Object.freeze(Object.keys(PROFILE_FRAMING));
+function requireProfile(profile){if(!Object.hasOwn(PROFILE_FRAMING,profile))throw Error('Unsupported demo framing: '+profile+'; no decoder is implemented for this profile.');return PROFILE_FRAMING[profile];}
+function cpdProtocol(){const p=root.CPDProtocol||(typeof module==='object'&&module.exports?require('./cpd_protocol.js'):null);if(!p)throw Error('CPD protocol module is unavailable');return p;}
 const MAGIC = Uint8Array.of(2,1,4,3,6,5,8,7), MAX_PACKET = 1024*1024;
 function spherical(r,a,e,doppler,snr) {
   return {x:r*Math.sin(a)*Math.cos(e),y:r*Math.cos(a)*Math.cos(e),z:r*Math.sin(e),doppler,snr};
 }
 function parseFrame(bytes,profile="people") {
-  requireProfile(profile);
-  if (!(bytes instanceof Uint8Array) || bytes.length < 40) throw Error('Short frame header');
+  const framing=requireProfile(profile);
+  if(framing.family==='cpd')return cpdProtocol().parseFrame(bytes);
+  if (!(bytes instanceof Uint8Array) || bytes.length < framing.headerBytes) throw Error('Short frame header');
   const d = new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
   if (!MAGIC.every((v,i)=>bytes[i]===v)) throw Error('Missing magic word');
-  const total=d.getUint32(12,true), nt=d.getUint32(32,true);
-  if(total!==bytes.length || total>MAX_PACKET || nt>1024 || 40+nt*8>total) throw Error('Invalid frame length/TLV count');
-  const out={frameNumber:d.getUint32(20,true),version:d.getUint32(8,true),platform:d.getUint32(16,true),subFrame:d.getUint32(36,true),declaredPoints:d.getUint32(28,true),points:[],tracks:[],vitals:[],heights:[],trackIndexes:[],unknownTlvs:[],warnings:[]};
-  let off=40, side=[];
+  const total=d.getUint32(framing.totalOffset,true), nt=d.getUint32(framing.countOffset,true);
+  if(total!==bytes.length || total>MAX_PACKET || nt>1024 || framing.headerBytes+nt*8>total) throw Error('Invalid frame length/TLV count');
+  const out={profile,headerBytes:framing.headerBytes,frameNumber:d.getUint32(20,true),version:d.getUint32(8,true),platform:d.getUint32(16,true),timeCpuCycles:d.getUint32(24,true),subFrame:framing.subFrameOffset===null?null:d.getUint32(framing.subFrameOffset,true),declaredPoints:d.getUint32(framing.pointsOffset,true),points:[],tracks:[],vitals:[],heights:[],trackIndexes:[],unknownTlvs:[],warnings:[]};
+  if(framing.family==='area')out.declaredStaticPoints=d.getUint32(framing.staticPointsOffset,true);
+  let off=framing.headerBytes, side=[],staticSide=[],dynamicPoints=[],staticPoints=[],seen=new Set();
   for(let ti=0;ti<nt;ti++) {
     if(off+8>total) throw Error('Truncated TLV header');
     const type=d.getUint32(off,true), len=d.getUint32(off+4,true); off+=8;
+    if(type===0)throw Error('Invalid TLV type 0; check selected demo framing');
     if(len>total-off) throw Error('TLV extends beyond packet');
     const p=new DataView(bytes.buffer,bytes.byteOffset+off,len), f=(x)=>p.getFloat32(x,true);
     const multiple=(n)=>{if(len%n) throw Error('Invalid record size in TLV '+type);};
-    if(type===1 || type===1000) {
+    if(framing.family==='level') {
+      // 68xx high_accuracy mss_main.c packs three signed Q20 range estimates
+      // into the six 16-bit fields of one legacy detected-object record.
+      if(type===1){
+        if(seen.has(type))throw Error('Duplicate level range TLV');
+        if(len!==16 || p.getUint16(0,true)!==1 || p.getUint16(2,true)!==20 || out.declaredPoints!==1)throw Error('Invalid level Q20 descriptor/object count');
+        const q20=(lo,hi)=>(p.getInt16(hi,true)*65536+p.getUint16(lo,true))/1048576;
+        out.level={qFormat:20,rangesMeters:[q20(4,10),q20(8,12),q20(6,14)]};
+      }else if(type===2){
+        if(seen.has(type))throw Error('Duplicate level FFT input TLV');
+        if(len===0 || len%8 || len>1024*8)throw Error('Invalid level complex FFT input length');
+        const samples=[];
+        // DSP rangeEst swaps its working input into imag/real order before
+        // dss_data_path copies it for UART. These are input samples, not bins.
+        for(let i=0;i<len;i+=8){const imag=f(i),real=f(i+4);if(!Number.isFinite(real)||!Number.isFinite(imag))throw Error('Non-finite level FFT input');samples.push({real,imag});}
+        out.fftInput={sampleCount:samples.length,samples,wireOrder:'imag-real'};
+      }else out.unknownTlvs.push(type);
+    }else if(framing.family==='area') {
+      // Area Scanner and Doors share a 44-byte header and this TLV family.
+      if(type===1 || type===8){
+        if(seen.has(type))throw Error('Duplicate area point TLV');
+        multiple(16);
+        const points=type===8?staticPoints:dynamicPoints;
+        for(let i=0;i<len;i+=16){const v=type===8?{x:f(i),y:f(i+4),z:f(i+8),doppler:f(i+12)}:spherical(f(i),f(i+4),f(i+8),f(i+12));v.static=type===8;points.push(v);out.points.push(v);}
+      }else if(type===7 || type===9){
+        if(seen.has(type))throw Error('Duplicate area side-info TLV');
+        multiple(4);const values=type===9?staticSide:side;
+        for(let i=0;i<len;i+=4)values.push({snr:p.getInt16(i,true)*.1,noise:p.getInt16(i+2,true)*.1});
+      }else if(type===10){
+        multiple(40);
+        for(let i=0;i<len;i+=40)out.tracks.push({id:p.getUint32(i,true),x:f(i+4),y:f(i+8),vx:f(i+12),vy:f(i+16),ax:f(i+20),ay:f(i+24),z:f(i+28),vz:f(i+32),az:f(i+36)});
+      }else if(type===11)out.trackIndexes=out.trackIndexes.concat(Array.from(new Uint8Array(bytes.buffer,bytes.byteOffset+off,len)));
+      else out.unknownTlvs.push(type);
+    }else if(type===1 || type===1000) {
       multiple(16);
       for(let i=0;i<len;i+=16) out.points.push(type===1?{x:f(i),y:f(i+4),z:f(i+8),doppler:f(i+12)}:spherical(f(i),f(i+4),f(i+8),f(i+12)));
     } else if(type===1020 || type===3001) {
@@ -55,14 +99,25 @@ function parseFrame(bytes,profile="people") {
       const value=f(0),valid=p.getUint8(4);if(!Number.isFinite(value)||valid>1)throw Error('Invalid ground-speed value/validity flag');
       out.velocity={value,valid:valid===1};
     } else out.unknownTlvs.push(type);
-    off+=len;
+    seen.add(type);off+=len;
     if(out.points.length>32768 || out.tracks.length>4096 || out.vitals.length>32) throw Error("Frame exceeds prototype display limits");
   }
-  out.points.forEach((v,i)=>{if(side[i]) Object.assign(v,side[i]);});
+  // Source transmitters pad to the next 32-byte boundary, with unspecified
+  // padding contents. Do not interpret padding as another TLV or require zeros.
+  if(total-off>=32)throw Error('Unexpected trailing bytes; check selected demo framing');
+  if(framing.family==='level'&&!out.level)throw Error('Missing level range descriptor');
+  if(framing.family==='area'){
+    for(const [type,points,values,declared,label]of [[1,dynamicPoints,side,out.declaredPoints,'dynamic'],[8,staticPoints,staticSide,out.declaredStaticPoints,'static']]){
+      if(seen.has(type)&&points.length!==declared)throw Error('Area '+label+' point count differs from header');
+      if(seen.has(type===1?7:9)&&values.length!==declared)throw Error('Area '+label+' side-info count differs from header');
+      points.forEach((v,i)=>{if(values[i])Object.assign(v,values[i]);});
+    }
+  }else out.points.forEach((v,i)=>{if(side[i]) Object.assign(v,side[i]);});
   const finitePoint=p=>[p.x,p.y,p.z,p.doppler??0].every(Number.isFinite);
   if(out.points.some(p=>!finitePoint(p)) || out.tracks.some(p=>!finitePoint(p))) throw Error('Non-finite coordinates');
+  if(out.tracks.some(p=>['vx','vy','vz','ax','ay','az'].some(k=>!Number.isFinite(p[k]))))throw Error('Non-finite track motion');
   if(out.vitals.some(v=>![v.heartRate,v.breathRate,v.breathDeviation,...v.heartWaveform,...v.breathWaveform].every(Number.isFinite))) throw Error('Non-finite vitals');
-  if(out.declaredPoints!==out.points.length && out.points.length) out.warnings.push('Header point count differs from decoded points');
+  if(framing.family==='modern'&&out.declaredPoints!==out.points.length && out.points.length) out.warnings.push('Header point count differs from decoded points');
   // Some TI trackers associate indexes with the previous point-cloud frame.
   // Expose raw indexes; do not silently assign them to current points.
   return out;
@@ -82,9 +137,16 @@ class StreamDecoder {
         outer: for(let i=0;i<=this.buffer.length-8;i++){for(let j=0;j<8;j++)if(this.buffer[i+j]!==MAGIC[j])continue outer;at=i;break;}
         if(at<0){this.discardedBytes+=this.buffer.length-7;this.buffer=this.buffer.slice(-7);break;}
         if(at){this.discardedBytes+=at;this.buffer=this.buffer.slice(at);}
-        if(this.buffer.length<40)break;
-        const d=new DataView(this.buffer.buffer,this.buffer.byteOffset,this.buffer.byteLength), total=d.getUint32(12,true),nt=d.getUint32(32,true);
-        if(total<40 || total>MAX_PACKET || nt>1024 || 40+nt*8>total){this.errors++;this.lastError='Invalid frame header';this.buffer=this.buffer.slice(1);continue;}
+        const framing=requireProfile(this.profile);
+        if(this.buffer.length<framing.headerBytes)break;
+        let total;
+        try{
+          if(framing.family==='cpd')total=cpdProtocol().inspectHeader(this.buffer).total;
+          else{
+            const d=new DataView(this.buffer.buffer,this.buffer.byteOffset,this.buffer.byteLength),nt=d.getUint32(framing.countOffset,true);total=d.getUint32(framing.totalOffset,true);
+            if(total<framing.headerBytes || total>MAX_PACKET || nt>1024 || framing.headerBytes+nt*8>total)throw Error('Invalid frame header');
+          }
+        }catch(e){this.errors++;this.lastError=e.message;this.buffer=this.buffer.slice(1);continue;}
         if(this.buffer.length<total)break;
         try{frames.push(parseFrame(this.buffer.subarray(0,total),this.profile));this.buffer=this.buffer.slice(total);}
         catch(e){this.errors++;this.lastError=e.message;this.buffer=this.buffer.slice(1);}
@@ -93,8 +155,38 @@ class StreamDecoder {
     return frames;
   }
 }
+function makeLegacySyntheticFrame(n,profile){
+  const framing=PROFILE_FRAMING[profile],tlvs=[];let dynamicCount=0,staticCount=0;
+  if(profile==='level'){
+    const payload=new Uint8Array(16),p=new DataView(payload.buffer),ranges=[1.2+.08*Math.sin(n*.04),2.1+.04*Math.sin(n*.03),3.3];
+    p.setUint16(0,1,true);p.setUint16(2,20,true);
+    for(const [j,lo,hi]of [[0,4,10],[1,8,12],[2,6,14]]){const q=Math.trunc(ranges[j]*1048576);p.setUint16(lo,q&65535,true);p.setInt16(hi,q>>16,true);}
+    const fft=new Uint8Array(64*8),f=new DataView(fft.buffer);
+    for(let i=0;i<64;i++){const angle=2*Math.PI*i*5/64+n*.03;f.setFloat32(i*8,Math.sin(angle)*200,true);f.setFloat32(i*8+4,Math.cos(angle)*200,true);}
+    dynamicCount=1;tlvs.push([1,payload],[2,fft],[6,new Uint8Array(24)]);
+  }else{
+    dynamicCount=24;staticCount=10;
+    const dynamic=new Uint8Array(dynamicCount*16),dp=new DataView(dynamic.buffer),fixed=new Uint8Array(staticCount*16),sp=new DataView(fixed.buffer),motion=new Uint8Array(40),t=new DataView(motion.buffer);
+    const x=.55*Math.sin(n*.04),y=profile==='doors'?2.1+1.2*Math.cos(n*.025):2.5+.6*Math.cos(n*.03),vx=.022*Math.cos(n*.04),vy=profile==='doors'?-.03*Math.sin(n*.025):-.018*Math.sin(n*.03);
+    for(let i=0;i<dynamicCount;i++){
+      const a=i*2.399,px=x+.2*Math.sin(a),py=y+.15*Math.cos(a),pz=.3+(i%8)*.15;
+      [Math.hypot(px,py,pz),Math.atan2(px,py),Math.atan2(pz,Math.hypot(px,py)),vy].forEach((v,j)=>dp.setFloat32(i*16+j*4,v,true));
+    }
+    for(let i=0;i<staticCount;i++)[profile==='doors'?.5:1.6,1+(i%5)*.1,.15+Math.floor(i/5)*.1,0].forEach((v,j)=>sp.setFloat32(i*16+j*4,v,true));
+    t.setUint32(0,1,true);[x,y,vx,vy,0,0,1,0,0].forEach((v,i)=>t.setFloat32(4+i*4,v,true));
+    const sideInfo=count=>{const p=new Uint8Array(count*4),d=new DataView(p.buffer);for(let i=0;i<count;i++){d.setInt16(i*4,160+i,true);d.setInt16(i*4+2,45,true);}return p;};
+    tlvs.push([1,dynamic],[7,sideInfo(dynamicCount)],[8,fixed],[9,sideInfo(staticCount)],[10,motion],[11,new Uint8Array(dynamicCount).fill(1)]);
+  }
+  const used=framing.headerBytes+tlvs.reduce((sum,entry)=>sum+8+entry[1].length,0),bytes=new Uint8Array(Math.ceil(used/32)*32),d=new DataView(bytes.buffer);
+  bytes.set(MAGIC);[0x03060000,bytes.length,0xa6843,profile==='level'?0:n,n*1000,dynamicCount,tlvs.length].forEach((v,i)=>d.setUint32(8+i*4,v,true));
+  if(framing.subFrameOffset!==null)d.setUint32(framing.subFrameOffset,0,true);
+  if(framing.staticPointsOffset!==undefined)d.setUint32(framing.staticPointsOffset,staticCount,true);
+  let off=framing.headerBytes;for(const [type,payload]of tlvs){d.setUint32(off,type,true);d.setUint32(off+4,payload.length,true);bytes.set(payload,off+8);off+=8+payload.length;}return bytes;
+}
 function makeSyntheticFrame(n=1,profile='people'){
   requireProfile(profile);
+  if(profile==='cpd')return cpdProtocol().makeSyntheticFrame(n);
+  if(profile==='area'||profile==='doors'||profile==='level')return makeLegacySyntheticFrame(n,profile);
   if(profile==='gesture'||profile==='speed'){
     const payloads=[];
     if(profile==='gesture'){
@@ -114,6 +206,6 @@ function makeSyntheticFrame(n=1,profile='people'){
   buf.set(MAGIC);[0x03060000,buf.length,0xa6843,n,n*1000,count,tlvs.length,0].forEach((v,i)=>d.setUint32(8+i*4,v,true));
   let off=40; for(const [type,p] of tlvs){d.setUint32(off,type,true);d.setUint32(off+4,p.length,true);buf.set(p,off+8);off+=8+p.length;}return buf;
 }
-const api={StreamDecoder,parseFrame,makeSyntheticFrame,MAX_PACKET,SUPPORTED_PROFILES};
+const api={StreamDecoder,parseFrame,makeSyntheticFrame,MAX_PACKET,SUPPORTED_PROFILES,PROFILE_FRAMING};
 if(typeof module==='object'&&module.exports)module.exports=api;root.RadarProtocol=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

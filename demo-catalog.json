@@ -281,9 +281,9 @@
       "guide_paths": [
         "source/ti/examples/Industrial_and_Personal_Electronics/Level_Sensing/high_accuracy/docs/high_accuracy_user_guide.html"
       ],
-      "status": "unsupported",
-      "browser_coverage": "Unsupported separate 36-byte header, legacy Q20 range objects and complex FFT data. Not standard float Cartesian TLV 1.",
-      "test_status": "Catalog/integrity tests only; browser decoder unsupported.",
+      "status": "experimental",
+      "browser_coverage": "Dedicated 36-byte header and signed Q20 range fields, retained range history and optional raw complex FFT-input magnitude. Not a calibrated tank-level or volume estimate; no transformed range spectrum.",
+      "test_status": "Source-derived synthetic fixtures and mocked software checks only; no physical hardware, recorded device capture or real-browser verification.",
       "mounting_transforms": "Absent; raw sensor coordinates only.",
       "official_source_url": "https://dr-download.ti.com/software-development/support-software/MD-QCYx8qtXEc/4.00.00.05/radar_toolbox_4_00_00_05.zip"
     },
@@ -330,9 +330,9 @@
       "guide_paths": [
         "source/ti/examples/Industrial_and_Personal_Electronics/Area_Scanner/docs/area_scanner_users_guide.html"
       ],
-      "status": "unsupported",
-      "browser_coverage": "Unsupported separate 44-byte header and 40-byte track records. Static points and warning/critical zones need a dedicated parser/UI.",
-      "test_status": "Catalog/integrity tests only; browser decoder unsupported.",
+      "status": "partial-protocol",
+      "browser_coverage": "Dedicated 44-byte header; spherical dynamic points, Cartesian static points, separate side information and 40-byte tracks. Raw sensor-coordinate 3D with static/dynamic colors. No warning/critical zone or prediction logic.",
+      "test_status": "Source-derived synthetic fixtures and mocked software checks only; no physical hardware, recorded device capture or real-browser verification.",
       "mounting_transforms": "Absent; raw sensor coordinates only.",
       "official_source_url": "https://dr-download.ti.com/software-development/support-software/MD-QCYx8qtXEc/4.00.00.05/radar_toolbox_4_00_00_05.zip"
     },
@@ -361,9 +361,9 @@
       "guide_paths": [
         "source/ti/examples/Industrial_and_Personal_Electronics/Automated_Doors_And_Gates/docs/automated_doors_user_guide.html"
       ],
-      "status": "unsupported",
-      "browser_coverage": "Unsupported separate 44-byte header and 40-byte track records; door state/projection UI absent. No actuator control.",
-      "test_status": "Catalog/integrity tests only; browser decoder unsupported.",
+      "status": "partial-protocol",
+      "browser_coverage": "Dedicated 44-byte header; spherical dynamic points, Cartesian static points and 40-byte tracks. Raw sensor-coordinate display only. No door-state/prediction UI or actuator control.",
+      "test_status": "Source-derived synthetic fixtures and mocked software checks only; no physical hardware, recorded device capture or real-browser verification.",
       "mounting_transforms": "Absent; raw sensor coordinates only.",
       "official_source_url": "https://dr-download.ti.com/software-development/support-software/MD-QCYx8qtXEc/4.00.00.05/radar_toolbox_4_00_00_05.zip"
     },
@@ -443,13 +443,13 @@
         }
       ],
       "firmware_source": "Firmware C + MATLAB visualizer included",
-      "protocol_ui": "Docs explicitly xWR6843AOP ES2.0. Extra zone/feature/classification/height TLVs and cuboids; dedicated profile, not generic point viewer. Evaluation only, not safety guarantee",
+      "protocol_ui": "Included stock firmware: 48-byte checksum header, TLV6 compressed point cloud with inclusive TLV length. Classification/occupancy is performed in paired MATLAB host; not transmitted as class/height TLVs by this build.",
       "guide_paths": [
         "source/ti/examples/Automotive_InCabin_Security_and_Safety/AWR6843_CPD_with_Classification/docs/AWR6843_CPD_with_Classification_users_guide.html"
       ],
-      "status": "unsupported",
-      "browser_coverage": "Unsupported dedicated zone/features/classification and cuboid workflow. No child-presence safety guarantee.",
-      "test_status": "Catalog/integrity tests only; browser decoder unsupported.",
+      "status": "partial-protocol",
+      "browser_coverage": "Dedicated 48-byte checksum header and inclusive-length TLV6 compressed raw point cloud. The included TI MATLAB host performs occupancy/classification; that host algorithm, vehicle/cuboid transforms and safety decisions are not implemented.",
+      "test_status": "Source-derived synthetic fixtures and mocked software checks only; no physical hardware, recorded device capture or real-browser verification.",
       "mounting_transforms": "Absent; raw sensor coordinates only.",
       "official_source_url": "https://dr-download.ti.com/software-development/support-software/MD-QCYx8qtXEc/4.00.00.05/radar_toolbox_4_00_00_05.zip"
     }

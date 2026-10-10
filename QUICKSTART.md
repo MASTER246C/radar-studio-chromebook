@@ -6,13 +6,15 @@ This guide runs Radar Studio locally in **ChromeOS Chrome**. Linux serves the ap
 
 ## 1. Choose a version
 
-For v0.3, first read the selected official demo catalogue entry: some profiles are metadata-only and cannot be decoded. See [DEMO_CATALOG.md](DEMO_CATALOG.md) and [LOCAL_IMPORT.md](LOCAL_IMPORT.md).
+For v0.4, first read the selected official demo catalogue entry: all profiles have selected partial/experimental decoding, with important application features still absent. See [DEMO_CATALOG.md](DEMO_CATALOG.md) and [LOCAL_IMPORT.md](LOCAL_IMPORT.md).
 
 Use this repository's **Releases** page to choose a tagged version and download its viewer ZIP. Keep releases in separate folders; do not mix JavaScript files from different versions.
 
 - **v0.1:** first prototype; an early user reported live tracking and vitals operation. Its vitals display can disappear on frames without a vitals packet.
 - **v0.3:** official-demo catalogue, metadata-only local BIN/CFG checks, raw gesture telemetry and valid/invalid ground-speed history. New profiles are fixture/mock-tested, not hardware-validated.
 - **v0.2:** fixes that display-state problem, adds a rotatable 3D view and track trails, and includes a radar favicon. Protocol, retention, trajectory, projection and mocked UI tests pass. That does not establish hardware validation of this revision or visual verification on every Chromebook.
+
+- **v0.4:** adds explicit Area/Doors, Level and CPD raw-point formats. CPD classification and configuration sending remain unavailable; new hardware acceptance is pending.
 
 A GitHub repository or release download is source delivery, not a running hosted application. Follow the local launch steps below.
 
@@ -27,10 +29,10 @@ If Linux is unavailable, stop here and seek an approved HTTPS hosting option. Do
 1. Open the downloaded ZIP in the Chromebook **Files** app.
 2. Copy/extract the **entire viewer folder** into **Linux files**. Keep all its files together, including `index.html`, the `.js` files, stylesheet and `start-local.sh`.
 3. Open **Terminal → Linux**.
-4. Type `ls` to see your folders. Change into the extracted viewer folder, using its actual name. For example, if it is `Radar_Studio_v0.3`:
+4. Type `ls` to see your folders. Change into the extracted viewer folder, using its actual name. For example, if it is `Radar_Studio_v0.4`:
 
 ```sh
-cd ~/Radar_Studio_v0.3
+cd ~/Radar_Studio_v0.4
 ls
 sh start-local.sh
 ```
@@ -47,7 +49,7 @@ In the **normal ChromeOS Chrome browser**, open:
 
 **http://localhost:8000**
 
-Use a full browser tab, not an embedded preview and not a browser installed inside Linux. In this release, check that the header says **v0.3**.
+Use a full browser tab, not an embedded preview and not a browser installed inside Linux. In this release, check that the header says **v0.4**.
 
 You may first choose **Run synthetic demo**. This checks the display controls without hardware. The generated tracks and rates are labeled **SYNTHETIC DEMO** and do not prove that the radar or USB connection works. Stop playback before testing live data.
 
@@ -62,7 +64,7 @@ Do not pass the radar into Linux merely to run the file server. ChromeOS Chrome 
 
 ## 6. Choose the demo and two serial interfaces
 
-Choose the catalogue profile matching the firmware already flashed. This stops local playback/listening and clears old display history, but sends no device commands. Unsupported profiles disable decoding and config sending. For the official gesture build, external CFG sending is disabled because the firmware has a built-in configuration. Its live view needs the data port; a CLI connection is not required merely to listen.
+Choose the catalogue profile matching the firmware already flashed. This stops local playback/listening and clears old display history, but sends no device commands. Unknown profiles are rejected. Each catalogue profile has only the coverage described beside it. For the official gesture build, external CFG sending is disabled because the firmware has a built-in configuration. Its live view needs the data port; a CLI connection is not required merely to listen.
 
 
 1. Click **Choose CLI port · 115200** and select the board's command interface.
@@ -95,3 +97,6 @@ Click **Disconnect** to release the ports. This does not send `sensorStop`; the 
 To update: disconnect the old viewer, stop its server, extract the new release into a separate folder, and start the server from that new folder. Reload Chrome with **Ctrl+Shift+R** if needed and confirm the version in the header. Switching to a new release does not require flashing firmware.
 
 Problems? See [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
+
+CPD configuration sending is disabled in v0.4 because its supplied setup file combines firmware commands with MATLAB host-only metadata. Configure with the official TI workflow first, release its ports, then use this viewer to listen to raw points. This viewer does not run the CPD host classifier.

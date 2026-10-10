@@ -46,7 +46,7 @@ Before claiming a hardware configuration supported, record board/revision, firmw
 
 ## Known limitations
 
-- IWR6843 40-byte header and selected TLVs only; other device families and longer headers are not established.
+- Explicit inspected IWR6843AOPEVM profiles only: 36/40/44/48-byte layouts with selected TLVs. Unlisted firmware or other device families are not established.
 - No flashing, raw serial recording/export, TI JSON replay, scene calibration, point-to-track association, heatmaps, classifier/fall-detection parity or all TI demos.
 - Raw association indexes are retained without point assignment because some streams refer to a prior frame.
 - v0.1 has a known sparse-vitals display issue. v0.2 retains last real readings and marks live values stale after five seconds; that threshold is a display policy, not a physiological validity rule.
@@ -68,8 +68,12 @@ Start with a separately licensed official protocol description and a specific bo
 
 ## v0.3 additions
 
-Use `node tests/run-all.js` for all eight deterministic suites; regenerate both fixture files first as described in TEST_PLAN.md. `demo_catalog.js`/`demo-catalog.json` hold official metadata only; `catalog_ui.js` hashes user-selected files locally. `telemetry_panels.js` retains raw gesture and valid/invalid velocity independently. PROTOCOL_EVIDENCE.md records exact transmitter layouts and unsupported families.
+Use `node tests/run-all.js` for the complete deterministic suite; regenerate the fixture files first as described in TEST_PLAN.md. `demo_catalog.js`/`demo-catalog.json` hold official metadata only; `catalog_ui.js` hashes user-selected files locally. `telemetry_panels.js` retains raw gesture and valid/invalid velocity independently. PROTOCOL_EVIDENCE.md records exact transmitter layouts and coverage limitations.
 
-Changing a parser profile is explicit and clears session state. Unsupported profiles cannot construct a decoder. Gesture's built-in configuration disables the command sender. New profile acceptance needs real hardware/capture checks; do not rename fixture success as end-to-end compatibility.
+Changing a parser profile is explicit and clears session state. Unknown profiles cannot construct a decoder. Gesture's built-in configuration disables the command sender. New profile acceptance needs real hardware/capture checks; do not rename fixture success as end-to-end compatibility.
 
 For v0.3 and later, CHANGELOG.md is the primary structured changelog; CHANGELOG.txt retains earlier notes. Preserve the exact LICENSE. Public release files must exclude all vendor BIN/CFG bytes, TI source trees and personal captures while retaining official metadata/source attribution.
+
+## v0.4 additions
+
+`radar_protocol.js` selects 36/40/44-byte framing explicitly and delegates the stock 48-byte checksum format to `cpd_protocol.js`. `legacy_panels.js` retains level samples independently from frame numbering; the official level transmitter keeps frame number zero. Raw complex FFT input is not transformed into physical distance bins. Static area/doors points carry `static:true` and render amber. Read LEGACY_PROTOCOL_EVIDENCE.md before changing formats. Tests remain synthetic/mock; no raw vendor source is bundled.

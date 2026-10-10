@@ -1,3 +1,5 @@
+> Historical v0.1/v0.2 architecture notes. For current framing and coverage, read README.md, PROTOCOL_EVIDENCE.md and LEGACY_PROTOCOL_EVIDENCE.md.
+
 # Radar Studio Chromebook
 
 RADAR STUDIO 0.2 • Chromebook prototype

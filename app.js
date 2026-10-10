@@ -1,10 +1,12 @@
 'use strict';
 (() => {
   const $ = id => document.getElementById(id);
-  const ui = Object.fromEntries(['demoCatalog','profileStatus','telemetryPanel','cliConnect','dataConnect','cliStatus','dataStatus','listen','disconnect','configFile','configInfo','configSummary','configWarning','sendConfig','replayFile','demo','stopPlayback','modeBadge','sourceTitle','frameStat','objectsStat','bytesStat','framesStat','frameWarnings','sceneCanvas','viewOrbit','viewTop','viewFront','viewReset','zoomIn','zoomOut','trailToggle','trailDuration','trailClear','vitalsSection','vitalsCards','presentation','range','log','clearLog','compatibility'].map(id => [id,$(id)]));
+  const ui = Object.fromEntries(['demoCatalog','profileStatus','telemetryPanel','legacyPanel','cliConnect','dataConnect','cliStatus','dataStatus','listen','disconnect','configFile','configInfo','configSummary','configWarning','sendConfig','replayFile','demo','stopPlayback','modeBadge','sourceTitle','frameStat','objectsStat','bytesStat','framesStat','frameWarnings','sceneCanvas','viewOrbit','viewTop','viewFront','viewReset','zoomIn','zoomOut','trailToggle','trailDuration','trailClear','vitalsSection','vitalsCards','presentation','range','log','clearLog','compatibility'].map(id => [id,$(id)]));
   const state = {profile:'people',profileChanging:false,cli:null,data:null,cliReader:null,dataReader:null,cliTask:null,dataTask:null,writer:null,choosing:false,closing:false,sending:false,listening:false,source:'offline',generation:0,playback:null,decoder:null,bytes:0,frames:0,frame:null,commands:[],configKind:null,ack:null,cliPartial:'',lastCliRead:0,lastFrameAt:0,dataBusy:false,vitals:new VitalsStore(),vitalCards:new Map(),trails:new TrailStore()};
   const telemetry = new TelemetryPanels(ui.telemetryPanel);
+  const legacy = new LegacyPanels(ui.legacyPanel);
   const profileAllowed=()=>RadarProtocol.SUPPORTED_PROFILES.includes(state.profile);
+  const configBlocked=()=>state.profile==='gesture'||state.profile==='cpd';
   const scene = new RadarScene(ui.sceneCanvas);scene.attachPointerControls();
   let configReadToken=0;
   const supported = isSecureContext && 'serial' in navigator;
@@ -19,8 +21,8 @@
     ui.listen.disabled=!profileAllowed()||state.profileChanging||!state.data||state.closing||state.choosing||state.dataBusy;
     ui.listen.textContent=state.listening?'Stop listening':'Start listening';
     ui.disconnect.disabled=state.closing||state.choosing||(!state.cli&&!state.data);
-    ui.sendConfig.disabled=!profileAllowed()||state.profile==='gesture'||state.profileChanging||!state.cli||!state.writer||!state.commands.length||state.sending||state.closing;
-    ui.configFile.disabled=state.profileChanging||!profileAllowed()||state.profile==='gesture'||state.sending||state.closing;ui.replayFile.disabled=!profileAllowed()||state.profileChanging;
+    ui.sendConfig.disabled=!profileAllowed()||configBlocked()||state.profileChanging||!state.cli||!state.writer||!state.commands.length||state.sending||state.closing;
+    ui.configFile.disabled=state.profileChanging||!profileAllowed()||configBlocked()||state.sending||state.closing;ui.replayFile.disabled=!profileAllowed()||state.profileChanging;
     ui.stopPlayback.disabled=!['demo','replay'].includes(state.source);
     ui.demo.disabled=!profileAllowed()||state.closing||state.profileChanging;
     ui.cliStatus.textContent=state.cli?(state.sending?'Sending configuration…':'Connected · 115200 baud'):'Not connected';
@@ -29,14 +31,14 @@
     ui.modeBadge.className='badge '+state.source;
     ui.sourceTitle.textContent=({offline:'Waiting for a data source',live:'Reading your radar',demo:'Synthetic data · demonstration only',replay:'Recorded data · file replay'})[state.source];
     ui.vitalsSection.style.display=ui.presentation.value==='vitals'?'block':'none';vitalFreshness();
-    ui.configSummary.textContent=state.configKind==='vitals'?'Vital-signs configuration':state.configKind==='people'?'People-tracking configuration (inferred)':'';
-    ui.configWarning.textContent=state.profile==='gesture'?'This TI gesture build uses a built-in configuration. External CFG sending is disabled.':!profileAllowed()?'This profile has no compatible decoder in this release.':state.configKind&&state.configKind!==ui.presentation.value?'The selected presentation differs from this configuration. Change it manually if needed. No commands have been sent automatically.':'';
+    ui.configSummary.textContent=state.configKind==='vitals'?'Vital-signs configuration':state.configKind==='people'?'People-tracking configuration (inferred)':state.configKind==='unverified'?'Configuration loaded · demo compatibility unverified':'';
+    ui.configWarning.textContent=state.profile==='gesture'?'This TI gesture build uses a built-in configuration. External CFG sending is disabled.':state.profile==='cpd'?'CPD setup mixes firmware commands with MATLAB host metadata. CFG sending is disabled here; use the official TI setup, then listen to raw points. No occupancy/classification is performed.':!profileAllowed()?'This profile has no compatible decoder in this release.':state.configKind==='unverified'?'Confirm this file matches the selected firmware/profile before sending. No commands have been sent automatically.':state.configKind&&state.configKind!==ui.presentation.value?'The selected presentation differs from this configuration. Change it manually if needed. No commands have been sent automatically.':'';
   }
-  function reset(source) { state.source=source; state.decoder=profileAllowed()?new RadarProtocol.StreamDecoder(state.profile):null;telemetry.reset(); state.bytes=0; state.frames=0; state.frame=null;state.lastFrameAt=0;state.vitals.clear();state.vitalCards.clear();state.trails.clear();ui.vitalsCards.replaceChildren(); ui.frameStat.textContent='—'; ui.objectsStat.textContent='0 / 0'; ui.bytesStat.textContent='0 B'; ui.framesStat.textContent='0'; ui.frameWarnings.textContent=''; render(); refresh(); }
+  function reset(source) { state.source=source; state.decoder=profileAllowed()?new RadarProtocol.StreamDecoder(state.profile):null;telemetry.reset();legacy.reset(); state.bytes=0; state.frames=0; state.frame=null;state.lastFrameAt=0;state.vitals.clear();state.vitalCards.clear();state.trails.clear();ui.vitalsCards.replaceChildren(); ui.frameStat.textContent='—'; ui.objectsStat.textContent='0 / 0'; ui.bytesStat.textContent='0 B'; ui.framesStat.textContent='0'; ui.frameWarnings.textContent=''; render(); refresh(); }
   function ingest(bytes) {
     state.bytes+=bytes.length;
     const priorErrors=state.decoder.errors||0;const frames=state.decoder.push(bytes);if((state.decoder.errors||0)>priorErrors)log(`Decoder rejected malformed data (${state.decoder.errors} total): ${state.decoder.lastError||'invalid frame'}`);
-    state.frames+=frames.length;telemetry.ingest(frames,Date.now());state.vitals.ingest(frames,Date.now());state.trails.ingest(frames,Date.now());
+    state.frames+=frames.length;telemetry.ingest(frames,Date.now());legacy.ingest(frames,Date.now());state.vitals.ingest(frames,Date.now());state.trails.ingest(frames,Date.now());
     if(frames.length) { state.frame=frames[frames.length-1];state.lastFrameAt=Date.now(); ui.frameStat.textContent=String(state.frame.frameNumber); ui.objectsStat.textContent=`${(state.frame.points||[]).length} / ${(state.frame.tracks||[]).length}`; ui.frameWarnings.textContent=[...(state.frame.warnings||[]),...((state.frame.unknownTlvs||[]).length?['Unrendered TLVs: '+state.frame.unknownTlvs.join(', ')]:[])].join(' · '); render(); }
     ui.framesStat.textContent=state.frames.toLocaleString(); ui.bytesStat.textContent=state.bytes<1024?`${state.bytes} B`:`${(state.bytes/1024).toFixed(1)} KB`;
   }
@@ -107,7 +109,7 @@
     await sleep(120);
   }
   async function sendConfig() {
-    if(!profileAllowed()||state.profile==='gesture'||state.profileChanging){log('Configuration sending is disabled for this profile.');return;}if(state.sending||!state.writer||!state.commands.length)return;state.sending=true;refresh();
+    if(!profileAllowed()||configBlocked()||state.profileChanging){log('Configuration sending is disabled for this profile.');return;}if(state.sending||!state.writer||!state.commands.length)return;state.sending=true;refresh();
     try{for(const line of state.commands){if(state.closing)throw new Error('Disconnected.');await sendCommand(line);}log(`Configuration complete: ${state.commands.length} commands acknowledged.`);}
     catch(e){log(`CONFIGURATION STOPPED: ${error(e)} Remaining commands were not sent.`);}
     finally{state.sending=false;refresh();}
@@ -168,30 +170,30 @@
     }
     vitalFreshness();
   }
-  function render(){telemetry.render(ui.presentation.value,state.source,Date.now());scene.setFrame(state.frame);scene.setRange(+ui.range.value);state.trails.setDuration(+ui.trailDuration.value);scene.setTrails(ui.trailToggle.checked?state.trails.values(Date.now()):[]);scene.render();if(ui.presentation.value==='vitals')vitals();}
+  function render(){telemetry.render(ui.presentation.value,state.source,Date.now());legacy.render(ui.presentation.value,state.source,Date.now());scene.setFrame(state.frame);scene.setRange(+ui.range.value);state.trails.setDuration(+ui.trailDuration.value);scene.setTrails(ui.trailToggle.checked?state.trails.values(Date.now()):[]);scene.render();if(ui.presentation.value==='vitals')vitals();}
   for(const [id,preset] of [['viewOrbit','orbit'],['viewTop','top'],['viewFront','front'],['viewReset','reset']])ui[id].onclick=()=>{scene.preset(preset);scene.render();};
   ui.trailToggle.onchange=render;ui.trailDuration.onchange=render;ui.trailClear.onclick=()=>{state.trails.clear();render();};
   ui.zoomIn.onclick=()=>{scene.zoom(1.2);scene.render();};ui.zoomOut.onclick=()=>{scene.zoom(1/1.2);scene.render();};
   ui.cliConnect.onclick=()=>connect('cli');ui.dataConnect.onclick=()=>connect('data');ui.listen.onclick=()=>{sourceRequest++;startListening().catch(e=>log(error(e)));};ui.disconnect.onclick=()=>{sourceRequest++;disconnect().catch(e=>log(error(e)));};ui.sendConfig.onclick=sendConfig;ui.demo.onclick=demo;ui.stopPlayback.onclick=()=>{sourceRequest++;stopPlayback();};ui.clearLog.onclick=()=>{ui.log.textContent='';};
   ui.configFile.onchange=async()=>{
-    if(state.profileChanging||state.sending||state.closing||!profileAllowed()||state.profile==='gesture'){log('Configuration loading is disabled for this profile or current action.');return;}
+    if(state.profileChanging||state.sending||state.closing||!profileAllowed()||configBlocked()){log('Configuration loading is disabled for this profile or current action.');return;}
     const request=++configReadToken,profile=state.profile,file=ui.configFile.files[0];state.commands=[];state.configKind=null;refresh();
     if(file){try{
       if(file.size>1024*1024)throw new Error('Configuration exceeds 1 MB limit.');
       const text=await file.text();if(request!==configReadToken||profile!==state.profile||state.profileChanging||state.sending||state.closing)return;
       state.commands=text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l&&!l.startsWith('%')&&!l.startsWith('#'));
-      state.configKind=state.commands.length?(state.commands.some(l=>/vitalsign/i.test(l))?'vitals':'people'):null;
+      state.configKind=state.commands.length?(state.commands.some(l=>/vitalsign/i.test(l))?'vitals':(['people','people-low-power','overhead','vitals','small-obstacle'].includes(state.profile)?'people':'unverified')):null;
       ui.configInfo.textContent=`${file.name} · ${state.commands.length} commands`;log('Configuration loaded locally. Review the file before sending.');
     }catch(e){if(request===configReadToken)ui.configInfo.textContent=error(e);}}else ui.configInfo.textContent='No configuration loaded';refresh();
   };
   ui.replayFile.onchange=()=>{const file=ui.replayFile.files[0];ui.replayFile.value='';replay(file);};ui.presentation.onchange=()=>{refresh();render();};ui.range.onchange=render;window.addEventListener('resize',render);
   if('serial' in navigator)navigator.serial.addEventListener('disconnect',event=>{if(event.target===state.cli||event.target===state.data){log('A selected device was unplugged.');sourceRequest++;disconnect();}});
-  setInterval(()=>{telemetry.render(ui.presentation.value,state.source,Date.now());scene.setTrails(ui.trailToggle.checked?state.trails.values(Date.now()):[]);scene.render();vitalFreshness();const el=$('freshness');if(!state.lastFrameAt){el.textContent='No decoded samples';return;}const age=(Date.now()-state.lastFrameAt)/1000;el.textContent=state.source==='live'?(age>2?`STALE · last decoded frame ${age.toFixed(0)} s ago`:'Receiving · updated '+age.toFixed(1)+' s ago'):`Last displayed frame · ${age.toFixed(0)} s ago`;el.className=state.source==='live'&&age>2?'stale':'';},500);
+  setInterval(()=>{telemetry.render(ui.presentation.value,state.source,Date.now());legacy.render(ui.presentation.value,state.source,Date.now());scene.setTrails(ui.trailToggle.checked?state.trails.values(Date.now()):[]);scene.render();vitalFreshness();const el=$('freshness');if(!state.lastFrameAt){el.textContent='No decoded samples';return;}const age=(Date.now()-state.lastFrameAt)/1000;el.textContent=state.source==='live'?(age>2?`STALE · last decoded frame ${age.toFixed(0)} s ago`:'Receiving · updated '+age.toFixed(1)+' s ago'):`Last displayed frame · ${age.toFixed(0)} s ago`;el.className=state.source==='live'&&age>2?'stale':'';},500);
   window.addEventListener('radar-profile-change',event=>{
-    const id=event.detail?.id;if(!id)return;
+    const id=event.detail?.id;if(!id||!DemoCatalog.get(id)){event.preventDefault();log('Unknown demo profile rejected.');return;}
     if(state.sending||state.choosing||state.closing||state.dataBusy||state.profileChanging){event.preventDefault();log('Finish the current connection/configuration action before changing profiles.');return;}
     state.profileChanging=true;configReadToken++;sourceRequest++;stopPlayback();refresh();
-    (async()=>{await stopListening();state.profile=id;state.commands=[];state.configKind=null;ui.configFile.value='';ui.configInfo.textContent='No configuration loaded';ui.presentation.value=['gesture','speed','vitals'].includes(id)?id:'people';reset('offline');log('Selected '+id+'. Histories cleared. No device command or firmware change was made.');})().catch(e=>log(error(e))).finally(()=>{state.profileChanging=false;refresh();});
+    (async()=>{await stopListening();state.profile=id;state.commands=[];state.configKind=null;ui.configFile.value='';ui.configInfo.textContent='No configuration loaded';ui.presentation.value=['gesture','speed','vitals','level'].includes(id)?id:'people';reset('offline');log('Selected '+id+'. Histories cleared. No device command or firmware change was made.');})().catch(e=>log(error(e))).finally(()=>{state.profileChanging=false;refresh();});
   });
   CatalogUI.mount(ui.demoCatalog);
   refresh();render();log('Ready. Connect two serial interfaces, replay a local recording, or run a labeled synthetic demo.');

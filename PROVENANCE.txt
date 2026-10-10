@@ -31,3 +31,5 @@ Only metadata and independently authored implementations/fixtures are included;
 no TI code, firmware bytes or configuration contents were copied into this
 release. Matching imported file hashes establishes artifact identity, not a
 right to redistribute the imported material or hardware compatibility.
+
+V0.4 adds first-party decoders informed by official Area/Doors, Level and CPD wire sources. Vendor code/firmware/config bytes remain excluded. See LEGACY_PROTOCOL_EVIDENCE.md. No hardware or real-browser verification is implied.

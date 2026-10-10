@@ -20,6 +20,9 @@ This app contains no TI firmware BIN or chirp CFG files. The catalog is metadata
 - Normal and low-power people tracking have the **same BIN basename**, `3D_people_track_6843_demo.bin`, in different directories with different sizes and hashes. Never substitute one for the other.
 - Gesture recognition uses built-in configuration. No standalone gesture CFG is cataloged; do not inject a generic point-cloud CFG.
 - Out of Box has no fixed CFG in this catalog. Generate the correct configuration using the TI guide/visualizer for the exact device and firmware.
-- Level sensing, area scanner, automated doors and child presence are documented for AOP hardware but **unsupported in this browser viewer**. Use their TI tools. Their formats and workflows are different; renaming a profile will not make their data compatible.
+- Level sensing, area scanner, automated doors and CPD now have explicit experimental/partial decoders. Select the exact profile: their 36/44/48-byte headers and TLV meanings differ. CPD shows raw points, not child-presence classification; doors/area omit TI zone and prediction logic. Use TI tools for the complete workflows.
 - The app has no mounting-coordinate transforms. It does not apply overhead rotation, sensor height/tilt, vehicle zones or physical calibration from an imported CFG. Raw sensor coordinates can therefore be misleading if interpreted as room coordinates.
 - All browser profiles remain software-only checks, with no physical-device validation. Vital signs are experimental and nonmedical; obstacle, doors and child-presence demos must not be used as safety systems through this viewer.
+
+
+CPD configuration sending is disabled in v0.4 because its supplied setup file combines firmware commands with MATLAB host-only metadata. Configure with the official TI workflow first, release its ports, then use this viewer to listen to raw points. This viewer does not run the CPD host classifier.

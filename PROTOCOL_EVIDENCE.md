@@ -4,9 +4,9 @@ Target: **TI IWR6843AOPEVM (IWR6843AOP)**. No general xWRL support is claimed.
 
 Source of evidence is the official [TI Radar Toolbox 4.00.00.05 download](https://www.ti.com/tool/download/RADAR-TOOLBOX). Archive SHA-256: `e861a67c115f687bf57147c5775122698fc2c3a5fe8c710472de04d2c05a97e8`. The original archive and vendor file contents are not included here. Paths below are relative to the extracted archive, enabling a reviewer to reproduce the inspection.
 
-## Framing
+## Modern 40-byte framing
 
-The implemented profiles use the standard 40-byte little-endian `Q8I` equivalent: 8-byte magic, version, total packet length, platform, frame number, CPU cycles, detected-object count, TLV count and subframe number. TLV headers are 8 bytes; **TLV length is payload-only** in the inspected transmitters. The parser handles chunks independently of packet boundaries and uses explicit bounds.
+The modern profiles (oob, people variants, overhead, vitals, small-obstacle, gesture and speed) use the standard 40-byte little-endian `Q8I` equivalent: 8-byte magic, version, total packet length, platform, frame number, CPU cycles, detected-object count, TLV count and subframe number. TLV headers are 8 bytes; **TLV length is payload-only** in the inspected transmitters. The parser handles chunks independently of packet boundaries and uses explicit bounds.
 
 Gesture evidence: `source/ti/examples/Industrial_and_Personal_Electronics/Gesture_Recognition/Gesture_with_Machine_Learning/src/6443/mss/mmw_output.h` defines the header and IDs. Its `main.c` lines 1689–1696 set lengths to the float payload sizes; the UART code then sends a separate TLV header and payload. This actual transmitter takes precedence over older guide prose describing length differently. `header.subFrameNumber` is explicitly sent.
 
@@ -47,10 +47,8 @@ They send the standard header and 1010 target records sized using `trackerProc_T
 
 This supports **partial wire-format compatibility**, not complete scene or algorithm parity. Sensor transforms, low-power operational behavior, occupancy/zone outputs, range profiles and all TI-specific GUI features are not implemented. The catalogue warns accordingly. Exact BIN/CFG identity still matters: ordinary and low-power people tracking share a binary basename but differ in bytes/hash.
 
-## Deliberately unsupported
+## Additional explicit framing in v0.4
 
-High Accuracy Level Sensing uses a 36-byte header and legacy detected-object/FFT payloads. Area Scanner and Automated Doors/Gates use 44-byte headers, static-object counts and different target layouts. Child Presence Classification has dedicated zone/feature/classification semantics. None is decoded by guessing the standard profile. The selector can show their official metadata but cannot start their viewer/parser path.
+Profiles are selected explicitly, never inferred from TLV number or platform. Area/Doors use 44-byte headers, Level uses 36, and CPD uses 48 with a checksum and different TLV length convention. See LEGACY_PROTOCOL_EVIDENCE.md for source paths and exact field decisions.
 
-## Validation boundary
-
-Independent fixture generators encode the inspected formats using Python `struct`; they do not import or execute TI Python or firmware. Tests exercise record interpretation, validity, strict length checks, all split positions, unknown TLVs, incompatible-profile rejection and UI safeguards. Artifact hashes were checked against the verified source archive. **No new hardware capture or live execution was available to establish end-to-end compatibility.**
+All are partial/experimental. Decoding raw CPD points does not implement its MATLAB occupancy/classification host. Area/Doors omit application zones/prediction/actuation; level input samples are not a calibrated range spectrum. No hardware validation is established.

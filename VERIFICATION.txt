@@ -1,27 +1,37 @@
-V0.3 VERIFICATION — 10 October 2026
+V0.4 VERIFICATION — 10 October 2026
 Target: Texas Instruments IWR6843AOPEVM (IWR6843AOP).
 
 PASSED
 - JavaScript syntax for all application modules.
-- Python fixture generators for original and expanded formats.
-- Eight deterministic test suites via node tests/run-all.js:
-  protocol, expansion, vitals, trails, scene, telemetry, catalog, UI.
-- 37 official BIN/CFG metadata sizes/hashes independently checked against the
-  extracted official 4.00.00.05 archive during catalog construction.
-- Profile scope, built-in-gesture CFG guard, unsupported-profile block,
-  no-command selection/import behavior, metadata-only hash inspection.
-- Independent scoped review found a delayed-CFG-read/profile-switch race; fixed
-  with generation/profile checks and revalidated by regression and reviewer.
-- Exact supplied LICENSE hash verified; prior v0.1/v0.2 staging preserved.
+- Four independent Python fixture generators: original, expansion, legacy, CPD.
+- Eleven deterministic suites via node tests/run-all.js: protocol, expansion,
+  legacy, CPD, level panels, vitals, trails, scene, telemetry, catalogue, UI.
+- New suites contain 24 legacy decoder, 14 CPD decoder and 17 level-store/mock
+  panel test groups. Includes signed packing, exact header/TLV bounds/checksum,
+  malformed recovery, all two-part splits and source-specific synthetic data.
+- Independent read-only source/runtime review found no correctness blocker.
+  Extra checks included all new synthetic split boundaries, incompatible-family
+  rejection and 300 successive level frame-zero packets with 150-history cap.
+- Mock UI verifies new profile switching/demo rendering paths, CPD CFG blocking
+  (including direct handler calls), no implicit commands, and prior vitals/trails.
+- Catalogue metadata remains identical for all 37 official BIN/CFG identities.
+  Previously checked archive hashes do not identify the flashed physical unit.
+- Exact supplied LICENSE and LICENSE_COVERAGE preserved. Prior release source
+  and ZIPs are unchanged.
 
 NOT ESTABLISHED
 - Actual browser layout/rendering for this revision.
 - New demo USB enumeration, live CLI exchange or live radar output.
-- Sustained throughput, source/firmware-to-physical-unit identity, accuracy,
+- Sustained throughput, firmware-to-physical-unit identity, measurement accuracy,
   mounting transforms, complete TI visualizer parity or safety suitability.
-- Unknown/legacy headers; those remain intentionally unsupported.
+- CPD host occupancy/classification, door-state/prediction/control, area warning
+  zones, calibrated tank level/volume or transformed FFT distance spectrum.
+- Unlisted firmware/header variants. Select the exact catalogued profile.
 
-An early user reported v0.1 live tracking/vitals on Rev G. This report is kept
-separate from v0.3 fixture/mock validation. No firmware was executed, flashed
-or bundled while building this revision. See TEST_PLAN.md, PROTOCOL_EVIDENCE.md
-and CHANGELOG.md for reproducible checks and remaining acceptance gates.
+CPD setup combines firmware commands and MATLAB host metadata. This release
+blocks CPD CFG loading/sending; use TI setup first, release its ports, then
+listen to raw points. Gesture uses the official built-in configuration.
+
+An early user reported v0.1 live tracking/vitals on Rev G. That report is separate
+from v0.4 synthetic/mock checks. No vendor firmware was executed, flashed or
+bundled. See TEST_PLAN.md and protocol evidence documents for reproduction.

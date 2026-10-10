@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.4 — 2026-10-10 — Experimental prerelease
+
+### Added
+- Separate 44-byte Area Scanner and Automated Doors/Gates framing, dynamic spherical and static Cartesian point clouds, side information, and reordered 40-byte tracks. Static points use amber and dynamic points use teal in the raw sensor-coordinate 3D view.
+- Separate 36-byte High Accuracy Level Sensing framing, signed Q20 range fields and optional raw complex FFT input; dedicated receipt-freshness/history panel. Repeated frame number zero does not discard actual subsequent measurements.
+- Separate 48-byte CPD framing with stock checksum and inclusive TLV lengths; compressed raw point-cloud display only.
+- Independent source-derived Python fixtures, malformed/fragmented parsing checks and mocked panel/profile integration tests.
+
+- CPD CFG sending is disabled: the supplied setup mixes firmware commands and MATLAB host metadata. Use the official TI setup before raw-point listening.
+
+### Corrected
+- The earlier CPD catalogue description incorrectly implied dedicated classification/height TLVs for this build. Included firmware sends compressed points; its paired MATLAB host computes occupancy/classification. The browser does not implement that host algorithm.
+- CFG summaries for dedicated non-tracking profiles now explicitly state that demo compatibility remains unverified rather than guessing people tracking.
+
+### Limits
+- All 12 catalogue families have selected experimental/partial decoding, not complete TI visualizer parity or verified operation on physical hardware.
+- No area warning zones, door prediction/control, tank volume, calibrated FFT range spectrum, CPD occupancy/classification, mounting transforms or safety decisions.
+- Actual browser rendering, new-profile live USB/CLI behavior and sustained throughput remain unverified. Earlier releases/tags remain unchanged.
+
 ## v0.3 — 2026-10-10 — Experimental prerelease
 
 ### Added
