@@ -1,0 +1,4 @@
+v0.1: project owner reported live success on their Chromebook.
+Independent protocol and mock-UI tests are included.
+No claim of broad hardware compatibility or medical accuracy.
+No vendor configurations, firmware or personal recordings are included.

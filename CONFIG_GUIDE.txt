@@ -1,0 +1,16 @@
+CONFIGURATION GUIDE
+
+This source release intentionally excludes vendor configurations and firmware.
+Use the exact configuration already known to work with the firmware currently
+installed on your own board. Obtain vendor software from its official source
+and follow its license. Do not switch or flash firmware just to try this viewer.
+
+Load your local .cfg through the viewer. Loading sends nothing. Sending is a
+separate explicit action, and commands can stop, reconfigure and restart the
+radar. Review the commands and CLI replies. Stop on timeout or firmware Error.
+Presentation selection changes the display only, not firmware configuration.
+
+Coordinates are raw SENSOR coordinates (X lateral, Y forward, Z up). The viewer
+does not apply the original TI sensor-position or mounting-angle transforms.
+Configuration filenames do not establish coverage, accuracy or compatibility.
+Do not select executable firmware .bin files as recorded-data replay files.

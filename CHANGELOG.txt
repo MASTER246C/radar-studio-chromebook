@@ -1,0 +1,44 @@
+Radar Studio 0.2 • 10 October 2026
+
+Vitals continuity fix
+- Vitals no longer disappear when ordinary tracking frames omit a vitals TLV.
+- Every decoded frame in a USB chunk is processed for vitals, even when its last
+  frame contains only tracking data.
+- Last valid estimates and up to 150 actual received waveform samples are held
+  separately for each subject. Sparse frames never replace them with zeros.
+- Each subject shows the receipt time, source frame number and age of its vitals.
+  Live vitals older than five seconds are labeled STALE, even if tracking frames
+  are still arriving. Offline, replay and synthetic values are labeled separately.
+- No interpolation or missing-sample estimation is performed. New acquisition
+  sessions clear retained histories; switching presentation does not.
+- Existing cards/canvases are reused instead of removed/recreated every frame.
+
+Five seconds is a display freshness threshold, not a medical validity criterion
+or claim about the firmware's measurement cadence. This fixes a confirmed UI
+state bug; it does not establish that the hardware/USB stream never drops data.
+
+3D view and track trajectories
+- One interactive sensor-coordinate 3D view replaces the separate top/front
+  plots. Drag to orbit, wheel/pinch or +/- to zoom; Top and Front remain presets.
+- X/Y/Z axes, sensor origin, view bounds, and Reset help orient the scene.
+- Optional per-track trajectories have 5/10/30/60-second arrival-time windows
+  and a Clear control. Synthetic demo data also leaves visible trails.
+- Trails split after a missing target, skipped frame numbers, a >2-second
+  reception gap, or session reset. IDs are firmware track IDs, not verified
+  people identities, and reuse without an observable gap cannot be identified.
+- Trails cover only what this one radar reports in its view, not a whole-house
+  map. Reception timestamps are not synchronized measurement timestamps;
+  accelerated replay uses playback arrival time, not original capture timing.
+
+Version 0.1 — initial prototype
+- Dependency-free browser UI, separate CLI/data Web Serial connections, explicit
+  configuration send with acknowledgements, point/track top and front views,
+  experimental vitals, synthetic demonstration and local raw-byte replay.
+- Project owner reported live operation on their Chromebook.
+- Known sparse-vitals display limitation addressed in v0.2; no broad hardware
+  validation or medical accuracy claim.
+
+Public release packaging
+- Added beginner launch/troubleshooting and developer handoff documentation.
+- Vendor firmware/configs, private manifests and recordings omitted.
+- No open-source license selected.
