@@ -1,145 +1,54 @@
 # Radar Studio Chromebook
 
-RADAR STUDIO 0.2 • Chromebook prototype
-Experimental browser implementation • IWR6843AOP • 10 October 2026
+An experimental, dependency-free browser viewer for compatible IWR6843AOP radar output over USB serial. It is a **web app**, not a Chrome extension and not a firmware flasher.
 
-What this is
-A dependency-free browser viewer prototype based on the packet formats in the
-TI Applications Visualizer protocol definitions. It receives radar data over
-USB serial, displays points and tracked targets, and displays vital-signs TLVs
-when the firmware actually sends them. It does not flash or change firmware.
-It is NOT yet hardware-validated. Synthetic tests are not a board compatibility
-test. Heart/breath figures are experimental firmware outputs, not medical data
-for diagnosis or monitoring.
+## Start here
 
-Launch in Chrome
-Web Serial needs a supported browser, a secure context, user permission, and
-ChromeOS access to both USB serial interfaces. Chrome supports Web Serial on
-ChromeOS, but your particular CP2105/Chromebook combination is untested.
-A school/work-managed Chromebook may block serial permissions.
+1. Open this repository's **Releases** section and choose **v0.1** or **v0.2**.
+2. Download the named `Radar_Studio_Chromebook_..._public.zip` release asset.
+3. Extract the **whole folder**, then follow [QUICKSTART.md](QUICKSTART.md).
+4. If something goes wrong, use [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
-Preferred routes:
-1. Open this app from an approved HTTPS host in a full browser tab, not an
-   embedded preview. Repository source publication does not itself provide an
-   HTTPS app deployment. No live hosted app is provided by this repository.
-2. If Linux development environment is available and you choose to use it,
-   extract this folder there and run:
-      python3 -m http.server 8000 --bind 127.0.0.1
-   Then open http://localhost:8000 in the normal ChromeOS Chrome browser.
-   Stop the server with Ctrl+C. Run it inside this folder only (or run sh start-local.sh). The server serves
-   files; serial communication happens in ChromeOS Chrome, not Linux Python.
-   This method does not require passing the radar's USB ports through to Linux.
-   Availability of Linux and localhost forwarding depends on the Chromebook.
+After setup, run `sh start-local.sh` from the extracted folder in the Chromebook Linux Terminal. Keep that Terminal open and visit **http://localhost:8000** in normal ChromeOS Chrome. Linux serves files; Chrome talks to the radar through Web Serial. No Python packages or Node.js are needed to run the app.
 
-Linux is off by default. If your personal Chromebook supports it and you choose
-to enable it, Google documents Settings > About ChromeOS > Developers > Linux
-development environment > Set up:
-https://support.google.com/chromebook/answer/9145439?hl=en
-This is the Linux development environment, not ChromeOS Developer Mode.
-Do not change administrator policies or enable Developer Mode to launch this. If neither route is available, keep the ZIP and
-use an approved HTTPS launch option. The repository is source code, not a hosted app.
-Double-clicking index.html may open a file URL, but file-URL serial access varies.
-The app checks isSecureContext and navigator.serial and explains when access is
-missing. A successful feature check still does not prove hardware access.
+Downloading uses local Chromebook storage. GitHub keeps the releases available for later downloads; you do not need to save them to Google Drive.
 
-When you are ready to test the board (no need to test tonight)
-1. Keep the currently working firmware and normal run-mode switch positions.
-   Close Tera Term, the Windows visualizer, and other serial apps. Connect the
-   radar directly to the Chromebook with a known data-capable USB cable.
-2. Open the viewer and choose the matching display: People tracking or Vital
-   signs. Explicitly choose the Enhanced/CLI port at 115200 baud and the separate
-   Standard/data port at 921600. Chrome's labels may differ or be identical;
-   select each interface separately and do not guess that Windows COM numbers
-   carry over. Both must appear and open. Stop if they do not.
-3. Load the EXACT .cfg matching the firmware currently flashed, then click the
-   explicit send-configuration control. Review the CLI replies. The app stops
-   on timeout or firmware Error; save the log rather than trying random configs.
-   Config files can contain sensorStop, flushCfg, sensorStart and other device
-   commands: review the selected file before sending. Nothing is sent on load.
-4. Start listening (or use listening alone if the sensor is already configured
-   and running). Verify advancing real frame numbers and byte/frame counts.
-   Compare a moving target and vitals against the known-working Windows setup.
-   No initial vitals means no vitals packets received. Once received, the last
-   values and real waveform history stay visible with their own timestamp; STALE
-   means over five seconds without fresh vitals, even when tracking continues.
-5. Disconnect before moving the USB cable. For troubleshooting, record the
-   firmware filename/toolbox version, config filename, CLI reply log, ChromeOS
-   version/model, and a short raw data capture if available. Do not publish it.
+## Choose a version
 
-Replay and synthetic demonstration
-The synthetic demonstration uses generated points and rates. It is explicitly
-marked as synthetic, never proof of USB/radar operation. A local raw .bin capture
-can be replayed without ports. TI visualizer JSON replay files are not raw .bin
-captures and are not supported by this prototype. Original source disabled its
-raw binary saving path; use an actual serial byte capture if one is available.
+- **v0.1:** original top/front projections. The project owner reported live radar operation on their Chromebook. This is one user report, not broad compatibility validation. Known limitation: vitals can disappear during tracking-only frames.
+- **v0.2:** retained sparse vital-sign readings and waveform history, rotatable 3D sensor-coordinate display, bounded target trails, and radar favicon. Synthetic and mock-UI regression tests pass. Updated browser rendering and hardware behavior still require acceptance testing.
 
-Implemented packet formats
-6843 40-byte little-endian header; magic 02 01 04 03 06 05 08 07.
-TLV length is treated as payload length, excluding the eight-byte TLV header.
-1: Cartesian points; 7: point SNR/noise; 1000: spherical points;
-1020/3001: compressed spherical points; 1010/308: 3D tracks;
-1011/309: raw point-track indexes; 1012: target heights;
-1040: vital-signs records with ID, range bin, deviation, rates, two 15-sample
-waveforms. Multiple patients are retained. Unknown TLVs are skipped safely.
-IDs 308/309 are decoded by the same layouts but do not establish support for
-other device families. 6844's longer header and other demos are out of scope.
+Both are experimental prototypes. They are not complete replacements for the TI visualizer. Vitals are experimental firmware outputs, not suitable for medical diagnosis or monitoring. Trails cover only what the connected radar reports, not a whole-house map.
 
-Coordinates are SENSOR coordinates: x lateral, y forward, z up. The prototype
-is not a full replacement for TI's scene/boundary/sensor-position transformations,
-fall detection, classification, range heatmaps, all demo features, filtering, or
-its exact vitals smoothing. Raw association indexes are decoded but not assigned
-to points, because some TI tracking outputs associate them with a prior frame.
-Do not use this prototype as a safety-critical tracking system.
+## Bring your own matching configuration
 
-Verification included
-Run optional development tests with Python 3 and Node.js:
-  python3 tests/build_fixtures.py
-  node tests/protocol.test.js
-These use newly written Python struct fixtures, not execution of uploaded code.
-Tests cover exact formats, two patients, chunk fragmentation, noise, malformed
-lengths, unknown TLVs, non-finite data, and generated demonstration packets.
-See VERIFICATION.txt for final checks and untested hardware limitations.
+TI firmware, vendor configurations, TI Python sources, private manifests and personal recordings are excluded from this public repository and its release assets. Use your own exact known-working `.cfg` matching the firmware already installed. Updating the viewer does **not** require reflashing. See [CONFIG_GUIDE.txt](CONFIG_GUIDE.txt).
 
-Sources
-Chrome Web Serial: https://developer.chrome.com/docs/capabilities/serial
-ChromeOS Linux hardware notes:
-https://www.chromium.org/chromium-os/developer-library/guides/containers/containers-and-vms/
-Managed serial access policy:
-https://chromeenterprise.google/intl/en_au/policies/default-serial-guard-setting/
+Loading a configuration sends nothing. Sending it is a separate explicit action that may stop, reconfigure and restart the radar. Serial ports must be released by other applications first.
 
-Resource limits
-Packet length is capped at 1 MiB, at most 1024 TLVs, 32768 points, 4096 tracks,
-and 32 vital-sign records per frame. Raw replay input is limited to 128 MiB.
-These limits are protective prototype defaults, not radar firmware specifications.
+## Documentation and checks
 
-Configuration files and privacy
-No Texas Instruments firmware, vendor configuration files, source archives,
-personal recordings, CLI logs or input manifests are included. Supply your own
-known-working .cfg for the exact firmware already installed on your radar.
-See CONFIG_GUIDE.txt. Never upload recordings or logs containing personal data.
-See PROVENANCE.txt for provenance and the current licensing status.
+- [Quickstart](QUICKSTART.md): download, extract, launch, connect and stop
+- [Troubleshooting](TROUBLESHOOTING.md): startup, port selection, stale readings, upgrades and common errors
+- [Technical details](TECHNICAL_NOTES.md): decoded packet formats, coordinate conventions and protective limits
+- [Developer handoff](DEVELOPING.md): architecture, protocol origins, tests and extension guidance
+- [Verification](VERIFICATION.txt): passed tests and untested boundaries
+- [Changes](CHANGELOG.txt): v0.2 behavior changes
+- [Provenance and licensing status](PROVENANCE.txt)
 
-Version 0.2 fixes sparse-vitals chart continuity. See CHANGELOG.txt. Run
-node tests/vitals.test.js for the six retention/history regression checks.
+Optional developer tests (Python 3 and Node.js):
 
-Interactive 3D view and movement trails (0.2)
-Drag one finger or the mouse to orbit. Use mouse wheel, two-finger pinch, or the
-+/- buttons to zoom. The Top/Front presets show familiar projections; Reset
-returns to the initial camera. Keyboard arrows orbit, +/- zoom, and Home resets
-when the canvas is focused. Axis labels use the sensor's X/Y/Z coordinates.
-This is a rotatable orthographic 3D view, not a full TI UI replica.
+```sh
+python3 tests/build_fixtures.py
+node tests/protocol.test.js
+node tests/vitals.test.js
+node tests/trails.test.js
+node tests/scene.test.js
+node tests/ui.test.js
+```
 
-Turn Track trails on/off, choose a 5–60-second duration, or Clear trails. Paths
-are timestamped by reception time and contain only received firmware track
-positions, not interpolated positions or people classifications. Synthetic demo
-also produces tracks/trails; its label remains SYNTHETIC DEMO. Trails are bounded
-to 1200 points per segment, 512 segments and 20000 points overall. Absence of a
-track, frame gaps or more than two seconds without a track breaks the path to
-reduce joining reused IDs. Reuse without an observable gap cannot be detected.
-A new acquisition/replay/demo session clears all old paths. The available area
-is only the coverage of the connected radar, not a floor plan or whole-house map.
+These are synthetic/mocked checks, not live hardware proof. The optional Playwright test is not counted as a passed check.
 
-Optional additional tests:
-  node tests/vitals.test.js
-  node tests/trails.test.js
-  node tests/scene.test.js
+## Licensing status
+
+No open-source license grant has been selected. Public visibility alone is not an open-source license. Third-party rights remain unaffected. See [PROVENANCE.txt](PROVENANCE.txt).

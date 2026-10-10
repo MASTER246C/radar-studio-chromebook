@@ -29,3 +29,16 @@ state bug; it does not establish that the hardware/USB stream never drops data.
 - Trails cover only what this one radar reports in its view, not a whole-house
   map. Reception timestamps are not synchronized measurement timestamps;
   accelerated replay uses playback arrival time, not original capture timing.
+
+Version 0.1 — initial prototype
+- Dependency-free browser UI, separate CLI/data Web Serial connections, explicit
+  configuration send with acknowledgements, point/track top and front views,
+  experimental vitals, synthetic demonstration and local raw-byte replay.
+- Project owner reported live operation on their Chromebook.
+- Known sparse-vitals display limitation addressed in v0.2; no broad hardware
+  validation or medical accuracy claim.
+
+Public release packaging
+- Added beginner launch/troubleshooting and developer handoff documentation.
+- Vendor firmware/configs, private manifests and recordings omitted.
+- No open-source license selected.
