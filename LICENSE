@@ -1,0 +1,70 @@
+Radar Studio Chromebook Source-Available No-Resale License
+Version 1.0
+
+1. Covered material
+
+This license applies only to original code and documentation in the Radar Studio
+Chromebook project that Chris Kalkowski (the "Licensor") has authority to license
+(the "Covered Material"). It grants rights only to the extent the Licensor holds
+those rights.
+
+Texas Instruments software, firmware, SDKs, documentation, and other third-party
+materials are excluded. Files or components with separate license notices remain
+subject to their own licenses. This license does not replace those licenses or
+grant rights in third-party materials.
+
+2. Permitted use and modification
+
+Subject to this license, you may use, copy, and modify the Covered Material for
+personal use, teaching, and internal business use. Teaching may be paid or unpaid.
+A business may use the Covered Material as an internal tool in its ordinary
+commercial activities. Earning income from activities in which the Covered
+Material is used as a tool does not, by itself, violate this license.
+
+3. Free redistribution
+
+You may distribute the Covered Material and modified versions without charge,
+provided that you retain this license and existing copyright and attribution
+notices. You must clearly identify modified versions as modified. The permissions
+and restrictions in this license continue to apply to the Covered Material in
+those versions. You may not remove these restrictions by applying another license
+to the Covered Material.
+
+4. No resale or paid access
+
+Without separate written permission from the applicable rights holder, you may
+not:
+
+(a) sell, rent, or commercially sublicense the Covered Material or modified
+    versions;
+(b) incorporate or distribute the Covered Material or modified versions as part
+    of a product or bundle offered for payment, including a paid software product
+    or a paid hardware-and-software bundle; or
+(c) charge for access to the Covered Material or modified versions, including
+    through a hosted service, subscription, premium version, or paid feature of
+    another product or service.
+
+The paid-teaching permission allows charging for instruction, including when
+free copies are provided to students under section 3. It does not allow selling
+the Covered Material, charging separately for copies or software access, or
+offering paid software access as a product under the label of teaching.
+
+These restrictions concern the Covered Material and modified versions, not
+independently created output merely produced using them as a tool.
+
+5. Other rights
+
+Uses outside the permissions above require separate permission from the
+applicable rights holder. This license does not restrict rights you have
+independently under applicable law. No trademark rights are granted.
+
+6. No warranty or liability
+
+To the extent permitted by applicable law, the Covered Material is supplied
+"as is," without any warranty, express or implied, including warranties of
+merchantability, fitness for a particular purpose, and noninfringement. To the
+extent permitted by applicable law, the Licensor is not liable for any claim,
+damage, or other liability arising from the Covered Material or its use.
+
+This is a source-available license with restrictions on resale and paid access.
+It is not an OSI-approved open-source license.
