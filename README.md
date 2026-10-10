@@ -63,3 +63,5 @@ Original material the licensor has authority to license is available under the [
 - Texas Instruments and other third-party material are excluded and retain their own terms.
 
 This is **source-available**, not OSI-approved open source. Read [LICENSE](LICENSE) for the controlling terms and [PROVENANCE.txt](PROVENANCE.txt) for origin details. The license was added to main on 2026-10-10; existing release ZIPs and tags were not rewritten.
+
+The licensor's current offer also covers original material in **v0.1 and v0.2**, and subsequent versions unless explicitly noticed otherwise. See [version coverage](LICENSE_COVERAGE.md). This does not cancel independently held prior rights; historical release archives remain unchanged.
