@@ -1,5 +1,5 @@
 {
-  "bundle": "v0.5-bundle1",
+  "bundle": "v0.6-bundle1",
   "canonical_repository": "https://github.com/MASTER246C/iwr6843aop-activity-recorder",
   "integration_repository": "https://github.com/MASTER246C/radar-studio-chromebook",
   "pin_type": "exact content SHA-256; no runtime remote loading",
@@ -59,6 +59,42 @@
     {
       "path": "tests/build_cpd_fixtures.py",
       "sha256": "477201ee8ea4995520c3c55e2679362125802c5029780692745bf241df954f89"
+    },
+    {
+      "path": "offline_features.js",
+      "sha256": "ca86d80482fe6bf1c0619f39689372035a9a87736de7235b7cc9ee5b869397c1"
+    },
+    {
+      "path": "offline_model.js",
+      "sha256": "9bf2a399fb9c485c73a50a69675ee67d6e09ab85de58ed55e210ca458e698797"
+    },
+    {
+      "path": "offline_review.js",
+      "sha256": "e9e975dd929a40876fd24455ed1f5ebeae82251ab4b746a6f9fffa4329c515b3"
+    },
+    {
+      "path": "tools/offline-ml.js",
+      "sha256": "f8144a22238234e31ef655b46193dfb483417070ab68707b8ec9005eedeeacf8"
+    },
+    {
+      "path": "tests/offline_features.test.js",
+      "sha256": "184f49d2c51f210c35d3331d195687b596627c70adffa776e1b51797007da271"
+    },
+    {
+      "path": "tests/offline_model.test.js",
+      "sha256": "29fe7d36d5469c7ac20fc31e7ceb54cceb299effb940fe5783d8d9bd4e2697d8"
+    },
+    {
+      "path": "tests/offline_review.test.js",
+      "sha256": "6798a526cdd9114f18c2c755558526829558a5069c065e33b56ba7aa187138b3"
+    },
+    {
+      "path": "tests/offline_cli.test.js",
+      "sha256": "2be8a89e10386154541ae1a82b62f765ee088cb38497eefdd63ac08347f08735"
+    },
+    {
+      "path": "tests/offline_fixture.js",
+      "sha256": "a7636a66edf89242d2d6c8ea95639b36e5d79b3cd056dce282f1dd51f023a6f0"
     }
   ]
 }

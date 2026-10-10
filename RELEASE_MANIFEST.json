@@ -1,17 +1,16 @@
 {
-  "release": "v0.5",
+  "release": "v0.6",
   "date_utc": "2026-10-10",
   "target_board": "Texas Instruments IWR6843AOPEVM / IWR6843AOP, user target Rev G",
-  "status": "experimental prerelease",
+  "status": "experimental local offline ML foundation",
   "catalog_toolbox_version": "4.00.00.05",
   "catalog_artifacts": 37,
   "vendor_binary_or_config_contents_included": false,
   "user_capture_contents_included": false,
-  "deterministic_test_suites": "14 passed; node tests/run-all.js",
+  "deterministic_test_suites": "19 passed; node tests/run-all.js",
   "motion_core_tests": 29,
   "capture_recorder_tests": 24,
-  "independent_scoped_review": "No blocking findings remain in reviewed paths after fixes; synthetic/mock checks only",
-  "hardware_tested_for_v05": false,
+  "independent_scoped_review": "No blocking findings remain after extraction/split/annotation/lineage/metadata/visibility fixes; read-only audit plus synthetic/mock tests",
   "real_browser_rendering_verified": false,
   "firmware_boundary": "Original browser application/features/classifier. Current TI firmware still supplies upstream points/tracks; no original firmware claimed.",
   "dataset_license_status": "pending; separate from application license",
@@ -23,13 +22,13 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size_bytes": 9586,
-      "sha256": "f2b942582b243ac75a9efe68cbc1c90e4eb54984e25dff9eb60051c931103a37"
+      "size_bytes": 10583,
+      "sha256": "81c66f71379eaa2298fe3433d091254d3f0bd2779ceb13b9fcf602eebf6c7701"
     },
     {
       "path": "CHANGELOG.txt",
-      "size_bytes": 4815,
-      "sha256": "d6d06e110d6500fd692ba376725e033b3ce01c5e4034b8a3dfbb771f9a1a752a"
+      "size_bytes": 5150,
+      "sha256": "4081ba4bf2be405a59751f779f443f9e0a6995dd97f965a295c6c30f743c5d64"
     },
     {
       "path": "CONFIG_GUIDE.txt",
@@ -43,8 +42,8 @@
     },
     {
       "path": "DEVELOPING.md",
-      "size_bytes": 16425,
-      "sha256": "2091486fa3cf390874dd96a7fa0dc8bf6212ea6e628d5f0dddc1057b309de3a1"
+      "size_bytes": 17499,
+      "sha256": "a3ebcdc51a81ff11b4409f3a978cb8eb9cb3e546d7e1db25426df87e6c07308c"
     },
     {
       "path": "DOWNLOADS.md",
@@ -73,8 +72,13 @@
     },
     {
       "path": "MOTION_LAB.md",
-      "size_bytes": 40272,
-      "sha256": "40d427b483cac0c8e9a8d251d33b533e629dadfe66e130325aad8313634dda4d"
+      "size_bytes": 41314,
+      "sha256": "47d2fdd3c7595544c3f179e4a0141ab2bb18e382642a84798c36cae99ed1ea80"
+    },
+    {
+      "path": "OFFLINE_ML.md",
+      "size_bytes": 29844,
+      "sha256": "d3ec1ba301679447d76357bde0b4bd850c7cb1b24fdb9104b0d5c601c86dc20f"
     },
     {
       "path": "PROTOCOL_EVIDENCE.md",
@@ -83,28 +87,28 @@
     },
     {
       "path": "PROVENANCE.txt",
-      "size_bytes": 4028,
-      "sha256": "779f0c58b06eb32157276661258de09ef040620a36d7e89f73321b969db6e819"
+      "size_bytes": 4623,
+      "sha256": "6e052d14346e4cbc790f72877f535ca151a0bd6cd7b8525017f1eb106a5d6397"
     },
     {
       "path": "QUICKSTART.md",
-      "size_bytes": 11191,
-      "sha256": "00c261fd64d8843fd3436ec607d5a79d469b8fb44372472c318db4a616ade764"
+      "size_bytes": 11791,
+      "sha256": "36a34253a9aa9651dba603ed6551ed35baebaf5e9e03c7244945420781a9015c"
     },
     {
       "path": "README.md",
-      "size_bytes": 13466,
-      "sha256": "373aa50d3bba14a8782c18229e70be85fb80108ddfc49d7508f624baa09fca21"
+      "size_bytes": 15788,
+      "sha256": "f683491c11e23f3d585fb58d69407e0307de378cf367ead16de8f710d8429acc"
     },
     {
       "path": "RECORDER_API.md",
-      "size_bytes": 5048,
-      "sha256": "9dcbe8d8f7115a3e85fa0007f6787b1c6ac81e53856c02d148a0d3b2ae1f3d23"
+      "size_bytes": 6660,
+      "sha256": "47f4f00c2ae131f9444a3683860c0dc60b28973ef835c412fdc3898da58b0144"
     },
     {
       "path": "SHARED_MODULES.json",
-      "size_bytes": 2199,
-      "sha256": "ac3907627b9d7c3279d055f0b6062e7e04040ab69dd152616f46ec17b6d0cb97"
+      "size_bytes": 3430,
+      "sha256": "12c1e8fbeef3db1d981e6d0d5dd0a20f7f8dd7e5e0a513935dee5147a68f3d1a"
     },
     {
       "path": "TECHNICAL_NOTES.md",
@@ -113,8 +117,8 @@
     },
     {
       "path": "TEST_PLAN.md",
-      "size_bytes": 5953,
-      "sha256": "7dc0790c8e01a423b284271ccba21e610a94b2659d43f23ef31c30e35df71561"
+      "size_bytes": 7679,
+      "sha256": "b661fc994641066af75503308c5d626496bddd2608b72b14e70c7cd60d369683"
     },
     {
       "path": "TROUBLESHOOTING.md",
@@ -123,13 +127,13 @@
     },
     {
       "path": "UPGRADE.md",
-      "size_bytes": 1626,
-      "sha256": "4ed91f7ffd6a4092e5b48abe81b1aabf183831d54a294b2aa93b55f6d280280d"
+      "size_bytes": 1922,
+      "sha256": "0f317ebdfa64c8b101f28185ae5652787437ed6c390ec20756060db1b045bfee"
     },
     {
       "path": "VERIFICATION.txt",
-      "size_bytes": 4724,
-      "sha256": "2f11e11f6576b790050187501ac970b023f9c06fdaa8c9f6a126a5473cc602c4"
+      "size_bytes": 6880,
+      "sha256": "8b54adee08f73aa7f5fc0314988b6c99b08444b13e259a875f2b4f5521336944"
     },
     {
       "path": "app.js",
@@ -173,8 +177,8 @@
     },
     {
       "path": "index.html",
-      "size_bytes": 15227,
-      "sha256": "d226967c044aca0f62a630b9454fdd97bee2fdd22af00773e672fae26c7fec34"
+      "size_bytes": 15346,
+      "sha256": "ae14bf3c343f4a2c79d77e9f4192a2051fec033d94530c1c411d3dd634d9332d"
     },
     {
       "path": "legacy_panels.js",
@@ -188,8 +192,33 @@
     },
     {
       "path": "motion_panel.js",
-      "size_bytes": 17236,
-      "sha256": "49b8c3eb8390950abd5caa401af4fb179812c816a6aef5defe7ae57d6c491f23"
+      "size_bytes": 17380,
+      "sha256": "2be87c971f1c727bc534c7f4f93c16b9ff27b8db8112a749525e003fe09c3f5e"
+    },
+    {
+      "path": "offline.html",
+      "size_bytes": 4872,
+      "sha256": "68dfb8f733b6371d89ad73134f02d6069fc12e062636fcb3469f48c11001ef9d"
+    },
+    {
+      "path": "offline_features.js",
+      "size_bytes": 16255,
+      "sha256": "ca86d80482fe6bf1c0619f39689372035a9a87736de7235b7cc9ee5b869397c1"
+    },
+    {
+      "path": "offline_model.js",
+      "size_bytes": 25386,
+      "sha256": "9bf2a399fb9c485c73a50a69675ee67d6e09ab85de58ed55e210ca458e698797"
+    },
+    {
+      "path": "offline_review.js",
+      "size_bytes": 5448,
+      "sha256": "e9e975dd929a40876fd24455ed1f5ebeae82251ab4b746a6f9fffa4329c515b3"
+    },
+    {
+      "path": "offline_ui.js",
+      "size_bytes": 10486,
+      "sha256": "84feb45f3b6737b65def3477e62d039cce5b1764d59ce5cbbca2d7949fc5e0ec"
     },
     {
       "path": "radar_protocol.js",
@@ -208,8 +237,8 @@
     },
     {
       "path": "styles.css",
-      "size_bytes": 7894,
-      "sha256": "f85138d6cfe595b09b8da0a7ecb3386c69bb486eb9adfe73235d64e9beb5f246"
+      "size_bytes": 8461,
+      "sha256": "7ac14869e2e62bca6f7302dfb5e71ca1cce19b0ae4997b3171f403d0def66026"
     },
     {
       "path": "telemetry_panels.js",
@@ -298,8 +327,43 @@
     },
     {
       "path": "tests/motion_panel.test.js",
-      "size_bytes": 5746,
-      "sha256": "6942b2781cf66cefdd4042a3a8abb7579dc2310a5ac6ed8f669528a0be447c94"
+      "size_bytes": 5857,
+      "sha256": "06428f581f3a7f4815fc13231b7b4a7f61c5232513f2641903ee6f4991a22f4a"
+    },
+    {
+      "path": "tests/offline_browser.optional.test.js",
+      "size_bytes": 3131,
+      "sha256": "44c85344ff22a32671963f36f8e4496234b935b678ef6ac5774758e345fe503d"
+    },
+    {
+      "path": "tests/offline_cli.test.js",
+      "size_bytes": 3222,
+      "sha256": "2be8a89e10386154541ae1a82b62f765ee088cb38497eefdd63ac08347f08735"
+    },
+    {
+      "path": "tests/offline_features.test.js",
+      "size_bytes": 8303,
+      "sha256": "184f49d2c51f210c35d3331d195687b596627c70adffa776e1b51797007da271"
+    },
+    {
+      "path": "tests/offline_fixture.js",
+      "size_bytes": 1394,
+      "sha256": "a7636a66edf89242d2d6c8ea95639b36e5d79b3cd056dce282f1dd51f023a6f0"
+    },
+    {
+      "path": "tests/offline_model.test.js",
+      "size_bytes": 20603,
+      "sha256": "29fe7d36d5469c7ac20fc31e7ceb54cceb299effb940fe5783d8d9bd4e2697d8"
+    },
+    {
+      "path": "tests/offline_review.test.js",
+      "size_bytes": 3482,
+      "sha256": "6798a526cdd9114f18c2c755558526829558a5069c065e33b56ba7aa187138b3"
+    },
+    {
+      "path": "tests/offline_ui.test.js",
+      "size_bytes": 3030,
+      "sha256": "faa32b96f14982b91e4fda2b5cc74f04f7dd83c5c32013110180a38b30f4eaf2"
     },
     {
       "path": "tests/protocol.test.js",
@@ -308,8 +372,8 @@
     },
     {
       "path": "tests/run-all.js",
-      "size_bytes": 569,
-      "sha256": "08c3fb078ad8e65a04eebb2a9b23cec37490dbfa17cecd5038e7fbf5974902a0"
+      "size_bytes": 648,
+      "sha256": "956e944b938b7596df69c4fef1356c56539430c523f8a806d89ddf8396776a89"
     },
     {
       "path": "tests/scene.test.js",
@@ -337,6 +401,11 @@
       "sha256": "4c851c1feffd2e607908f4f749d8d5d3192f7c6f1224db9bdc0e56474250010c"
     },
     {
+      "path": "tools/offline-ml.js",
+      "size_bytes": 5432,
+      "sha256": "f8144a22238234e31ef655b46193dfb483417070ab68707b8ec9005eedeeacf8"
+    },
+    {
       "path": "trail_store.js",
       "size_bytes": 2115,
       "sha256": "0105da8dd2276ecf36f5c97393def19d5e21cb8ce8878b3522d982527345133f"
@@ -346,5 +415,14 @@
       "size_bytes": 1306,
       "sha256": "638bcddf56eed6d3e3963d6bd5cb8a595343837a3e452742abcad3205cf8dafe"
     }
-  ]
+  ],
+  "offline_feature_tests": 15,
+  "offline_model_tests": 35,
+  "offline_review_tests": 6,
+  "offline_cli_test": "passed real local subprocess workflow on synthetic data",
+  "offline_ui_test": "passed mock-DOM workflow; real browser launch blocked",
+  "hardware_tested_for_v06": false,
+  "pretrained_model_included": false,
+  "original_firmware_jsonl_supported_by_ml": false,
+  "preserved_remote_documentation_ref": "3f00632"
 }

@@ -70,3 +70,5 @@ Version 0.5 — 10 October 2026 — experimental motion-signature prerelease
   intervals in UART capture while stable labels pause. They are not automated
   event detection; starting movement is not necessarily walking. Camera/AI-label
   review is future work; current feature labels remain human-observed.
+
+V0.6 (2026-10-10): local offline train/save/load/propose/review tools; separate activity/event models; immutable input files and separate overlays; capture-heldout metrics/unknown/coverage. Manual sit-down marker added. No pretrained model, upload dependency, original-firmware adapter or real-data accuracy claim. See OFFLINE_ML.md.

@@ -1,11 +1,14 @@
 # Changelog
 
-## 2026-10-10 — Mounting standard documentation
+## v0.6 — 2026-10-10 — Experimental local-ML foundation
 
-- Selected the 2.00 m floor-to-flat-mount-TOP reference, excluding screws, with a final 15-degree downward tilt for the experimental activity setup.
-- Antenna-center height remains 2.00 m plus the measured signed vertical offset after tilt; the positive offset in the photographed arrangement has no verified numeric value yet.
-- Physical adjustment/calibration is planned, not completed. No optimal-accuracy claim, code change or guessed firmware configuration.
-- Documentation-only update. Existing release tags, ZIPs, code and configurations remain unchanged; historical release manifests describe their frozen release snapshots, not these later documentation edits.
+- Added local browser and dependency-free Node.js prepare/train/save/load/evaluate/propose/review workflows. No account, upload or pretrained weights.
+- Separate stable-activity and transition-event models, learned from approved human labels in independent captures; held-out confusion, unknowns and coverage.
+- Added causal event features and manual stand-to-sit capture markers. Event-none negatives require explicit human review; no automatic onset boundary detector.
+- Preserved raw captures/original labels with hash-linked derived features, machine proposals and human-review overlays. Rejected windows remain explicit.
+- Guarded incremental/cross-format take duplication, target changes, late annotation boundaries, loaded-model heldout review and bounded model JSON.
+- Current TI fallback remains separate from original JSON Lines sensing work. Browser rendering, hardware throughput and real-data accuracy remain unverified.
+
 
 ## v0.4 — 2026-10-10 — Experimental prerelease
 

@@ -6,7 +6,7 @@ This guide runs Radar Studio locally in **ChromeOS Chrome**. Linux serves the ap
 
 ## 1. Choose a version
 
-For v0.5, first read the selected official demo catalogue entry: all profiles have selected partial/experimental decoding, with important application features still absent. See [DEMO_CATALOG.md](DEMO_CATALOG.md) and [LOCAL_IMPORT.md](LOCAL_IMPORT.md).
+For v0.6, first read the selected official demo catalogue entry: all profiles have selected partial/experimental decoding, with important application features still absent. See [DEMO_CATALOG.md](DEMO_CATALOG.md) and [LOCAL_IMPORT.md](LOCAL_IMPORT.md).
 
 Use this repository's **Releases** page to choose a tagged version and download its viewer ZIP. Keep releases in separate folders; do not mix JavaScript files from different versions.
 
@@ -30,10 +30,10 @@ If Linux is unavailable, stop here and seek an approved HTTPS hosting option. Do
 1. Open the downloaded ZIP in the Chromebook **Files** app.
 2. Copy/extract the **entire viewer folder** into **Linux files**. Keep all its files together, including `index.html`, the `.js` files, stylesheet and `start-local.sh`.
 3. Open **Terminal → Linux**.
-4. Type `ls` to see your folders. Change into the extracted viewer folder, using its actual name. For example, if it is `Radar_Studio_v0.5`:
+4. Type `ls` to see your folders. Change into the extracted viewer folder, using its actual name. For example, if it is `Radar_Studio_v0.6`:
 
 ```sh
-cd ~/Radar_Studio_v0.5
+cd ~/Radar_Studio_v0.6
 ls
 sh start-local.sh
 ```
@@ -50,7 +50,7 @@ In the **normal ChromeOS Chrome browser**, open:
 
 **http://localhost:8000**
 
-Use a full browser tab, not an embedded preview and not a browser installed inside Linux. In this release, check that the header says **v0.5**.
+Use a full browser tab, not an embedded preview and not a browser installed inside Linux. In this release, check that the header says **v0.6**.
 
 You may first choose **Run synthetic demo**. This checks the display controls without hardware. The generated tracks and rates are labeled **SYNTHETIC DEMO** and do not prove that the radar or USB connection works. Stop playback before testing live data.
 
@@ -130,3 +130,14 @@ matching **Vitals** parser entry in **Advanced · official demo catalogue** befo
 recording. Keep that firmware and its matched configuration; no new BIN or flash
 is needed for this browser collector. Enter the exact version/config identity
 you actually use; the application does not discover a firmware build reliably.
+
+
+## v0.6: sort recordings locally
+
+In the live viewer, choose **Local offline ML →** near the overview, or open
+`http://localhost:8000/offline.html`. Load complete capture JSON files (recommended
+for events and quality coverage) or v0.5 feature datasets (activities only).
+Assign whole captures to training or held-out, train and save a local model, and
+review proposals. Save the prepared features, model and review overlay before
+closing the page. Original files are never edited. See [OFFLINE_ML.md](OFFLINE_ML.md)
+for minimum capture counts, explicit event-none examples and the optional CLI.

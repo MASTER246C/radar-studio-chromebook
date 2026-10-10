@@ -98,3 +98,34 @@ The motion suite contains 29 synthetic logic tests; the recorder suite contains
 24 tests. They do not establish hardware throughput or recognition accuracy.
 Never publish actual captures as test fixtures without a separate deliberate
 privacy/consent and dataset-license review.
+
+## v0.6 offline learning API
+
+The original recorder/core interfaces above are retained. New local-only modules:
+- `OfflineFeatures.extract(input, {sourceHash, sourceName})` is asynchronous and
+  returns derived activity/event records; `merge(datasets)` rejects conflicting
+  aliases and non-independent overlapping epoch captures. `sha256` is a local
+  content helper, not an authentication service.
+- `OfflineModel.train(dataset, {train, heldout}, task)`, `serializeModel`,
+  `loadModel`, `predict`, and `evaluate` implement the strict train/save/reload/
+  proposal/evaluation lifecycle. Pass ordered feature names into standalone
+  prediction calls. Loading a model never establishes accuracy.
+- `OfflineReview.createOverlay(base, decisions)`, `applyOverlay`, and `proposals`
+  keep immutable original labels separate from machine suggestions and explicit
+  human decisions. An overlay is bound to the exact prepared dataset hash.
+- `tools/offline-ml.js` is the Node.js 18+ no-package CLI. All output paths use
+  exclusive new-file creation; existing files are not overwritten.
+
+See OFFLINE_ML.md for exact commands, data/model schemas and evidence limits.
+The companion repository's reusable bundle includes the three non-UI modules,
+CLI, synthetic fixture helper and tests. The browser page/controller and its
+mock-DOM test remain integrated in Radar Studio, avoiding a second diverging UI.
+
+Additional standalone checks after copying SHARED_MODULES.json paths:
+
+```sh
+node tests/offline_features.test.js
+node tests/offline_model.test.js
+node tests/offline_review.test.js
+node tests/offline_cli.test.js
+```

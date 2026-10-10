@@ -1,3 +1,40 @@
+V0.6 VERIFICATION — 10 October 2026
+Local offline ML foundation; preserved TI fallback collector.
+
+PASSED
+- All 19 deterministic test suites, including 15 offline feature tests,
+  35 offline model tests, 6 overlay tests and CLI/mock-UI workflow checks.
+- Model training -> save -> reload -> held-out evaluation and proposal output
+  for both activity and event tasks, using synthetic fixtures only.
+- Immutable input files, exclusive CLI output writes and separate human overlays.
+- All application/test JavaScript syntax checks and local documentation links.
+- Independent read-only audit: reported split, geometry, boundary, leakage,
+  loss-metadata and frozen-heldout visibility issues fixed and rechecked.
+- Original v0.5 motion_core.js, capture_recorder.js and application LICENSE
+  remain byte-identical in this staging release. No vendor firmware/config,
+  user captures, pretrained weights, private videos or trained model included.
+
+NOT VERIFIED / NOT CLAIMED
+- Real-person classification accuracy or event-boundary detection performance.
+- Real-browser rendering: optional Chromium test attempted, failed before page
+  navigation because socket() was denied. Not counted as passed.
+- Physical Rev G hardware, serial throughput or no-loss capture.
+- Automatic denoising, pretrained AI, camera synchronization or remote service.
+- Compatibility with the separate original-radar-v1 JSON Lines firmware. It has
+  a dedicated collector; unverified sensor/world data is rejected here.
+
+INTERPRETATION
+- Every ML prediction is an annotation proposal, not ground truth. Only explicit
+  human observations/reviews train models; quality-rejected data stays excluded.
+- Activity and transition tasks are separate three-second window models, not
+  automatic precise onset/end detectors. Unknown outputs and coverage matter.
+- Held-out metrics count derived windows; inspect raw capture loss counters for
+  data that never reached or was not retained by the recorder.
+- This release is v0.6. “v1 foundation” is a project milestone description,
+  not a rename of the existing v0.5 releases/tags.
+
+Prior v0.5 verification follows for historical context:
+
 V0.5 VERIFICATION — 10 October 2026
 Target: IWR6843AOPEVM / IWR6843AOP, user target Rev G.
 

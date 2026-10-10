@@ -61,3 +61,12 @@ as public example data or automatically uploaded. Captured-dataset license
 status remains pending, and the software LICENSE does not independently confer
 rights to publish participant records or to redistribute vendor material.
 The exact project LICENSE and all earlier third-party exclusions remain intact.
+
+V0.6 offline learning additions
+Original project code: offline_features.js, offline_model.js, offline_review.js,
+offline_ui.js, offline.html, tools/offline-ml.js and their synthetic tests. The
+model is a deterministic CPU standardized nearest-centroid baseline learned from
+user-approved labels; no TI classifier, third-party model weights, neural-network
+service or copied activity-detection implementation is included. This software
+release retains the existing TI-derived protocol interface, distinct from future
+original sensing firmware. No captured user data or trained model is bundled.

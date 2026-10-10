@@ -10,7 +10,9 @@ The chip is above the mount in the current photographed arrangement, so its offs
 
 **Built specifically for the Texas Instruments IWR6843AOPEVM (IWR6843AOP) radar board.** The user-reported live setup is **Rev G**. This is not a generic viewer for all xWR or xWRL devices.
 
-A dependency-free local browser application using ChromeOS Web Serial. **v0.5** adds the original **Motion Signature Lab**, observed sitting/standing/walking examples, measured calibration, local model training/evaluation and complete received-UART capture. Start with [MOTION_LAB.md](MOTION_LAB.md). The application still consumes compatible TI firmware output; no original radar firmware or real-data accuracy claim is included. It does not flash firmware or send commands merely because a profile or file is selected.
+A dependency-free local browser application using ChromeOS Web Serial. **v0.6** adds [local offline ML](OFFLINE_ML.md): train/save/load your own models, sort recordings into proposals, and human-review them in separate overlays. Open **Local offline ML** from the viewer. No account, upload, pretrained model or paid service is required.
+
+**v0.5** introduced the original **Motion Signature Lab**, observed sitting/standing/walking examples, measured calibration, local model training/evaluation and complete received-UART capture. Start with [MOTION_LAB.md](MOTION_LAB.md). The application still consumes compatible TI firmware output; no original radar firmware or real-data accuracy claim is included. It does not flash firmware or send commands merely because a profile or file is selected.
 
 ## Downloads and setup dependencies
 
@@ -27,7 +29,7 @@ Vendor downloads remain at their official sources; they are not bundled or relic
 
 1. Download a version from this repository's **Releases** page. Keep each version in its own folder.
 2. Follow [QUICKSTART.md](QUICKSTART.md) to enable the ordinary Linux development environment if supported, extract the whole folder into Linux files, and run `sh start-local.sh`.
-3. Open `http://localhost:8000` in **normal ChromeOS Chrome** and confirm **v0.5** in the header.
+3. Open `http://localhost:8000` in **normal ChromeOS Chrome** and confirm **v0.6** in the header.
 4. Select the demo matching the firmware already on your board. Read its catalogue coverage and limitations before starting.
 5. For local TI artifact checks, see [LOCAL_IMPORT.md](LOCAL_IMPORT.md). Import is metadata inspection, not flashing or loading the command sender.
 
@@ -98,8 +100,7 @@ v0.5 adds an original local experiment for **sitting, standing and walking** on
 this IWR6843AOPEVM setup. Read **[MOTION_LAB.md](MOTION_LAB.md)** before collecting
 examples: it covers calibration, human labels, separate training/evaluation
 sessions, uncertainty, privacy and the path toward future custom firmware.
-The v0.5 header is expected when running this folder; earlier version references
-above describe the retained viewer and its release history.
+This section describes the v0.5 foundation. This folder displays v0.6; original v0.5 releases and tags remain unchanged.
 
 The new browser CPU classifier is a standardized nearest-centroid baseline built
 from observed examples. It still consumes the existing TI firmware's point/track
@@ -154,3 +155,20 @@ bundled in this release by SHA-256. Read [RECORDER_API.md](RECORDER_API.md) befo
 using them independently. Changes must be tested and synchronized deliberately;
 this static app never fetches or executes code from those repositories at runtime.
 No capture is uploaded to any of them automatically.
+
+
+## v0.6: local trainable sorting and human review
+
+Use [OFFLINE_ML.md](OFFLINE_ML.md) for the browser workflow and optional Node.js
+command-line tools. Stable sitting/standing/walking and stand-up/sit-down/motion-
+onset/none are separate task models. Parameters are learned only from explicitly
+selected training captures; held-out confusion, unknowns and coverage are reported
+separately. All model outputs remain proposals until an explicit human review.
+Raw captures and observed labels are preserved; review overlays are derived files.
+
+“v1 foundation” describes the intended first end-to-end foundation, followed by
+original sensing work. It does not rename existing software releases: this
+software is v0.6, and published v0.5 tags/ZIPs remain unchanged. No pretrained
+model or real-data recognition accuracy is claimed. Current TI-format training
+is distinct from the separately developed original JSON Lines firmware/collector;
+uncalibrated original observations are not silently accepted as TI-calibrated data.

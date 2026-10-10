@@ -71,3 +71,30 @@ and verify UART bytes using MOTION_LAB.md, inspect discontinuities/loss counters
 then collect consented independent takes. Inspect raw flagged observations rather
 than deleting them. There is no trained AI denoiser or automatic transition
 classifier in this release.
+
+## v0.6 local offline ML
+
+Run `node tests/run-all.js` for 19 suites. New checks:
+- `offline_features.test.js`: 15 extraction tests covering mixed coordinate use,
+  human intervals, late boundary events, target changes, gaps, warnings, unknown
+  calibration, incremental aliases, canonical physical hashes and loss metadata.
+- `offline_model.test.js`: 35 tests covering both task models, frozen whole-capture
+  splits, capture-balanced training-only statistics, human-only labels, novelty/
+  ambiguity rejection, bounded model JSON, compatibility, confusion and coverage.
+- `offline_review.test.js`: 6 immutable-base/overlay/proposal tests, explicit event
+  none review, exclusion, stale hashes and invalid quality overrides.
+- `offline_cli.test.js`: real subprocess workflow, split/edit/train, model
+  save/load/evaluation/proposals, overlay generation and exclusive output writes.
+- `offline_ui.test.js`: mock-DOM local workflow, explicit assignments, model
+  lifecycle, human decisions, original-label preservation and import interruptions.
+
+The optional `node tests/offline_browser.optional.test.js` uses Playwright and
+Chromium with synthetic files, no USB. It was attempted here but Chromium failed
+before navigation because Unix socket creation is denied by the executor. It is
+not counted as passed. No browser-rendering, radar-throughput or real-person
+classification test has been completed for v0.6.
+
+Coverage metrics describe derived windows. They cannot count bytes/frames that
+never reached or were not retained by the recorder. Review exported source
+`losses` / `captureStatus` separately. The first meaningful user test is a small
+private real capture, reconstruction/quality check, and explicit human labels.

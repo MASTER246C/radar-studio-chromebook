@@ -211,3 +211,21 @@ changes. MOTION_LAB.md contains a tested Python reconstruction example for the
 capture JSON: byte-for-byte reconstruction and refusal to overwrite an existing
 output were checked using synthetic bytes, not a physical board. Rendered-browser
 and hardware verification remain separate from these checks.
+
+
+## v0.6 offline modules
+
+`offline_features.js` extracts bounded temporal feature records from complete
+captures or v0.5 feature datasets. It reuses the original Engine sample/gating
+implementation in `motion_core.js`; pin these modules together. Canonical content
+hashes and source lineage prevent ordinary renamed/incremental take duplication.
+`offline_model.js` trains separate standardized nearest-centroid task models with
+strict model JSON validation. `offline_review.js` keeps machine proposals and
+human overlays distinct. `offline_ui.js`/`offline.html` expose the local workflow;
+`tools/offline-ml.js` provides the no-package Node.js counterpart with exclusive
+new-file writes. No module fetches a remote model or sends data to an account.
+
+`node tests/run-all.js` now runs 19 suites, including feature/model/review/CLI/UI
+checks. `tests/offline_browser.optional.test.js` is a separate Playwright smoke
+check; launch is blocked by this executor's Unix-socket restriction and is not
+counted as passed. Synthetic fixtures are logic tests, not recognizer validation.
