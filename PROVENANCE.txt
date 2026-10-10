@@ -1,0 +1,22 @@
+PROVENANCE AND LICENSING STATUS
+
+The browser implementation and independent synthetic test fixtures were newly
+written. Protocol interpretation was informed by Texas Instruments mmWave
+Applications / Industrial Visualizer files: gui_parser.py, parseFrame.py,
+parseTLVs.py, tlv_defines.py, gui_common.py, demo_defines.py, and the
+people_tracking.py and vital_signs.py demo modules.
+
+The supplied source subset contained no license file or copyright/license
+headers. This does not establish permission to redistribute or relicense any
+Texas Instruments material or derivative works. This source release includes
+no TI Python files, firmware, vendor configuration files, vendor images,
+private input manifests, personal recordings, or private logs.
+
+No open-source license grant has been selected for this repository. Public
+visibility alone is not an open-source license. The owner must select any
+license for original contributions; any third-party rights remain unaffected.
+No statement here resolves possible third-party rights in protocol-derived
+work. Obtain and review the applicable TI package license for vendor material.
+
+No third-party JS/CSS dependencies are downloaded by the app. No endorsement
+by Texas Instruments, Google, Silicon Labs, or any medical authority is implied.
