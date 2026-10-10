@@ -1,0 +1,64 @@
+{
+  "bundle": "v0.5-bundle1",
+  "canonical_repository": "https://github.com/MASTER246C/iwr6843aop-activity-recorder",
+  "integration_repository": "https://github.com/MASTER246C/radar-studio-chromebook",
+  "pin_type": "exact content SHA-256; no runtime remote loading",
+  "files": [
+    {
+      "path": "capture_recorder.js",
+      "sha256": "dd069d43e2d17947fb32202c72779b33d14890d90914771cd59012bc9a3af74e"
+    },
+    {
+      "path": "motion_core.js",
+      "sha256": "7d072f95297df2da165584d3eb795631c1810f55d78ea4c004d9be877be9a406"
+    },
+    {
+      "path": "radar_protocol.js",
+      "sha256": "f1e6a76d2396709002e815813ca8f827e8d7b0cd01265f7a47a09e7dde3ba365"
+    },
+    {
+      "path": "cpd_protocol.js",
+      "sha256": "1057b69a3fba3376b867bfe591aeb0a136ea13cb30ef9b4a97af469520c02f6b"
+    },
+    {
+      "path": "tests/motion.test.js",
+      "sha256": "70be51dc12f4583fd6a155ed9c4d4236517fca190d55df28dc372b0fc3ad65d2"
+    },
+    {
+      "path": "tests/capture.test.js",
+      "sha256": "f0195a8b2c57e4b737205611f6eabdb6f72ea86f712efd9943389b0f53249d34"
+    },
+    {
+      "path": "tests/fixtures.json",
+      "sha256": "35a0b586dbaab44466ea370fd441a2f8d56713de6ba5ad8d8f4caa39a5b5db01"
+    },
+    {
+      "path": "tests/expansion-fixtures.json",
+      "sha256": "c07636c98f7ee6822c36d8db0a9c558a88000de60842b784e342bb543efcc800"
+    },
+    {
+      "path": "tests/legacy-fixtures.json",
+      "sha256": "76d5caa1ca53874c1541d9d05ca84666ae136d48c76a2544e0385383b911a720"
+    },
+    {
+      "path": "tests/cpd-fixtures.json",
+      "sha256": "95ef2ebe46723498f75dc9a8747ecef0b36df47ed20a0c595f53e23491e56ce9"
+    },
+    {
+      "path": "tests/build_fixtures.py",
+      "sha256": "3c1e0b2c3df4a6e0376298f85a9370de88509a6210cdc57961ef068bda10c03a"
+    },
+    {
+      "path": "tests/build_expansion_fixtures.py",
+      "sha256": "0ca517ce12072ac548681422172ddb01a8704f63b3ba4a6985d510a6c0ee9a94"
+    },
+    {
+      "path": "tests/build_legacy_fixtures.py",
+      "sha256": "dfd7cf47024c90cc7f6f952c227dd5b88e395f63f840a7924bb02829f0a4a327"
+    },
+    {
+      "path": "tests/build_cpd_fixtures.py",
+      "sha256": "477201ee8ea4995520c3c55e2679362125802c5029780692745bf241df954f89"
+    }
+  ]
+}

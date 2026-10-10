@@ -6,3 +6,19 @@
 
 .trail-controls{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:10px 16px 0;font-size:11px;color:var(--muted)}.trail-controls label{display:flex;align-items:center;gap:7px}.trail-controls select{display:inline-block;margin:0;padding:5px 8px;font-size:11px}.trail-controls input{accent-color:var(--cyan)}
 #demoCatalog{overflow-wrap:anywhere}#demoCatalog select,#demoCatalog input{max-width:100%;width:100%;font-size:11px}#demoCatalog p{font-size:11px;color:var(--muted)}#demoCatalog h2{font-size:13px}#demoCatalog h3{font-size:12px}#demoCatalog details{font-size:10px}#demoCatalog button{font-size:11px}#profileStatus{color:#ffcf76}#telemetryPanel{margin-bottom:20px}
+
+/* Original motion laboratory, v0.5. All processing is local. */
+.motion-lab {border:1px solid var(--line,#31435b);border-radius:16px;padding:22px;margin:22px 0;background:var(--panel,#101c2c)}
+.motion-lab details {margin:16px 0;padding:12px 0;border-top:1px solid #304056}
+.motion-lab summary {cursor:pointer;font-weight:650;line-height:1.5}
+.motion-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:16px 0}
+.motion-grid label {display:flex;flex-direction:column;gap:7px;min-width:0}
+.motion-grid input,.motion-grid select {box-sizing:border-box;min-width:0;width:100%;padding:10px;border-radius:7px;border:1px solid #41536a;color:inherit;background:#111e2b}
+.motion-check {display:flex;gap:8px;align-items:flex-start;margin:12px 0;font-size:.88rem}.motion-check input{width:auto}
+.motion-labels {display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.motion-labels .selected {border-color:#62dcc5;background:#244e47}
+.motion-result {display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:18px;background:#101a27;border-radius:12px}
+#motionPrediction {display:block;font-size:2rem;margin:8px 0}#motionProgress{width:100%;accent-color:#62dcc5}
+.motion-lab pre {white-space:pre-wrap;overflow-wrap:anywhere;max-height:300px;overflow:auto;font-size:.8rem}.motion-lab a{color:#7de1dd}
+@media(max-width:600px){.motion-lab{padding:14px}.motion-result{grid-template-columns:1fr}.motion-grid{grid-template-columns:1fr}}
+
+.advanced {margin:14px 0;border:1px solid #304056;border-radius:10px;padding:12px}.advanced summary{cursor:pointer;font-weight:650}.advanced section{margin-bottom:0}footer a{color:#7de1dd}

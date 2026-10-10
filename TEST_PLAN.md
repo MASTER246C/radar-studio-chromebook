@@ -1,4 +1,4 @@
-# Reproducible v0.4 test plan
+# Reproducible v0.5 test plan
 
 The application needs no dependencies. The developer tests use Python 3 and Node.js 20+ built-ins, including Web Crypto/Web Streams. No radar or credentials are used by deterministic tests.
 
@@ -45,3 +45,29 @@ For each selected board/demo pair, record app version, board revision, ChromeOS 
 8. Profile changes, disconnects, replay, repeated clicks and upgrades leave the UI/source labels correct.
 
 Do not use this test plan for medical, child-safety, door-actuation or other safety certification. Preserve privacy when sharing recordings.
+
+
+## v0.5 motion and collection checks
+
+`node tests/run-all.js` runs 14 suites. New suites:
+- `motion.test.js`: 29 synthetic logic checks for calibration, mixed coordinates,
+  frame/warning/gap/stale gates, immutable capture splits, distinct take counts,
+  training-only statistics, unknown outputs, bounded imports and annotations.
+- `capture.test.js`: 24 byte-preservation, decoded-field, batch, boundary, timing,
+  export, limit and serialization checks. Raw bytes precede decoder filtering.
+- `motion_panel.test.js`: mock-DOM workflow checks for observed labels, transition
+  event markers, independent raw capture, consent, source/profile reset, atomic
+  import, idempotent calibration restoration and CFG-transmission admission guard.
+- `ui.test.js` now loads the actual motion and capture modules in its mocked
+  integrated viewer environment; earlier serial/CFG/scene regression checks pass.
+
+A Chromium launch was attempted with the optional browser harness but failed
+before navigation because this executor denied socket creation. No browser
+rendering or real serial/hardware check is counted as passed. Synthetic tests
+establish software behavior, not sitting/walking/standing recognition accuracy.
+
+Before a useful real dataset: do a short live capture, download it, reconstruct
+and verify UART bytes using MOTION_LAB.md, inspect discontinuities/loss counters,
+then collect consented independent takes. Inspect raw flagged observations rather
+than deleting them. There is no trained AI denoiser or automatic transition
+classifier in this release.

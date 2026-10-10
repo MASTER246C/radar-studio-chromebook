@@ -5,6 +5,8 @@
   const state = {profile:'people',profileChanging:false,cli:null,data:null,cliReader:null,dataReader:null,cliTask:null,dataTask:null,writer:null,choosing:false,closing:false,sending:false,listening:false,source:'offline',generation:0,playback:null,decoder:null,bytes:0,frames:0,frame:null,commands:[],configKind:null,ack:null,cliPartial:'',lastCliRead:0,lastFrameAt:0,dataBusy:false,vitals:new VitalsStore(),vitalCards:new Map(),trails:new TrailStore()};
   const telemetry = new TelemetryPanels(ui.telemetryPanel);
   const legacy = new LegacyPanels(ui.legacyPanel);
+  const motion = typeof MotionPanel!=='undefined'?new MotionPanel(document,MotionCore,typeof CaptureRecorder!=='undefined'?CaptureRecorder:null):null;
+  if(motion)motion.getDecoderInfo=()=>({bufferedBytes:state.decoder?.buffer?.length||0});
   const profileAllowed=()=>RadarProtocol.SUPPORTED_PROFILES.includes(state.profile);
   const configBlocked=()=>state.profile==='gesture'||state.profile==='cpd';
   const scene = new RadarScene(ui.sceneCanvas);scene.attachPointerControls();
@@ -15,6 +17,7 @@
   function log(message) { const t = new Date().toLocaleTimeString(); ui.log.textContent += `[${t}] ${message}\n`; if (ui.log.textContent.length > 50000) ui.log.textContent=ui.log.textContent.slice(-40000); ui.log.scrollTop=ui.log.scrollHeight; }
   function error(e) { return e && e.message ? e.message : String(e); }
   function refresh() {
+    if(motion)motion.setContext(state.source,state.profile,state.sending);
     ui.profileStatus.textContent='Active parser profile: '+state.profile+(profileAllowed()?' · experimental/partial, hardware unverified':' · NOT IMPLEMENTED; live decoding/config sending disabled');
     ui.cliConnect.disabled=state.profileChanging||!supported||state.choosing||state.closing||!!state.cli;
     ui.dataConnect.disabled=state.profileChanging||!supported||state.choosing||state.closing||!!state.data;
@@ -34,10 +37,12 @@
     ui.configSummary.textContent=state.configKind==='vitals'?'Vital-signs configuration':state.configKind==='people'?'People-tracking configuration (inferred)':state.configKind==='unverified'?'Configuration loaded · demo compatibility unverified':'';
     ui.configWarning.textContent=state.profile==='gesture'?'This TI gesture build uses a built-in configuration. External CFG sending is disabled.':state.profile==='cpd'?'CPD setup mixes firmware commands with MATLAB host metadata. CFG sending is disabled here; use the official TI setup, then listen to raw points. No occupancy/classification is performed.':!profileAllowed()?'This profile has no compatible decoder in this release.':state.configKind==='unverified'?'Confirm this file matches the selected firmware/profile before sending. No commands have been sent automatically.':state.configKind&&state.configKind!==ui.presentation.value?'The selected presentation differs from this configuration. Change it manually if needed. No commands have been sent automatically.':'';
   }
-  function reset(source) { state.source=source; state.decoder=profileAllowed()?new RadarProtocol.StreamDecoder(state.profile):null;telemetry.reset();legacy.reset(); state.bytes=0; state.frames=0; state.frame=null;state.lastFrameAt=0;state.vitals.clear();state.vitalCards.clear();state.trails.clear();ui.vitalsCards.replaceChildren(); ui.frameStat.textContent='—'; ui.objectsStat.textContent='0 / 0'; ui.bytesStat.textContent='0 B'; ui.framesStat.textContent='0'; ui.frameWarnings.textContent=''; render(); refresh(); }
+  function reset(source) { if(motion)motion.reset(source,state.profile);state.source=source; state.decoder=profileAllowed()?new RadarProtocol.StreamDecoder(state.profile):null;telemetry.reset();legacy.reset(); state.bytes=0; state.frames=0; state.frame=null;state.lastFrameAt=0;state.vitals.clear();state.vitalCards.clear();state.trails.clear();ui.vitalsCards.replaceChildren(); ui.frameStat.textContent='—'; ui.objectsStat.textContent='0 / 0'; ui.bytesStat.textContent='0 B'; ui.framesStat.textContent='0'; ui.frameWarnings.textContent=''; render(); refresh(); }
   function ingest(bytes) {
+    const arrivedAt=Date.now();if(motion)motion.captureBytes(bytes,arrivedAt);
     state.bytes+=bytes.length;
     const priorErrors=state.decoder.errors||0;const frames=state.decoder.push(bytes);if((state.decoder.errors||0)>priorErrors)log(`Decoder rejected malformed data (${state.decoder.errors} total): ${state.decoder.lastError||'invalid frame'}`);
+    if(motion){motion.captureFrames(frames,arrivedAt);if((state.decoder.errors||0)>priorErrors)motion.captureEvent('decode_warning',{previousErrors:priorErrors,errors:state.decoder.errors,lastError:state.decoder.lastError||'invalid frame'},arrivedAt);motion.ingest(frames,arrivedAt,state.source,state.profile);}
     state.frames+=frames.length;telemetry.ingest(frames,Date.now());legacy.ingest(frames,Date.now());state.vitals.ingest(frames,Date.now());state.trails.ingest(frames,Date.now());
     if(frames.length) { state.frame=frames[frames.length-1];state.lastFrameAt=Date.now(); ui.frameStat.textContent=String(state.frame.frameNumber); ui.objectsStat.textContent=`${(state.frame.points||[]).length} / ${(state.frame.tracks||[]).length}`; ui.frameWarnings.textContent=[...(state.frame.warnings||[]),...((state.frame.unknownTlvs||[]).length?['Unrendered TLVs: '+state.frame.unknownTlvs.join(', ')]:[])].join(' · '); render(); }
     ui.framesStat.textContent=state.frames.toLocaleString(); ui.bytesStat.textContent=state.bytes<1024?`${state.bytes} B`:`${(state.bytes/1024).toFixed(1)} KB`;
@@ -77,9 +82,9 @@
     if(state.dataReader)await state.dataReader.cancel().catch(()=>{});
     if(state.dataTask)await state.dataTask;
     state.dataTask=null;state.dataBusy=false;refresh();
-    if(state.source==='live'){state.source='offline';refresh();}
+    if(state.source==='live'){state.source='offline';if(motion)motion.reset('offline',state.profile);refresh();}
   }
-  function stopPlayback(){state.generation++;if(state.playback)clearInterval(state.playback);state.playback=null;if(['demo','replay'].includes(state.source)){state.source='offline';refresh();}}
+  function stopPlayback(){state.generation++;if(state.playback)clearInterval(state.playback);state.playback=null;if(['demo','replay'].includes(state.source)){state.source='offline';if(motion)motion.reset('offline',state.profile);refresh();}}
   async function startListening() {
     if(state.dataBusy)return;if(state.listening)return stopListening();
     if(!profileAllowed()){log('This demo profile has no compatible decoder.');return;}if(!state.data||state.closing||state.profileChanging)return;
@@ -88,7 +93,7 @@
     state.dataTask=(async()=>{let reader;
       try{reader=port.readable.getReader();state.dataReader=reader;while(state.listening&&state.data===port){const {value,done}=await reader.read();if(done)break;if(value)ingest(value);}}
       catch(e){if(!state.closing)log(`Data read error: ${error(e)}`);}
-      finally{if(reader)reader.releaseLock();state.dataReader=null;state.listening=false;if(state.source==='live')state.source='offline';refresh();}
+      finally{if(reader)reader.releaseLock();state.dataReader=null;state.listening=false;if(state.source==='live')state.source='offline';if(motion)motion.reset('offline',state.profile);refresh();}
     })();
   }
   async function sendCommand(command) {
@@ -109,7 +114,7 @@
     await sleep(120);
   }
   async function sendConfig() {
-    if(!profileAllowed()||configBlocked()||state.profileChanging){log('Configuration sending is disabled for this profile.');return;}if(state.sending||!state.writer||!state.commands.length)return;state.sending=true;refresh();
+    if(!profileAllowed()||configBlocked()||state.profileChanging){log('Configuration sending is disabled for this profile.');return;}if(state.sending||!state.writer||!state.commands.length)return;if(motion)motion.configurationSending();state.sending=true;refresh();
     try{for(const line of state.commands){if(state.closing)throw new Error('Disconnected.');await sendCommand(line);}log(`Configuration complete: ${state.commands.length} commands acknowledged.`);}
     catch(e){log(`CONFIGURATION STOPPED: ${error(e)} Remaining commands were not sent.`);}
     finally{state.sending=false;refresh();}
@@ -177,10 +182,11 @@
   ui.cliConnect.onclick=()=>connect('cli');ui.dataConnect.onclick=()=>connect('data');ui.listen.onclick=()=>{sourceRequest++;startListening().catch(e=>log(error(e)));};ui.disconnect.onclick=()=>{sourceRequest++;disconnect().catch(e=>log(error(e)));};ui.sendConfig.onclick=sendConfig;ui.demo.onclick=demo;ui.stopPlayback.onclick=()=>{sourceRequest++;stopPlayback();};ui.clearLog.onclick=()=>{ui.log.textContent='';};
   ui.configFile.onchange=async()=>{
     if(state.profileChanging||state.sending||state.closing||!profileAllowed()||configBlocked()){log('Configuration loading is disabled for this profile or current action.');return;}
-    const request=++configReadToken,profile=state.profile,file=ui.configFile.files[0];state.commands=[];state.configKind=null;refresh();
+    const request=++configReadToken,profile=state.profile,file=ui.configFile.files[0];if(motion)motion.configFile(null,profile);state.commands=[];state.configKind=null;refresh();
     if(file){try{
       if(file.size>1024*1024)throw new Error('Configuration exceeds 1 MB limit.');
       const text=await file.text();if(request!==configReadToken||profile!==state.profile||state.profileChanging||state.sending||state.closing)return;
+      if(motion)motion.configFile(file,profile);
       state.commands=text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l&&!l.startsWith('%')&&!l.startsWith('#'));
       state.configKind=state.commands.length?(state.commands.some(l=>/vitalsign/i.test(l))?'vitals':(['people','people-low-power','overhead','vitals','small-obstacle'].includes(state.profile)?'people':'unverified')):null;
       ui.configInfo.textContent=`${file.name} · ${state.commands.length} commands`;log('Configuration loaded locally. Review the file before sending.');
@@ -188,12 +194,12 @@
   };
   ui.replayFile.onchange=()=>{const file=ui.replayFile.files[0];ui.replayFile.value='';replay(file);};ui.presentation.onchange=()=>{refresh();render();};ui.range.onchange=render;window.addEventListener('resize',render);
   if('serial' in navigator)navigator.serial.addEventListener('disconnect',event=>{if(event.target===state.cli||event.target===state.data){log('A selected device was unplugged.');sourceRequest++;disconnect();}});
-  setInterval(()=>{telemetry.render(ui.presentation.value,state.source,Date.now());legacy.render(ui.presentation.value,state.source,Date.now());scene.setTrails(ui.trailToggle.checked?state.trails.values(Date.now()):[]);scene.render();vitalFreshness();const el=$('freshness');if(!state.lastFrameAt){el.textContent='No decoded samples';return;}const age=(Date.now()-state.lastFrameAt)/1000;el.textContent=state.source==='live'?(age>2?`STALE · last decoded frame ${age.toFixed(0)} s ago`:'Receiving · updated '+age.toFixed(1)+' s ago'):`Last displayed frame · ${age.toFixed(0)} s ago`;el.className=state.source==='live'&&age>2?'stale':'';},500);
+  setInterval(()=>{if(motion)motion.tick(Date.now());telemetry.render(ui.presentation.value,state.source,Date.now());legacy.render(ui.presentation.value,state.source,Date.now());scene.setTrails(ui.trailToggle.checked?state.trails.values(Date.now()):[]);scene.render();vitalFreshness();const el=$('freshness');if(!state.lastFrameAt){el.textContent='No decoded samples';return;}const age=(Date.now()-state.lastFrameAt)/1000;el.textContent=state.source==='live'?(age>2?`STALE · last decoded frame ${age.toFixed(0)} s ago`:'Receiving · updated '+age.toFixed(1)+' s ago'):`Last displayed frame · ${age.toFixed(0)} s ago`;el.className=state.source==='live'&&age>2?'stale':'';},500);
   window.addEventListener('radar-profile-change',event=>{
     const id=event.detail?.id;if(!id||!DemoCatalog.get(id)){event.preventDefault();log('Unknown demo profile rejected.');return;}
     if(state.sending||state.choosing||state.closing||state.dataBusy||state.profileChanging){event.preventDefault();log('Finish the current connection/configuration action before changing profiles.');return;}
     state.profileChanging=true;configReadToken++;sourceRequest++;stopPlayback();refresh();
-    (async()=>{await stopListening();state.profile=id;state.commands=[];state.configKind=null;ui.configFile.value='';ui.configInfo.textContent='No configuration loaded';ui.presentation.value=['gesture','speed','vitals','level'].includes(id)?id:'people';reset('offline');log('Selected '+id+'. Histories cleared. No device command or firmware change was made.');})().catch(e=>log(error(e))).finally(()=>{state.profileChanging=false;refresh();});
+    (async()=>{await stopListening();state.profile=id;if(motion)motion.configFile(null,id);state.commands=[];state.configKind=null;ui.configFile.value='';ui.configInfo.textContent='No configuration loaded';ui.presentation.value=['gesture','speed','vitals','level'].includes(id)?id:'people';reset('offline');log('Selected '+id+'. Histories cleared. No device command or firmware change was made.');})().catch(e=>log(error(e))).finally(()=>{state.profileChanging=false;refresh();});
   });
   CatalogUI.mount(ui.demoCatalog);
   refresh();render();log('Ready. Connect two serial interfaces, replay a local recording, or run a labeled synthetic demo.');

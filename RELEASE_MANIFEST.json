@@ -1,14 +1,20 @@
 {
-  "release": "v0.4",
+  "release": "v0.5",
   "date_utc": "2026-10-10",
-  "target_board": "Texas Instruments IWR6843AOPEVM (IWR6843AOP)",
+  "target_board": "Texas Instruments IWR6843AOPEVM / IWR6843AOP, user target Rev G",
+  "status": "experimental prerelease",
   "catalog_toolbox_version": "4.00.00.05",
   "catalog_artifacts": 37,
   "vendor_binary_or_config_contents_included": false,
-  "deterministic_test_suites": "11 passed; node tests/run-all.js",
-  "independent_scoped_review": "No runtime correctness blocker found; source and deterministic tests reviewed",
-  "hardware_tested_for_new_profiles": false,
+  "user_capture_contents_included": false,
+  "deterministic_test_suites": "14 passed; node tests/run-all.js",
+  "motion_core_tests": 29,
+  "capture_recorder_tests": 24,
+  "independent_scoped_review": "No blocking findings remain in reviewed paths after fixes; synthetic/mock checks only",
+  "hardware_tested_for_v05": false,
   "real_browser_rendering_verified": false,
+  "firmware_boundary": "Original browser application/features/classifier. Current TI firmware still supplies upstream points/tracks; no original firmware claimed.",
+  "dataset_license_status": "pending; separate from application license",
   "files": [
     {
       "path": ".gitignore",
@@ -17,13 +23,13 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size_bytes": 5910,
-      "sha256": "8b26427d82cb2d1dbc1aac691418b7af277539358a8e1974fb8703fa2d54c0a1"
+      "size_bytes": 9586,
+      "sha256": "f2b942582b243ac75a9efe68cbc1c90e4eb54984e25dff9eb60051c931103a37"
     },
     {
       "path": "CHANGELOG.txt",
-      "size_bytes": 2738,
-      "sha256": "c28b1c27970981f0060d235743521a6e1aa595751cbebc4e28b3f1168a00def6"
+      "size_bytes": 4815,
+      "sha256": "d6d06e110d6500fd692ba376725e033b3ce01c5e4034b8a3dfbb771f9a1a752a"
     },
     {
       "path": "CONFIG_GUIDE.txt",
@@ -37,8 +43,8 @@
     },
     {
       "path": "DEVELOPING.md",
-      "size_bytes": 7700,
-      "sha256": "d211fdda83e5458392c1a9b7e400cd602eb018be679e34575c50f391679d6d68"
+      "size_bytes": 16425,
+      "sha256": "2091486fa3cf390874dd96a7fa0dc8bf6212ea6e628d5f0dddc1057b309de3a1"
     },
     {
       "path": "DOWNLOADS.md",
@@ -66,24 +72,39 @@
       "sha256": "4f48125986d3f039a6725688ec87df00d6b3259b7f087a40a0a2d2b8d10f9e9c"
     },
     {
+      "path": "MOTION_LAB.md",
+      "size_bytes": 40272,
+      "sha256": "40d427b483cac0c8e9a8d251d33b533e629dadfe66e130325aad8313634dda4d"
+    },
+    {
       "path": "PROTOCOL_EVIDENCE.md",
       "size_bytes": 5790,
       "sha256": "5a1c14f37c5a19bcce052ad051adbc6be160a2270f22c199537abebeb575d5e6"
     },
     {
       "path": "PROVENANCE.txt",
-      "size_bytes": 2294,
-      "sha256": "609c968256ea3e526189aa871e9cd45c57f8446ca8dd5958b686dda8eb38b39b"
+      "size_bytes": 4028,
+      "sha256": "779f0c58b06eb32157276661258de09ef040620a36d7e89f73321b969db6e819"
     },
     {
       "path": "QUICKSTART.md",
-      "size_bytes": 9221,
-      "sha256": "d5d142e1ea6d894ce7556390f7c5781faa4bcbf917d2f375a663b2f782fa705d"
+      "size_bytes": 11191,
+      "sha256": "00c261fd64d8843fd3436ec607d5a79d469b8fb44372472c318db4a616ade764"
     },
     {
       "path": "README.md",
-      "size_bytes": 8159,
-      "sha256": "968c1acb2f8fe8791774842ae45f57926b5bd5032e6c64a0994f735cbac01b7c"
+      "size_bytes": 13466,
+      "sha256": "373aa50d3bba14a8782c18229e70be85fb80108ddfc49d7508f624baa09fca21"
+    },
+    {
+      "path": "RECORDER_API.md",
+      "size_bytes": 5048,
+      "sha256": "9dcbe8d8f7115a3e85fa0007f6787b1c6ac81e53856c02d148a0d3b2ae1f3d23"
+    },
+    {
+      "path": "SHARED_MODULES.json",
+      "size_bytes": 2199,
+      "sha256": "ac3907627b9d7c3279d055f0b6062e7e04040ab69dd152616f46ec17b6d0cb97"
     },
     {
       "path": "TECHNICAL_NOTES.md",
@@ -92,8 +113,8 @@
     },
     {
       "path": "TEST_PLAN.md",
-      "size_bytes": 4393,
-      "sha256": "14d40e9b53f7440b10ac4ae19e4b8ce6f347e8efc0c0fa6083de63a5c8012eeb"
+      "size_bytes": 5953,
+      "sha256": "7dc0790c8e01a423b284271ccba21e610a94b2659d43f23ef31c30e35df71561"
     },
     {
       "path": "TROUBLESHOOTING.md",
@@ -102,18 +123,23 @@
     },
     {
       "path": "UPGRADE.md",
-      "size_bytes": 1311,
-      "sha256": "3fc8168354b31ca899504d5fee5a8f98022b2fc80f1aea20fda28f4d51d8b467"
+      "size_bytes": 1626,
+      "sha256": "4ed91f7ffd6a4092e5b48abe81b1aabf183831d54a294b2aa93b55f6d280280d"
     },
     {
       "path": "VERIFICATION.txt",
-      "size_bytes": 2270,
-      "sha256": "d278753f0e61c765496b514e51f0c80cb8627f26b022ea0f677ed2267a6d7a9d"
+      "size_bytes": 4724,
+      "sha256": "2f11e11f6576b790050187501ac970b023f9c06fdaa8c9f6a126a5473cc602c4"
     },
     {
       "path": "app.js",
-      "size_bytes": 23035,
-      "sha256": "380ac95201b9409518d1b8dbc560472a6f3aee991ab9e1b981dab87d638f2fea"
+      "size_bytes": 24133,
+      "sha256": "7a021769b0fc4d330e09b2e70022b9a32cdd72c32dcbe4b2e906996b5414569c"
+    },
+    {
+      "path": "capture_recorder.js",
+      "size_bytes": 14625,
+      "sha256": "dd069d43e2d17947fb32202c72779b33d14890d90914771cd59012bc9a3af74e"
     },
     {
       "path": "catalog_ui.js",
@@ -147,13 +173,23 @@
     },
     {
       "path": "index.html",
-      "size_bytes": 6071,
-      "sha256": "1a574af997b8457c685afcb55d4e8e217d339de2cd4c68e2a51eb53d2bebcd81"
+      "size_bytes": 15227,
+      "sha256": "d226967c044aca0f62a630b9454fdd97bee2fdd22af00773e672fae26c7fec34"
     },
     {
       "path": "legacy_panels.js",
       "size_bytes": 11172,
       "sha256": "6617b41450943d9918c70faa271e895ba6db90497006930617be38c48d28e4e5"
+    },
+    {
+      "path": "motion_core.js",
+      "size_bytes": 32608,
+      "sha256": "7d072f95297df2da165584d3eb795631c1810f55d78ea4c004d9be877be9a406"
+    },
+    {
+      "path": "motion_panel.js",
+      "size_bytes": 17236,
+      "sha256": "49b8c3eb8390950abd5caa401af4fb179812c816a6aef5defe7ae57d6c491f23"
     },
     {
       "path": "radar_protocol.js",
@@ -172,8 +208,8 @@
     },
     {
       "path": "styles.css",
-      "size_bytes": 6248,
-      "sha256": "23a3e8362ac6a3c4edc2cca191d2116f596ad256a3f11beab97a0b830cb7af01"
+      "size_bytes": 7894,
+      "sha256": "f85138d6cfe595b09b8da0a7ecb3386c69bb486eb9adfe73235d64e9beb5f246"
     },
     {
       "path": "telemetry_panels.js",
@@ -204,6 +240,11 @@
       "path": "tests/build_legacy_fixtures.py",
       "size_bytes": 6121,
       "sha256": "dfd7cf47024c90cc7f6f952c227dd5b88e395f63f840a7924bb02829f0a4a327"
+    },
+    {
+      "path": "tests/capture.test.js",
+      "size_bytes": 16064,
+      "sha256": "f0195a8b2c57e4b737205611f6eabdb6f72ea86f712efd9943389b0f53249d34"
     },
     {
       "path": "tests/catalog.test.js",
@@ -251,14 +292,24 @@
       "sha256": "1d38e52ae2bb0ffdd34dcd342c661ac33341b45dc17d314c8970aa38eda0bd44"
     },
     {
+      "path": "tests/motion.test.js",
+      "size_bytes": 14768,
+      "sha256": "70be51dc12f4583fd6a155ed9c4d4236517fca190d55df28dc372b0fc3ad65d2"
+    },
+    {
+      "path": "tests/motion_panel.test.js",
+      "size_bytes": 5746,
+      "sha256": "6942b2781cf66cefdd4042a3a8abb7579dc2310a5ac6ed8f669528a0be447c94"
+    },
+    {
       "path": "tests/protocol.test.js",
       "size_bytes": 3448,
       "sha256": "e04054a47024f300ae157cb7b6e8939bbd51c86f0b59caee76f6d799a1a05bf6"
     },
     {
       "path": "tests/run-all.js",
-      "size_bytes": 535,
-      "sha256": "5081a1ec4daf2bb511981caa8dae35cc3e845c2815307f4943e9a2cdd6ecb6f3"
+      "size_bytes": 569,
+      "sha256": "08c3fb078ad8e65a04eebb2a9b23cec37490dbfa17cecd5038e7fbf5974902a0"
     },
     {
       "path": "tests/scene.test.js",
@@ -277,8 +328,8 @@
     },
     {
       "path": "tests/ui.test.js",
-      "size_bytes": 12021,
-      "sha256": "3b96677c2ca5795b11c6e12a8b7a459d532bac4b697828ecd23be176f2671afd"
+      "size_bytes": 12165,
+      "sha256": "71356dca0d038c5aead14b36a1d1937a505c13fbfb1b4a523a45fe18ee25a753"
     },
     {
       "path": "tests/vitals.test.js",

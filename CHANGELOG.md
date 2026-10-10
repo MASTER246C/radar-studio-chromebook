@@ -57,3 +57,59 @@
 - Early user reported live tracking/vitals on IWR6843AOPEVM Rev G. Sparse-vitals display bug subsequently identified.
 
 Released v0.1/v0.2 tags and assets remain unchanged. Use one complete release folder at a time.
+
+## v0.5 — 2026-10-10 — Experimental motion-signature prerelease
+
+### Added
+- Original browser-local sitting/standing/walking experiment using observed,
+  non-overlapping three-second windows and a standardized nearest-centroid CPU
+  classifier. It consumes supported people-tracking/vitals points/tracks from
+  the existing firmware; it is not a copied TI activity-classification demo.
+- Measured motion calibration: bracket-top reference height, signed antenna-
+  center offset, downward-positive tilt, orientation, tolerance and explicit
+  verification. Point and track sensor/world coordinate modes are separate.
+- Explicit target ROI, separate training/evaluation acquisition sessions,
+  training-only feature standardization, held-out evaluation, unknown/missing-
+  data handling and local motion dataset export/import.
+- Independent bounded-memory capture of received UART chunks before decoding,
+  decoded frames and experiment events, with explicit local export and limit
+  stopping. Classifier rejection does not discard the raw recorder's evidence.
+- MOTION_LAB.md: practical real-capture plan, leakage prevention, label rules,
+  calibration checks, capture privacy, provenance and future firmware roadmap.
+
+### Boundaries and remaining work
+- Minimum experiment gates require two training sessions per class and a
+  separately recorded held-out session per class; gates do not prove independence
+  if a user renames/copies the same acquisition data. Mixed calibration signatures
+  are rejected for training.
+- Missing/ambiguous data is not evidence of a stationary activity or an empty room.
+  Model scores are not calibrated probabilities. No real-data accuracy claim.
+- No original radar firmware, raw ADC, full micro-Doppler pipeline, validated
+  on-board classifier, medical use or safety-critical control is delivered.
+- This release adds motion-only mounting calibration and explicit UART recording;
+  older blanket limitations on those two features apply to the earlier versions.
+  Other viewer coverage limitations remain. Check VERIFICATION.txt for actual
+  test results and hardware/browser gaps; older releases remain unchanged.
+- Capture is local until explicit export, with no default upload. Dataset license
+  status remains pending; future publication requires separate rights/consent
+  decisions. The source-available project LICENSE is unchanged.
+
+### Future annotation work, not included in v0.5
+- Camera/radar synchronization, AI-proposed labels and a human final-review queue
+  are documented as a future pipeline. Current labels are human-observed;
+  annotation source/status metadata must not turn an unreviewed AI proposal into
+  ground truth. No camera capture or video annotation implementation is claimed.
+
+### Final capture safeguards
+- Measured calibration fields start null/unverified; firmware/CFG identity is
+  included in the signature. Decoder warnings and mixed parser profiles are
+  excluded from motion admission/fitting as applicable.
+- Distinct capture timelines, rather than session-name counts, enforce minimum
+  coverage. A continuous take cannot span training and held-out roles; stop and
+  restart listening between independent takes.
+- Manual sit-to-stand and movement-onset interval annotations require active UART
+  capture and pause stable labels. They retain unreviewed human click timestamps
+  with unknown physical timing latency, not automatic transition detections.
+- Feature annotations remain human-observed/human-labelled; imported AI proposal
+  states are rejected. Camera synchronization and reviewed AI annotation remain
+  future work. Browser rendering and physical-hardware checks remain unverified.

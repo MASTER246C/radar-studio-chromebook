@@ -33,3 +33,31 @@ release. Matching imported file hashes establishes artifact identity, not a
 right to redistribute the imported material or hardware compatibility.
 
 V0.4 adds first-party decoders informed by official Area/Doors, Level and CPD wire sources. Vendor code/firmware/config bytes remain excluded. See LEGACY_PROTOCOL_EVIDENCE.md. No hardware or real-browser verification is implied.
+
+V0.5 ORIGINAL MOTION APPLICATION AND CAPTURE
+
+The motion-signature feature extraction, calibration/ROI handling, labelled
+session workflow, standardized nearest-centroid browser classifier, evaluation,
+local dataset handling and UART recorder are newly written project components.
+They do not copy a TI activity-classifier algorithm, trained activity model or
+TI demo application implementation. This release still uses the existing
+protocol decoders and compatible TI firmware output for sensor acquisition;
+that dependency is not presented as original radar firmware.
+
+No original on-board firmware build, custom BIN, raw-ADC acquisition pipeline
+or full micro-Doppler pipeline is delivered here. A future original firmware
+pipeline may use properly licensed TI low-level/SDK components after a separate
+engineering and licensing review. The roadmap in MOTION_LAB.md is future work,
+not a claim of implementation, compilation or hardware validation.
+
+Motion calibration and activity labels are user-observed/measured experimental
+inputs. Imported provenance is self-reported and untrusted; the import operation
+cannot establish capture authenticity, physical calibration, session independence
+or participant consent. Synthetic fixtures are original software-test data, not
+real-human validation data. No real activity accuracy claim is made.
+
+Local captures may contain personal activity and metadata. They are not bundled
+as public example data or automatically uploaded. Captured-dataset license
+status remains pending, and the software LICENSE does not independently confer
+rights to publish participant records or to redistribute vendor material.
+The exact project LICENSE and all earlier third-party exclusions remain intact.

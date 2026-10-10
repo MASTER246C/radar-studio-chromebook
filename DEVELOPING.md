@@ -77,3 +77,137 @@ For v0.3 and later, CHANGELOG.md is the primary structured changelog; CHANGELOG.
 ## v0.4 additions
 
 `radar_protocol.js` selects 36/40/44-byte framing explicitly and delegates the stock 48-byte checksum format to `cpd_protocol.js`. `legacy_panels.js` retains level samples independently from frame numbering; the official level transmitter keeps frame number zero. Raw complex FFT input is not transformed into physical distance bins. Static area/doors points carry `static:true` and render amber. Read LEGACY_PROTOCOL_EVIDENCE.md before changing formats. Tests remain synthetic/mock; no raw vendor source is bundled.
+
+## v0.5 additions: motion experiment and raw capture
+
+Read [MOTION_LAB.md](MOTION_LAB.md) for the collection protocol and interpretation
+limits. The motion application is original project code running on the browser
+CPU. It remains a host application consuming existing firmware detections; this
+release does not contain newly built radar firmware or a raw-ADC data path.
+
+- `motion_core.js`: calibration/ROI, non-overlapping three-second feature windows,
+  session/observed-label management, standardized nearest-centroid model,
+  session-held-out evaluation and versioned motion dataset import/export.
+- `motion_panel.js`: motion controls, measured calibration and verified-state UI,
+  explicit training/evaluation sessions, observed labels and result presentation.
+- `capture_recorder.js`: independent, bounded-memory recording of complete UART
+  chunks before decoding, every decoded frame and experiment/provenance events.
+  Capture is not filtered to the classifier's accepted examples.
+
+Calibration records the bracket's flat top as the floor-height reference, the
+signed vertical antenna-center offset, derived sensor-origin height, downward-
+positive tilt, orientation and tolerance. Do not fill blanks with an arbitrary
+height or silently assume that the bracket surface is the antenna center. Points
+and tracks have separate sensor/world modes. In particular, `sensorPosition`
+configuration does not establish that both output streams share one frame.
+Verify the geometry and interpretations before marking calibration complete.
+
+Use a consistent calibration signature within a model; training rejects mixed
+signatures. Keep training and evaluation disjoint by entire real acquisition
+session. Require two training sessions per class and one held-out evaluation
+session per class; do not satisfy this by relabelling consecutive frames or
+renaming duplicate data. Fit scaling and centroids on training examples only.
+A held-out set used for repeated tuning becomes development data.
+
+New regression coverage should exercise transforms and their sign conventions,
+separate point/track frames, empty calibration, ROI edges, missing/ambiguous
+observations, interrupted windows, profile/source changes, repeated controls,
+invalid imported records, session leakage and unseen/rejected cases. Recorder
+checks must verify byte-for-byte chunk reconstruction, fragmented packet input,
+records for rejected classifier windows, limit-triggered stopping, and explicit
+export/clear behavior. Synthetic fixtures establish software behavior only.
+Run the current aggregate runner and record actual results in VERIFICATION.txt;
+do not inherit prior-release pass claims as v0.5 verification.
+
+The older “no scene calibration” limitation remains applicable to the general
+viewer panels; the motion lab now has its own measured transform. The older “no
+raw serial recording/export” limitation is superseded by the optional explicit
+UART recorder. Its output is all bytes actually received, not proof that the
+board emitted every intended byte, and not raw ADC/micro-Doppler data.
+
+Data/model/capture state is in browser memory until explicit local export. Do
+not add uploads, telemetry, durable browser storage or sample publication as an
+unannounced side effect. Imported provenance is untrusted/self-reported. Dataset
+license status remains pending; a source-code grant does not grant rights to
+publish participant data. Keep real captures and identifying metadata out of
+public release packages unless separately reviewed and authorized.
+
+### Motion-core integration contract
+
+The dependency-free module exposes `MotionCore.Engine` in the browser and via
+CommonJS for tests. Construct an engine, then use `configure`,
+`beginSession({id, split: 'train' | 'eval', notes})`, `setLabel`, `endSession`,
+`ingest(frame, arrivalMs, {kind: 'live', id}, profile)`, `tick`, `snapshot`,
+`train`, `evaluate`, `exportJSON`, `importJSON`, `resetSource` and `clearData`.
+The stored role for `eval` is `heldout`; `startSession`/`stopSession`,
+`exportDataset`/`importDataset` and `status` are equivalent named entry points.
+
+Only `people`/`vitals` profiles and explicitly live sources are admitted by the
+motion engine. Never tag synthetic or replay frames as live outside isolated
+software-test fixtures. All frames from the same observed USB receipt can share
+one timestamp: do not interpolate timing to get past rejection. Duplicate/
+non-monotonic arrival times and invalid sequence continuity discard partial
+windows. Gaps over 500 ms reset a partial; over 1,000 ms accepted-input age clears
+prediction. Accepted windows are 3,000 ms, need at least 12 frames, and require
+coverage in the final 500 ms. Source/reset and configuration transitions must
+prevent partial-window or label carryover.
+
+The target-centered horizontal ROI uses at least four dynamic finite-Doppler
+points. Another track within two radii rejects the frame. This is geometric
+selection, not firmware point association. See MOTION_LAB.md for the exact
+11-feature order, pitch math, nearest-centroid rejection rule and data schema.
+The quality gates are conservative implementation policies, not validated sensor
+performance limits. The recorder must remain independent of these exclusions.
+
+The motion dataset schema is `radar-motion-dataset` version 1, limited to 600
+windows and 200 sessions with a 2 MiB import-text bound. Exported feature examples
+are distinct from raw UART capture; no trained model is persisted by this schema.
+Import validation is atomic but does not authenticate the file's provenance.
+Built-in held-out agreement includes unknown predictions among retained windows;
+failed collection windows are outside that denominator and require separate
+quality reporting. Equal-session weighting is applied to class centroids, while
+training-only normalization is fitted over training windows.
+
+Future camera/radar synchronization and AI annotation proposals belong to a
+separate, consented data pipeline. v0.5 has no camera capture or video review
+queue. Preserve annotation source/status provenance, require human final review
+before an AI proposal becomes an accepted label, and keep uncertain/transition
+windows out of the three-class ground truth. Record clock alignment evidence
+and uncertainty before using camera timing as a reference for radar windows.
+
+### Final v0.5 quality and provenance gates
+
+Measured values now default to null/unverified, including height, tilt and
+measurement tolerance. Verified admission requires bracket height, signed
+antenna offset, tilt, tolerance, orientation, firmware/CFG `setupIdentity`, both
+coordinate modes and an explicit target. `setupIdentity` belongs to the model's
+configuration signature. Warning-bearing frames are rejected. Mixed decoder
+profiles block fitting, and live inference requires the model's bound profile.
+
+Independence is counted by distinct continuous-capture timelines, not merely
+session IDs. A capture timeline has only one split role. End the session and
+stop/restart live listening for an independent new take. Import rejects a
+capture that mixes train and held-out roles, and duplicate/overlapping content.
+Centroid weighting is by capture timeline, so aliases for one take cannot give
+it additional weight. An import's self-reported timeline remains unauthenticated.
+
+Export also includes top-level configuration, `license_status: 'pending'` and a
+synthetic-fixture disclaimer. Empty sessions are omitted. Session and window
+annotation metadata currently admits only human-observed, human-labelled records
+with null reviewer/modelVersion/time/hash fields; unreviewed AI proposals cannot
+be imported as current ground truth. Full future camera review is not built.
+
+The UART panel's manual sit-to-stand and movement-onset controls record observed
+interval start/end clicks, pause stable-class labels and require active raw
+capture. Event metadata is human-observed/unreviewed with unknown observer timing
+latency. Automatic source/recording stops leave an open event incomplete, either through
+an incomplete closing marker or a start with no end at a limit. These
+are annotations for later review, not automatic event predictions or additions
+to the three-state classifier. Movement onset must not be assumed to be walking.
+
+Run `node tests/motion.test.js`, `node tests/motion_panel.test.js` and
+`node tests/capture.test.js`, as well as the existing aggregate suites, after
+changes. MOTION_LAB.md contains a tested Python reconstruction example for the
+capture JSON: byte-for-byte reconstruction and refusal to overwrite an existing
+output were checked using synthetic bytes, not a physical board. Rendered-browser
+and hardware verification remain separate from these checks.

@@ -42,3 +42,31 @@ Public release packaging
 - Added beginner launch/troubleshooting and developer handoff documentation.
 - Vendor firmware/configs, private manifests and recordings omitted.
 - At initial v0.1/v0.2 packaging, no license had been selected; current LICENSE and LICENSE_COVERAGE.md now apply as stated.
+
+Version 0.5 — 10 October 2026 — experimental motion-signature prerelease
+- Added original local sitting/standing/walking signature collection and a
+  standardized nearest-centroid browser CPU baseline. Existing TI demo firmware
+  still supplies points/tracks; no new on-board firmware is included.
+- Added measured bracket-top reference height, signed antenna-center offset,
+  tilt, tolerance and separate point/track coordinate interpretations; initial
+  calibration is unset and must be verified. Motion-lab ROI/transform only.
+- Added three-second non-overlapping human-labelled windows, separate training
+  and held-out sessions, unknown/missing-data handling and local dataset I/O.
+  Two training sessions per class and one held-out session per class are minimum
+  gates, not an accuracy or generalization guarantee.
+- Added optional bounded-memory complete received-UART capture, decoded frames
+  and experiment events, independent of classifier acceptance. Explicit local
+  export is not an upload and does not provide raw ADC or full micro-Doppler.
+- Added MOTION_LAB.md with real-data capture, no-transition labels, leakage
+  prevention, calibration, privacy and a clearly future custom-firmware roadmap.
+- No real-data activity accuracy, medical validity or safety-critical claim.
+  See VERIFICATION.txt for checks actually performed. Prior assets unchanged.
+- Project LICENSE preserved. Captured-data license status remains pending;
+  capture does not authorize dataset publication or participant-data sharing.
+- Final v0.5 safeguards require measured null-default calibration, firmware/CFG
+  setup identity, warning-free frames and matching profile/signature. Independent
+  capture timelines, not renamed adjacent sessions, count toward split coverage.
+- Manual sit-to-stand and movement-onset markers save unreviewed human click
+  intervals in UART capture while stable labels pause. They are not automated
+  event detection; starting movement is not necessarily walking. Camera/AI-label
+  review is future work; current feature labels remain human-observed.

@@ -6,7 +6,7 @@ This guide runs Radar Studio locally in **ChromeOS Chrome**. Linux serves the ap
 
 ## 1. Choose a version
 
-For v0.4, first read the selected official demo catalogue entry: all profiles have selected partial/experimental decoding, with important application features still absent. See [DEMO_CATALOG.md](DEMO_CATALOG.md) and [LOCAL_IMPORT.md](LOCAL_IMPORT.md).
+For v0.5, first read the selected official demo catalogue entry: all profiles have selected partial/experimental decoding, with important application features still absent. See [DEMO_CATALOG.md](DEMO_CATALOG.md) and [LOCAL_IMPORT.md](LOCAL_IMPORT.md).
 
 Use this repository's **Releases** page to choose a tagged version and download its viewer ZIP. Keep releases in separate folders; do not mix JavaScript files from different versions.
 
@@ -14,6 +14,7 @@ Use this repository's **Releases** page to choose a tagged version and download 
 - **v0.3:** official-demo catalogue, metadata-only local BIN/CFG checks, raw gesture telemetry and valid/invalid ground-speed history. New profiles are fixture/mock-tested, not hardware-validated.
 - **v0.2:** fixes that display-state problem, adds a rotatable 3D view and track trails, and includes a radar favicon. Protocol, retention, trajectory, projection and mocked UI tests pass. That does not establish hardware validation of this revision or visual verification on every Chromebook.
 
+- **v0.5:** adds the integrated Motion Signature Lab, private complete-UART capture, observed activity/transition annotations and an experimental original browser classifier. See [MOTION_LAB.md](MOTION_LAB.md).
 - **v0.4:** adds explicit Area/Doors, Level and CPD raw-point formats. CPD classification and configuration sending remain unavailable; new hardware acceptance is pending.
 
 A GitHub repository or release download is source delivery, not a running hosted application. Follow the local launch steps below.
@@ -29,10 +30,10 @@ If Linux is unavailable, stop here and seek an approved HTTPS hosting option. Do
 1. Open the downloaded ZIP in the Chromebook **Files** app.
 2. Copy/extract the **entire viewer folder** into **Linux files**. Keep all its files together, including `index.html`, the `.js` files, stylesheet and `start-local.sh`.
 3. Open **Terminal → Linux**.
-4. Type `ls` to see your folders. Change into the extracted viewer folder, using its actual name. For example, if it is `Radar_Studio_v0.4`:
+4. Type `ls` to see your folders. Change into the extracted viewer folder, using its actual name. For example, if it is `Radar_Studio_v0.5`:
 
 ```sh
-cd ~/Radar_Studio_v0.4
+cd ~/Radar_Studio_v0.5
 ls
 sh start-local.sh
 ```
@@ -49,7 +50,7 @@ In the **normal ChromeOS Chrome browser**, open:
 
 **http://localhost:8000**
 
-Use a full browser tab, not an embedded preview and not a browser installed inside Linux. In this release, check that the header says **v0.4**.
+Use a full browser tab, not an embedded preview and not a browser installed inside Linux. In this release, check that the header says **v0.5**.
 
 You may first choose **Run synthetic demo**. This checks the display controls without hardware. The generated tracks and rates are labeled **SYNTHETIC DEMO** and do not prove that the radar or USB connection works. Stop playback before testing live data.
 
@@ -100,3 +101,32 @@ Problems? See [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
 
 CPD configuration sending is disabled in v0.4 because its supplied setup file combines firmware commands with MATLAB host-only metadata. Configure with the official TI workflow first, release its ports, then use this viewer to listen to raw points. This viewer does not run the CPD host classifier.
+
+
+## v0.5: first private capture
+
+After the already-working radar is streaming, scroll to **Motion Signature Lab →
+4 · Record all available UART output**. Enter a capture session name in section 2,
+confirm local participant consent, and choose **Start complete UART capture**.
+For a first smoke test, collect a short take, stop it, and download the JSON before
+reloading. Verify nonzero UART bytes and decoded frame counts, and inspect loss
+and quality flags. This recorder works independently of classifier admission.
+
+For labeled classifier windows, open **1 · Verify coordinates and repeatable
+mounting**, measure rather than guess, verify the point and track coordinate
+conventions separately, and select the observed target in section 2. The labels
+are your observations, not automatic ground truth. Stop/restart live listening
+between independent takes. Read MOTION_LAB.md before collecting a training set.
+
+The official catalogue and playback controls are under the left-side **Advanced**
+menus. The debug/CLI log is in **Advanced · debug and CLI log**. Receiving/stale
+status, window quality and recording status stay outside those collapsed panels.
+This release has passed synthetic/mock checks, not a live Rev G acceptance test;
+do not use a first successful packet or a synthetic classifier test as an
+accuracy or sustained-throughput claim.
+
+If your existing known-working firmware is TI vital-signs tracking, select its
+matching **Vitals** parser entry in **Advanced · official demo catalogue** before
+recording. Keep that firmware and its matched configuration; no new BIN or flash
+is needed for this browser collector. Enter the exact version/config identity
+you actually use; the application does not discover a firmware build reliably.

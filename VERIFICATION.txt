@@ -1,3 +1,36 @@
+V0.5 VERIFICATION — 10 October 2026
+Target: IWR6843AOPEVM / IWR6843AOP, user target Rev G.
+
+PASSED FOR V0.5
+- JavaScript syntax checks for all application and test modules.
+- Four independently authored fixture generators and all 14 deterministic suites.
+- Motion core: 29 logic tests. Complete UART recorder: 24 tests.
+- Motion workflow and legacy viewer mock-DOM/serial integration tests.
+- Mixed sensor/world calibration, explicit labels, immutable independent capture
+  roles, unknown/gap handling, bounded raw recording and export round trips.
+- Original LICENSE preserved byte-for-byte. No captured data, vendor firmware,
+  vendor configuration, credentials or TI algorithm source included.
+
+NOT VERIFIED
+- Actual browser layout/touch rendering. Chromium launch failed before navigation
+  with socket() Operation not permitted in this executor, including a permitted
+  escalated retry. No browser test is counted as passed.
+- Rev G hardware, USB enumeration, sustained full-throughput serial capture,
+  no-driver-drop behavior, or classification accuracy on real people/data.
+- Camera sync, AI denoising, automatic transition detection, original sensor-side
+  firmware, or dataset publication. Those are not implemented in this package.
+
+RELEASE BOUNDARY
+- Original browser application/features/model; existing TI firmware still produces
+  input points/tracks. No TI model or firmware is bundled.
+- Raw capture is lossless for retained received chunks within its explicit limits;
+  it is not raw ADC and cannot recover bytes never received by the browser.
+- Human event clicks have reaction latency. Quality rejection does not rewrite
+  original captured UART. Capture export licensing is pending and separate.
+- Use a short private capture/export/reconstruction check before larger collection.
+
+Historical v0.4 verification follows for preserved functionality:
+
 V0.4 VERIFICATION — 10 October 2026
 Target: Texas Instruments IWR6843AOPEVM (IWR6843AOP).
 
@@ -35,3 +68,12 @@ listen to raw points. Gesture uses the official built-in configuration.
 An early user reported v0.1 live tracking/vitals on Rev G. That report is separate
 from v0.4 synthetic/mock checks. No vendor firmware was executed, flashed or
 bundled. See TEST_PLAN.md and protocol evidence documents for reproduction.
+
+V0.5 INDEPENDENT SCOPED REVIEW
+A separate read-only reviewer inspected motion/capture integration and reran the
+deterministic checks. Reported blockers were fixed: coordinate option markup,
+atomic import and bounds, firmware/config/profile compatibility, independent
+capture counts, imported record IDs, empty exports, annotation boundaries,
+EOF/reset handling, decoder warnings, and in-flight CFG admission. No blocking
+finding remained in the reviewed paths. A final active-transition stable-label
+interlock was additionally tested. This is not a full security or hardware audit.
