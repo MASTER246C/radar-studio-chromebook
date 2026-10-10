@@ -1,5 +1,13 @@
 # Motion Signature Lab — v0.5
 
+**Mount reference height: 2.00 meters from floor to the flat TOP of the tripod mount, excluding screws.**
+
+This is the selected experimental activity-collection setup, with a final **15-degree downward tilt**. The mount reference is not the antenna/chip-center height. After setting the final tilt, measure the signed **vertical** offset from the mount-top reference plane to the antenna/chip center:
+
+**Antenna-center height = 2.00 m + measured signed vertical chip-center offset.**
+
+The chip is above the mount in the current photographed arrangement, so its offset is positive, but its numeric value is still unknown. Do not guess it or substitute 2.00 m for chip height. The owner plans to adjust the setup when ready to load the software; that adjustment and calibration have not yet been completed. This is a repeatable experimental standard, not a universal optimum or a proven most-accurate setting. Verify and record the actual geometry before collection; no firmware `sensorPosition` or other configuration value is inferred here.
+
 An original, experimental browser application for collecting and comparing
 **sitting, standing and walking** radar signatures with the
 **IWR6843AOPEVM / IWR6843AOP**. The project owner's reported board is **Rev G**.
