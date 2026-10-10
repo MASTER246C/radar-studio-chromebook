@@ -55,4 +55,11 @@ These are synthetic/mocked checks, not live hardware proof. The optional Playwri
 
 ## Licensing status
 
-No open-source license grant has been selected. Public visibility alone is not an open-source license. Third-party rights remain unaffected. See [PROVENANCE.txt](PROVENANCE.txt).
+Original material the licensor has authority to license is available under the [Radar Studio Chromebook Source-Available No-Resale License](LICENSE).
+
+- Personal use, internal business use, paid or unpaid teaching, and modification are allowed.
+- Free redistribution is allowed with the license and attribution retained and modified versions identified.
+- Selling the software or modified copies, paid product/bundle inclusion, and premium or hosted paid software access require separate written permission.
+- Texas Instruments and other third-party material are excluded and retain their own terms.
+
+This is **source-available**, not OSI-approved open source. Read [LICENSE](LICENSE) for the controlling terms and [PROVENANCE.txt](PROVENANCE.txt) for origin details. The license was added to main on 2026-10-10; existing release ZIPs and tags were not rewritten.
