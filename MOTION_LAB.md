@@ -1,12 +1,12 @@
 # Motion Signature Lab — v0.5
 
-**Mount reference height: 2.00 meters from floor to the flat TOP of the tripod mount, excluding screws.**
+**Mount height is configurable. Current user-reported reference: 4 feet (1.2192 m) from floor to the flat TOP of the bracket, excluding screws.**
 
-This is the selected experimental activity-collection setup, with a final **15-degree downward tilt**. The mount reference is not the antenna/chip-center height. After setting the final tilt, measure the signed **vertical** offset from the mount-top reference plane to the antenna/chip center:
+The chip center is above that reference in the photographed arrangement. Its signed vertical offset is **estimated at +0.003175 to +0.00635 m**, giving an **estimated antenna-height interval of 1.222375–1.22555 m**. The midpoint is about **1.224 m**; it is not a calibrated measurement. **Actual downward tilt is unconfirmed.** Measure the final geometry after setting the physical tilt, and preserve the uncertainty in capture metadata.
 
-**Antenna-center height = 2.00 m + measured signed vertical chip-center offset.**
+**Antenna-center height = measured mount-top reference height + measured signed vertical chip-center offset after final tilt.** The mount reference is not the chip height. Do not guess the offset, replace it with zero, or apply an extra cosine to an already vertical offset. Verify point and track coordinate conventions separately before applying a transform; do not infer a firmware `sensorPosition` or claim calibrated angles from these estimates.
 
-The chip is above the mount in the current photographed arrangement, so its offset is positive, but its numeric value is still unknown. Do not guess it or substitute 2.00 m for chip height. The owner plans to adjust the setup when ready to load the software; that adjustment and calibration have not yet been completed. This is a repeatable experimental standard, not a universal optimum or a proven most-accurate setting. Verify and record the actual geometry before collection; no firmware `sensorPosition` or other configuration value is inferred here.
+The earlier **2.00 m / 15-degree** arrangement was a planned experimental reference and remains in historical examples and frozen releases. It is **not the current setup, a mandatory height, a universal optimum or a proven most-accurate setting**. Earlier underside-to-board-bottom measurements are not used for the chip-center offset. Physical calibration remains unverified.
 
 An original, experimental browser application for collecting and comparing
 **sitting, standing and walking** radar signatures with the
