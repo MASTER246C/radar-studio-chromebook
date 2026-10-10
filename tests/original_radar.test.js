@@ -1,15 +1,16 @@
 'use strict';
 // Synthetic protocol fixtures and in-memory writers only. Never opens a serial port,
-// requests hardware, performs network I/O, or transmits RF. rfEnabled is changed only
-// inside these mock sessions to exercise the otherwise-paused start control.
+// requests hardware, performs network I/O, or transmits RF. A synthetic approved
+// policy is supplied only inside mock sessions to exercise gated start controls.
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync(require.resolve('../original_radar.js'),'utf8');
 const {PROTOCOL,validate,Decoder,Session}=require('../original_radar.js');
 const tests=[];const test=(name,run)=>tests.push({name,run});
+const TEST_POLICY=Object.freeze({approved:true,firmwareVersion:'0.2.1-rc1',buildId:'synthetic-test-only-build',selftestVersion:1,maxSeconds:5});
 const clone=x=>JSON.parse(JSON.stringify(x));
 const wire=(r,eol='\n')=>new TextEncoder().encode(JSON.stringify(r)+eol);
 const ack=(command='status',extra={})=>({type:'ack',protocol:PROTOCOL,command,code:0,state:'idle',configured:true,...extra});
-const status=(extra={})=>({type:'status',protocol:PROTOCOL,state:'idle',configured:true,fault:0,frames:0,...extra});
+const status=(extra={})=>({type:'status',protocol:PROTOCOL,state:'idle',configured:true,fault:0,frames:0,capture_fault:0,rf_fault:0,rf_error:0,deadline_misses:0,firmware_version:TEST_POLICY.firmwareVersion,build_id:TEST_POLICY.buildId,selftest_version:TEST_POLICY.selftestVersion,selftest_ok:true,selftest_mask:0,...extra});
 const identity=(extra={})=>({type:'identity',protocol:PROTOCOL,app:'original-radar-sensing',version:'0.2.0',baud:115200,sensing:true,classifier:false,...extra});
 const detection=(extra={})=>({range_m:2.34,velocity_mps:0,power:100,phasors:[[10,0],[10,0],[10,0],[10,0]],sensor_xyz_m:[0,2.34,0],world_xyz_m:null,spatial_flags:3,activity:null,...extra});
 const frame=(extra={})=>({type:'frame',protocol:PROTOCOL,sequence:0,timestamp_us:1234000,complete:true,missed_frames:0,capture_fault:0,quality:44,frame_events:1,processing_us:14000,previous_tx_us:85000,deadline_misses:0,mount:{bracket_top_m:2,down_tilt_deg:15,antenna_offset_m:null,antenna_height_m:null,world_height_valid:false},range_bin_m:0.195,velocity_bin_mps:0.305,profile_energy:[150,120,30],detected_count:1,count:1,truncated:false,detections:[detection()],...extra});
@@ -20,7 +21,7 @@ function mock(options={}){
  const context={module:{exports:{}},TextEncoder,TextDecoder,Uint8Array,Buffer,Date,JSON,Number,Math,Error,Object,Array,String,Promise,
   setTimeout(fn,delay){const id=next++;timers.set(id,{fn,at:time+delay});return id;},clearTimeout(id){timers.delete(id);}};
  vm.runInNewContext(source,context,{filename:'original_radar.js'});
- const s=new context.module.exports.Session({now:()=>time,timeoutMs:50,setUnconfirmed:value=>uncertainty.push(value),...options});
+ const s=new context.module.exports.Session({now:()=>time,timeoutMs:50,setUnconfirmed:value=>uncertainty.push(value),rfPolicy:TEST_POLICY,...options});
  const m={s,writes,timers,uncertainty,respond:null,feed:r=>s.ingest(wire(r)),advance:async delta=>{time+=delta;for(const[id,t]of Array.from(timers)){if(t.at<=time){timers.delete(id);t.fn();}}await flush();}};
  m.writer=async bytes=>{const text=new TextDecoder().decode(bytes);writes.push(text);if(m.respond)await m.respond(text.trim(),m);};s.attach(m.writer);return m;
 }
@@ -99,22 +100,22 @@ test('A frame between idle status and ACK prevents stale idle clearing uncertain
  const m=mock({unconfirmed:true}),p=m.s.status(),rejected=assert.rejects(p,/State changed after status/);await flush();m.feed(status());m.feed(frame());m.feed(ack('status',{state:'running'}));await rejected;assert.equal(m.s.state,'running');assert.equal(m.s.unconfirmed,true);
 });
 test('Configure is serialized, acknowledged, non-RF and confirmed by final status',async()=>{
- const m=auto(mock());await confirmed(m);m.writes.length=0;await m.s.configure(60);assert.deepEqual(m.writes,['orConfig 1\n','profile room64_v1\n','mount 1219 0 unknown\n','detect 4 30 64 8\n','session 60\n','commit\n','status\n']);assert.equal(m.s.configured,true);assert.equal(m.s.seconds,60);assert.equal(m.s.state,'idle');assert.equal(m.s.unconfirmed,false);assert.equal(m.s.busy,false);assert.equal(m.s.events.some(e=>e.type==='configured'),true);assert.equal(m.writes.some(x=>x==='start\n'),false);
+ const m=auto(mock());await confirmed(m);m.writes.length=0;await m.s.configure(5);assert.deepEqual(m.writes,['orConfig 1\n','profile room64_v1\n','mount 1219 0 unknown\n','detect 4 30 64 8\n','session 5\n','commit\n','status\n']);assert.equal(m.s.configured,true);assert.equal(m.s.seconds,5);assert.equal(m.s.state,'idle');assert.equal(m.s.unconfirmed,false);assert.equal(m.s.busy,false);assert.equal(m.s.events.some(e=>e.type==='configured'),true);assert.equal(m.writes.some(x=>x==='start\n'),false);
 });
-test('Configure accepts only finite integer durations 1 through 600',async()=>{
- const m=auto(mock());await confirmed(m);m.writes.length=0;for(const value of [0,601,1.5,NaN,Infinity,'60',null])await assert.rejects(m.s.configure(value),/integer/);assert.deepEqual(m.writes,[]);await m.s.configure(1);await m.s.configure(600);
+test('Configure accepts only finite integer durations 1 through 5',async()=>{
+ const m=auto(mock());await confirmed(m);m.writes.length=0;for(const value of [0,6,600,601,1.5,NaN,Infinity,'5',null])await assert.rejects(m.s.configure(value),/integer/);assert.deepEqual(m.writes,[]);await m.s.status();await m.s.configure(1);await m.s.configure(5);
 });
 test('Configure refuses unknown/running/unconfirmed state without sending commands',async()=>{
- for(const extra of [{state:'unknown'},{state:'running'},{state:'idle',unconfirmed:true}]){const m=mock();Object.assign(m.s,extra);await assert.rejects(m.s.configure(60),/confirm idle/);assert.deepEqual(m.writes,[]);}
+ for(const extra of [{state:'unknown'},{state:'running'},{state:'idle',unconfirmed:true}]){const m=mock();Object.assign(m.s,extra);await assert.rejects(m.s.configure(5),/before Configure/);assert.deepEqual(m.writes,[]);}
 });
 test('Configure halts at rejection and never commits or starts',async()=>{
- const m=auto(mock());await confirmed(m);m.writes.length=0;m.respond=text=>m.feed(ack(text.split(' ')[0],{code:text.startsWith('mount')?-3:0}));await assert.rejects(m.s.configure(60),/rejected/);assert.deepEqual(m.writes,['orConfig 1\n','profile room64_v1\n','mount 1219 0 unknown\n']);assert.equal(m.s.busy,false);assert.equal(m.s.configured,false);
+ const m=auto(mock());await confirmed(m);m.writes.length=0;m.respond=text=>m.feed(ack(text.split(' ')[0],{code:text.startsWith('mount')?-3:0}));await assert.rejects(m.s.configure(5),/rejected/);assert.deepEqual(m.writes,['orConfig 1\n','profile room64_v1\n','mount 1219 0 unknown\n']);assert.equal(m.s.busy,false);assert.equal(m.s.configured,false);
 });
 test('Configure does not succeed when committed status is false or faulted',async()=>{
- for(const bad of [{configured:false},{fault:2},{state:'running'}]){const m=auto(mock());await confirmed(m);m.respond=text=>{m.feed(ack(text.split(' ')[0],text==='status'?bad:{}));if(text==='status')m.feed(status(bad));};await assert.rejects(m.s.configure(60),/not confirmed/);assert.equal(m.s.busy,false);assert.equal(m.s.events.some(e=>e.type==='configured'),false);}
+ for(const bad of [{configured:false},{fault:2},{state:'running'}]){const m=auto(mock());await confirmed(m);m.respond=text=>{m.feed(ack(text.split(' ')[0],text==='status'?bad:{}));if(text==='status')m.feed(status(bad));};await assert.rejects(m.s.configure(5),bad.configured===false?/not confirmed/:/Configuration interrupted/);assert.equal(m.s.busy,false);assert.equal(m.s.events.some(e=>e.type==='configured'),false);}
 });
 test('Start remains paused by default even after successful configuration',async()=>{
- const m=auto(mock());await confirmed(m);await m.s.configure(30);m.writes.length=0;await assert.rejects(m.s.start(),/RF tests paused/);assert.deepEqual(m.writes,[]);assert.equal(m.s.epoch,0);
+ const m=auto(mock());await confirmed(m);await m.s.configure(5);m.writes.length=0;await assert.rejects(m.s.start(),/RF tests paused/);assert.deepEqual(m.writes,[]);assert.equal(m.s.epoch,0);
 });
 test('Mock-only start needs confirmed idle/configured and increments recording epoch',async()=>{
  const m=auto(mock({rfEnabled:true}));await assert.rejects(m.s.start(),/confirmed idle/);assert.deepEqual(m.writes,[]);await confirmed(m);await m.s.configure(5);m.s.lastSequence=91;m.writes.length=0;await m.s.start();assert.deepEqual(m.writes,['start\n','status\n']);assert.equal(m.s.state,'running');assert.equal(m.s.unconfirmed,true);assert.equal(m.s.epoch,1);assert.equal(m.s.lastSequence,null);assert.equal(m.s.busy,false);assert.equal(m.s.events.some(e=>e.type==='running_confirmed'),true);await assert.rejects(m.s.start(),/confirmed idle/);
@@ -123,7 +124,7 @@ test('Mock start rejection stays uncertain and does not issue another start',asy
  const m=auto(mock({rfEnabled:true}));await confirmed(m);await m.s.configure(5);m.writes.length=0;m.respond=text=>m.feed(ack(text,{code:-2}));await assert.rejects(m.s.start(),/rejected/);assert.deepEqual(m.writes,['start\n']);assert.equal(m.s.unconfirmed,true);assert.equal(m.s.busy,false);
 });
 test('Mock start fails unless status confirms running without faults',async()=>{
- const m=auto(mock({rfEnabled:true}),{running:'starting'});await confirmed(m);await m.s.configure(5);await assert.rejects(m.s.start(),/Running state not confirmed/);assert.equal(m.s.unconfirmed,true);assert.equal(m.s.events.some(e=>e.type==='running_confirmed'),false);
+ const m=auto(mock({rfEnabled:true}),{running:'starting'});await confirmed(m);await m.s.configure(5);await assert.rejects(m.s.start(),/Running state and accepted self-test not confirmed/);assert.equal(m.s.unconfirmed,true);assert.equal(m.s.events.some(e=>e.type==='running_confirmed'),false);
 });
 test('Stop verifies an idle status before reporting confirmation',async()=>{
  const m=auto(mock());m.s.state='running';m.s.unconfirmed=true;await m.s.stop();assert.deepEqual(m.writes,['stop\n','status\n']);assert.equal(m.s.state,'idle');assert.equal(m.s.unconfirmed,false);assert.equal(m.s.events.some(e=>e.type==='stopped_confirmed'),true);assert.equal(m.s.busy,false);
@@ -133,13 +134,13 @@ test('Rejected stop and running/fault status keep stop uncertain',async()=>{
  const m=mock();m.respond=text=>m.feed(ack(text,{code:-1}));await assert.rejects(m.s.stop(),/rejected/);assert.equal(m.s.unconfirmed,true);assert.deepEqual(m.writes,['stop\n']);
 });
 test('Busy controls reject repeated operations without sending extra commands',async()=>{
- const m=mock(),p=m.s.status(),rejected=assert.rejects(p,/Cancelled/);await flush();await assert.rejects(m.s.status(),/progress/);await assert.rejects(m.s.stop(),/Cancel/);await assert.rejects(m.s.configure(60),/confirm idle/);assert.deepEqual(m.writes,['status\n']);m.s.cancel();await rejected;assert.equal(m.s.busy,false);assert.equal(m.s.desynced,true);
+ const m=mock(),p=m.s.status(),rejected=assert.rejects(p,/Cancelled/);await flush();await assert.rejects(m.s.status(),/progress/);await assert.rejects(m.s.stop(),/Cancel/);await assert.rejects(m.s.configure(5),/before Configure/);assert.deepEqual(m.writes,['status\n']);m.s.cancel();await rejected;assert.equal(m.s.busy,false);assert.equal(m.s.desynced,true);
 });
 test('Timeout is deterministic, clears pending work, and gates unsafe commands',async()=>{
  const m=mock(),p=m.s.command('commit'),rejected=assert.rejects(p,/No matching acknowledged response/);await flush();await m.advance(49);assert.equal(m.s.pending.command,'commit');await m.advance(1);await rejected;assert.equal(m.s.pending,null);assert.equal(m.s.desynced,true);assert.equal(m.timers.size,0);await assert.rejects(m.s.command('orConfig 1'),/reconnect/);m.feed(ack('commit'));assert.equal(m.s.events.at(-1).type,'unmatched_ack');auto(m);await assert.rejects(m.s.status(),/desynchronized.*reconnect/);assert.equal(m.s.unconfirmed,true);assert.equal(m.s.desynced,true);await assert.rejects(m.s.command('commit'),/reconnect/);
 });
 test('Mock start timeout remains uncertain through disconnect and fresh session state',async()=>{
- const m=auto(mock({rfEnabled:true}));await confirmed(m);await m.s.configure(5);m.respond=null;const p=m.s.start(),rejected=assert.rejects(p,/No matching/);await flush();await m.advance(50);await rejected;assert.equal(m.s.unconfirmed,true);m.s.detach('lost port');assert.equal(m.s.connected,false);assert.equal(m.s.state,'unknown');assert.equal(m.s.configured,false);m.s.attach(m.writer);assert.equal(m.s.desynced,false);assert.equal(m.s.unconfirmed,true);await assert.rejects(m.s.configure(5),/confirm idle/);auto(m);await m.s.status();assert.equal(m.s.unconfirmed,false);
+ const m=auto(mock({rfEnabled:true}));await confirmed(m);await m.s.configure(5);m.respond=null;const p=m.s.start(),rejected=assert.rejects(p,/No matching/);await flush();await m.advance(50);await rejected;assert.equal(m.s.unconfirmed,true);m.s.detach('lost port');assert.equal(m.s.connected,false);assert.equal(m.s.state,'unknown');assert.equal(m.s.configured,false);m.s.attach(m.writer);assert.equal(m.s.desynced,false);assert.equal(m.s.unconfirmed,true);await assert.rejects(m.s.configure(5),/before Configure/);auto(m);await m.s.status();assert.equal(m.s.unconfirmed,false);
 });
 test('Cancellation rejects pending command, keeps RF uncertainty, and prevents continuation',async()=>{
  const m=auto(mock({rfEnabled:true}));await confirmed(m);await m.s.configure(5);m.writes.length=0;m.respond=null;const p=m.s.start(),rejected=assert.rejects(p,/Cancelled/);await flush();m.s.cancel();await rejected;assert.equal(m.s.unconfirmed,true);assert.equal(m.s.desynced,true);assert.equal(m.s.busy,false);assert.deepEqual(m.writes,['start\n']);assert.equal(m.timers.size,0);auto(m);await assert.rejects(m.s.stop(),/Idle not confirmed/);assert.equal(m.s.unconfirmed,true);m.s.detach();m.s.attach(m.writer);await m.s.status();assert.equal(m.s.unconfirmed,false);
@@ -182,7 +183,7 @@ test('Raw capture copies input and rawBytes output and keeps malformed/partial b
  const m=mock(),bytes=Buffer.concat([wire(identity()),Buffer.from('not-json\n'),wire(frame()),Buffer.from('{partial')]),original=Buffer.from(bytes);m.s.ingest(bytes);bytes.fill(0);const exported=m.s.rawBytes();assert.deepEqual(Buffer.from(exported),original);exported.fill(9);assert.deepEqual(Buffer.from(m.s.rawBytes()),original);assert.equal(m.s.frames,1);assert.equal(m.s.issues.length,1);assert.equal(m.s.snapshot().buffered_bytes,8);
 });
 test('Snapshot is isolated and exports exact base64 raw bytes with explicit limitations',()=>{
- const m=mock(),bytes=Buffer.concat([wire(identity()),wire(frame()),Buffer.from([0,255,0])]);m.s.ingest(bytes);m.s.annotate('activity','sitting');const a=m.s.snapshot();assert.equal(a.schema,'original-radar-capture');assert.equal(a.version,1);assert.equal(a.protocol,PROTOCOL);assert.equal(a.raw_encoding,'base64');assert.deepEqual(Buffer.from(a.raw_jsonl_bytes,'base64'),bytes);assert.equal(a.raw_byte_count,bytes.length);assert.deepEqual(clone(a.serial),{baud:115200,dataBits:8,stopBits:1,parity:'none',flowControl:'none'});assert.equal(a.limits.rf_tests_paused,true);assert.equal(a.limits.activity_inference,false);assert.equal(a.limits.people_count_inference,false);assert.match(a.limits.host_clock,/unsynchronized/);assert.match(a.limits.license_status,/not granted/);a.identity.version='mutated';a.annotations[0].label='walking';a.events[0].type='changed';a.limits.rf_tests_paused=false;const b=m.s.snapshot();assert.equal(b.identity.version,'0.2.0');assert.equal(b.annotations[0].label,'sitting');assert.equal(b.events[0].type,'connected');assert.equal(b.limits.rf_tests_paused,true);assert.equal(m.s.connected,true);
+ const m=mock({rfPolicy:null}),bytes=Buffer.concat([wire(identity()),wire(frame()),Buffer.from([0,255,0])]);m.s.ingest(bytes);m.s.annotate('activity','sitting');const a=m.s.snapshot();assert.equal(a.schema,'original-radar-capture');assert.equal(a.version,1);assert.equal(a.protocol,PROTOCOL);assert.equal(a.raw_encoding,'base64');assert.deepEqual(Buffer.from(a.raw_jsonl_bytes,'base64'),bytes);assert.equal(a.raw_byte_count,bytes.length);assert.deepEqual(clone(a.serial),{baud:115200,dataBits:8,stopBits:1,parity:'none',flowControl:'none'});assert.equal(a.limits.rf_tests_paused,true);assert.equal(a.limits.activity_inference,false);assert.equal(a.limits.people_count_inference,false);assert.match(a.limits.host_clock,/unsynchronized/);assert.match(a.limits.license_status,/not granted/);a.identity.version='mutated';a.annotations[0].label='walking';a.events[0].type='changed';a.limits.rf_tests_paused=false;const b=m.s.snapshot();assert.equal(b.identity.version,'0.2.0');assert.equal(b.annotations[0].label,'sitting');assert.equal(b.events[0].type,'connected');assert.equal(b.limits.rf_tests_paused,true);assert.equal(m.s.connected,true);
 });
 test('One-byte chunks reconstruct exactly across a fixed 64-KiB raw block boundary',()=>{
  const length=65536+17,expected=Uint8Array.from({length},(_,i)=>i%256),input=new Uint8Array(1),s=new Session({now:()=>1000});for(let i=0;i<expected.length;i++){input[0]=expected[i];s.ingest(input);}input[0]=123;assert.equal(s.bytes,length);assert.equal(s.raw.length,2);assert.deepEqual(s.raw.map(block=>block.length),[65536,65536]);assert.deepEqual(Buffer.from(s.rawBytes()),Buffer.from(expected));const out=s.snapshot();assert.equal(out.raw_byte_count,length);assert.deepEqual(Buffer.from(out.raw_jsonl_bytes,'base64'),Buffer.from(expected));assert.equal(out.unsaved_byte_count,0);assert.equal(out.capture_overflow,false);const returned=s.rawBytes();returned.fill(0);assert.deepEqual(Buffer.from(s.rawBytes()),Buffer.from(expected));

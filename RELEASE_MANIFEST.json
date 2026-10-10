@@ -1,23 +1,37 @@
 {
-  "release": "v0.7.0-preview.1",
+  "release": "v0.7.0-preview.2",
   "date_utc": "2026-10-10",
-  "status": "RF-disabled original JSON protocol pre-release for source and mock-workflow review",
+  "base_commit": "1c2e56ec9c301f6e6562dac02fd3937566fcb76e",
+  "status": "Reviewed exact-build manual 1\u20135 second bring-up preview; no general hardware validation",
   "target_board": "IWR6843AOPEVM / IWR6843AOP",
   "firmware_protocol": "original-radar-v1",
-  "rf_start_enabled": false,
-  "rf_acceptance": "blocked pending corrected spatial estimator firmware acceptance",
+  "rf_start_policy": "Conditional manual only; queried accepted-build self-test/fault-free idle and current-connection bounded configuration required",
+  "accepted_firmware": {
+    "version": "0.2.1-rc1",
+    "build_id": "846a3ae3184aa5d26e5d0ea3",
+    "selftest_version": 1,
+    "max_session_seconds": 5,
+    "separate_binary_sha256": "d534e6b6da25520d911c25bb23593bc5a086becce962186c5e4ffa6cc38d19ec",
+    "separate_binary_size_bytes": 342532
+  },
+  "legacy_v020_rf_start_enabled": false,
+  "longer_runs_enabled": false,
   "vendor_binary_or_config_contents_included": false,
   "user_capture_contents_included": false,
   "private_research_contents_included": false,
-  "license": "unchanged source-available project LICENSE; no-resale and third-party restrictions preserved",
-  "deterministic_test_suites": 21,
+  "current_main_mounting_material_preserved": true,
+  "license": "Unchanged source-available LICENSE; no-resale and third-party restrictions preserved",
+  "deterministic_test_suites": 22,
   "original_controller_tests": 69,
-  "original_mock_ui_tests": 21,
-  "javascript_syntax_files": 45,
+  "original_mock_ui_tests": 40,
+  "accepted_firmware_gate_tests": 151,
+  "javascript_syntax_files": 47,
+  "independent_review": "No remaining blocker for narrow conditional manual bring-up policy; reviewed executable hashes retained",
   "rendered_browser_verified": false,
-  "rendered_browser_limitation": "Native Playwright launch blocked by Unix socket permission; existing cloud browser could not reach executor-local server (ERR_CONNECTION_REFUSED). Visual QA not performed.",
+  "rendered_browser_limitation": "Not performed; prior native Chromium Unix socket launch restriction and separate cloud-browser localhost connection refusal. No bypass attempted.",
   "hardware_or_rf_verification": false,
-  "dataset_license_status": "capture rights not granted by source license",
+  "onboard_selftest_receipt_observed": false,
+  "dataset_license_status": "Capture rights not granted by source license",
   "manifest_excludes_itself": true,
   "files": [
     {
@@ -27,8 +41,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size_bytes": 11268,
-      "sha256": "94d703bd56c86681de9405838cf402f435222e8dfeaa45862e43c1116efecdb9"
+      "size_bytes": 12278,
+      "sha256": "1e990dc59d55e7d46f8993f79bbfe8284baf3f0c4b539a9a29858a7191db2ffb"
     },
     {
       "path": "CHANGELOG.txt",
@@ -47,8 +61,8 @@
     },
     {
       "path": "DEVELOPING.md",
-      "size_bytes": 18384,
-      "sha256": "fa75548b873835f0e697c687bdd238b1e22a5434f8bb2ede6a14cf87bea9a84c"
+      "size_bytes": 19383,
+      "sha256": "adea217a77eb454b9ff3764aeb3a882687de041f6acfbe31a27fa718a96c191d"
     },
     {
       "path": "DOWNLOADS.md",
@@ -87,8 +101,8 @@
     },
     {
       "path": "ORIGINAL_RADAR.md",
-      "size_bytes": 6896,
-      "sha256": "37c33fa300bc613102a76cad9f77c3da8af5e0781ad632f37c2b437342197c58"
+      "size_bytes": 9002,
+      "sha256": "6450d0b8ca7df1bd816bb087f9c5b7b98d99fbf33bebeaa351a4e8241340613e"
     },
     {
       "path": "PROTOCOL_EVIDENCE.md",
@@ -102,13 +116,13 @@
     },
     {
       "path": "QUICKSTART.md",
-      "size_bytes": 12805,
-      "sha256": "cb384b49c3c3f7669639d4d7c8adf66dd754ce53ae888180b56b6b04fb86bf3e"
+      "size_bytes": 13045,
+      "sha256": "dc1e10096376db78c1246ee9dc75d581d10816e58b011c4686c66eaf144b1f97"
     },
     {
       "path": "README.md",
-      "size_bytes": 16355,
-      "sha256": "649d38f8214ab29cb2883ed760159e6ebd7fede14069015748f0b8a162749077"
+      "size_bytes": 16565,
+      "sha256": "b553a6689cd179285a7520187c816820deef48bdaf404f63a67924dba15fc2a9"
     },
     {
       "path": "RECORDER_API.md",
@@ -119,6 +133,11 @@
       "path": "RELEASE_NOTES_v0.7.0-preview.1.md",
       "size_bytes": 2994,
       "sha256": "12c586cb66d4ca0135a1287ddaa92d2771e5b5771585e010a4accb05863fd304"
+    },
+    {
+      "path": "RELEASE_NOTES_v0.7.0-preview.2.md",
+      "size_bytes": 1657,
+      "sha256": "770b28fbe48972c5260e80753accf367b446b5acac733de78594d250e46f203b"
     },
     {
       "path": "SHARED_MODULES.json",
@@ -132,8 +151,8 @@
     },
     {
       "path": "TEST_PLAN.md",
-      "size_bytes": 7679,
-      "sha256": "b661fc994641066af75503308c5d626496bddd2608b72b14e70c7cd60d369683"
+      "size_bytes": 8289,
+      "sha256": "7814f164de4c4e1fbd9602d4d93d63ac8732725de2857a9dce593da704d95f00"
     },
     {
       "path": "TROUBLESHOOTING.md",
@@ -147,8 +166,8 @@
     },
     {
       "path": "VERIFICATION.txt",
-      "size_bytes": 8868,
-      "sha256": "a2ba5635b3d92813f37c2c87e30c759ee0346926333fe76104e23002d7030175"
+      "size_bytes": 11380,
+      "sha256": "84cbf8c79961777340cc7b6c068eaad7a4667ea427e6e45f03311a4d69635846"
     },
     {
       "path": "app.js",
@@ -192,8 +211,8 @@
     },
     {
       "path": "index.html",
-      "size_bytes": 19255,
-      "sha256": "30a440588d96177e1f95e386498648f7dfad4491ac6636d9f106e39df2463d33"
+      "size_bytes": 19789,
+      "sha256": "d57b54d8af086c23534299370bfc0cacffe12bc5b39c48d21113f21657a3f5e2"
     },
     {
       "path": "legacy_panels.js",
@@ -236,14 +255,19 @@
       "sha256": "84feb45f3b6737b65def3477e62d039cce5b1764d59ce5cbbca2d7949fc5e0ec"
     },
     {
+      "path": "original_acceptance.js",
+      "size_bytes": 501,
+      "sha256": "42f8b6dc274a5c5ee0774df34eafc364a83211ab83e3b2b58e79cada45ce497e"
+    },
+    {
       "path": "original_panel.js",
-      "size_bytes": 8170,
-      "sha256": "0fda9a4bd847eb9d0bc90ec82965b1d06bd9ee85b5cfc70b123add5c4cbf73a4"
+      "size_bytes": 8946,
+      "sha256": "9aa4409c787b16e9e73eaaf19c6f6d95ef9fb184fc6c224f8db6745450212937"
     },
     {
       "path": "original_radar.js",
-      "size_bytes": 15767,
-      "sha256": "6557bc8492ce15cc6f6554e36972254e527e10e42023dccb4958cb58f9d76a22"
+      "size_bytes": 21178,
+      "sha256": "6d03927c0a4dbf2bae2d0ffc9a7a41cd291ad586f24ec5e86e165fd9265e554c"
     },
     {
       "path": "radar_protocol.js",
@@ -391,14 +415,19 @@
       "sha256": "faa32b96f14982b91e4fda2b5cc74f04f7dd83c5c32013110180a38b30f4eaf2"
     },
     {
+      "path": "tests/original_gate.test.js",
+      "size_bytes": 25245,
+      "sha256": "2e7f825a7840098f7d639f9d8ac21686ab58e812a9b404fa19e422763fd85806"
+    },
+    {
       "path": "tests/original_panel.test.js",
-      "size_bytes": 30193,
-      "sha256": "25816cdf3b042f90c76a71e3d7c77f37be19e1f4e3e3cda68f8c2939e02ed925"
+      "size_bytes": 41794,
+      "sha256": "daac70b9108294cc098412d45754494011d1139ba2532c398ebb1e2620411228"
     },
     {
       "path": "tests/original_radar.test.js",
-      "size_bytes": 39556,
-      "sha256": "f56322260b2647ced7f1474ae1243c5a6c2e31203c1cf004b3bdc231893497c6"
+      "size_bytes": 40042,
+      "sha256": "8659190f49c52b61a0bcee047b7dd49b8773dd9cd3207a552e342424a451949a"
     },
     {
       "path": "tests/protocol.test.js",
@@ -407,8 +436,8 @@
     },
     {
       "path": "tests/run-all.js",
-      "size_bytes": 682,
-      "sha256": "dbed82c5d878793cb7d6ccccf84bf6877c082d574fe1560dc8dca1d79d74d830"
+      "size_bytes": 698,
+      "sha256": "418a7a68c46df66ea3716a946def74c8c1a00968fd2ada02cc1e944da925bfe9"
     },
     {
       "path": "tests/scene.test.js",
@@ -450,6 +479,5 @@
       "size_bytes": 1306,
       "sha256": "638bcddf56eed6d3e3963d6bd5cb8a595343837a3e452742abcad3205cf8dafe"
     }
-  ],
-  "source_base_commit": "d1e5ea282a906663d710828d232a488249c4d729"
+  ]
 }

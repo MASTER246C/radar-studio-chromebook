@@ -1,4 +1,4 @@
-# v0.7.0-preview.1: original firmware preview
+# v0.7.0-preview.2: repaired-firmware bring-up gate
 
 Extract the complete ZIP into a new folder. Keep your existing v0.6 folder and
 private downloads separately. Run `./start-local.sh` (or
@@ -10,8 +10,11 @@ Select **Original radar v1 · JSON Lines · one port** for that already-flashed
 firmware, or keep **TI demos** for the existing workflow. The selector does not
 flash anything. Read [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md) first.
 
-**RF Start is disabled. Further RF tests are paused until corrected firmware has
-separate acceptance evidence.** This preview is not an instruction to perform
+**The first action is Query status only. Configure remains locked until the exact
+reviewed repaired build reports a passing boot self-test and fault-free idle.
+After successful current-connection Configure, a separate manual Start may run
+only 1–5 seconds. Old firmware and longer runs remain blocked. This is not general
+hardware validation.** This preview is not an instruction to perform
 another hardware run. Mock/synthetic verification does not validate accuracy.
 
 The older TI workflow instructions below remain applicable only to matching TI

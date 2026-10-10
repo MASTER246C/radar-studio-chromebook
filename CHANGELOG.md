@@ -1,3 +1,11 @@
+# v0.7.0-preview.2 — accepted-build bring-up gate
+
+- Separate from published preview1. Reviewed policy pins version 0.2.1-rc1/build 846a3ae3184aa5d26e5d0ea3 for manual 1–5 second bring-up only.
+- Query status is the first step: Configure itself requires an exact accepted build/self-test/fault-free idle receipt. Conditional manual Start additionally requires current-connection committed duration and exact accepted 0.2.1-rc1 identity/status, version-1 onboard self-test true/mask0, current-connection coherent status/ACK, and idle/configured/fault-free state.
+- UI and controller enforce 1–5 second bring-up sessions. Legacy v0.2.0 and longer runs stay disabled. Stop and Save remain separate manual controls.
+- Self-test receipts invalidate on connection/identity reset, errors, configuration changes and consumption; exports retain gate provenance separately from immutable raw bytes.
+- Onboard code self-test is not physical sensing or RF acceptance. No hardware test performed for this candidate.
+
 # v0.7.0-preview.1 — original-radar-v1 manual controls (2026-10-10)
 
 - Separate one-port JSON Lines workflow; original TI demos and offline ML remain available.

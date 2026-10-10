@@ -1,5 +1,5 @@
-> v0.7.0-preview.1: separate original-radar-v1 JSON Lines review workflow.
-> **RF Start is hard-disabled pending corrected-firmware acceptance.** See [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
+> v0.7.0-preview.2: select Original radar v1 for the single-port JSON workflow.
+> Only reviewed repaired build 846a3ae3184aa5d26e5d0ea3 (0.2.1-rc1), a fresh passing onboard self-test and current-connection bounded configuration can enable manual 1–5 second bring-up. Legacy firmware and longer runs stay blocked. This is not general hardware validation. See [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
 
 # Radar Studio Chromebook
 

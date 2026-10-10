@@ -245,3 +245,20 @@ USB/RF acceptance are separate. Start is hard-disabled in both UI and its
 production controller options. Do not lift this gate as a UI-only change; fixed
 firmware acceptance and an explicit review are required. See ORIGINAL_RADAR.md
 for serial correlation limits, raw connection boundaries and bounded histories.
+
+
+## v0.7.0-preview.2 conditional bring-up gate
+
+The separate reviewed `original_acceptance.js` policy pins firmware version
+0.2.1-rc1 and source/toolchain build ID 846a3ae3184aa5d26e5d0ea3. It approves only
+manual 1–5 second bring-up, not general or physical sensing validation. Configure
+requires a current exact-build/self-test/fault-free idle receipt; Start also
+requires a successful current-connection/boot bounded configuration. Receipt,
+configuration generation and latest evidence are checked again immediately before
+writing each staged command and Start. Identity/connection changes cannot rearm
+using an old duration. A visible duration edit requires configuration again.
+
+The aggregate runner now has 22 suites: the original 19 plus controller (69),
+mock panel (40) and accepted-build gate (151) cases. All are deterministic and
+synthetic. Source SHA review, test success and firmware emulator success do not
+replace actual board self-test receipts or authorize longer hardware runs.

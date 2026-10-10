@@ -98,3 +98,14 @@ Coverage metrics describe derived windows. They cannot count bytes/frames that
 never reached or were not retained by the recorder. Review exported source
 `losses` / `captureStatus` separately. The first meaningful user test is a small
 private real capture, reconstruction/quality check, and explicit human labels.
+
+
+## Preview2 repaired-build gate regressions
+
+Run `node tests/run-all.js` for all 22 deterministic suites. The added gate suite
+covers exact version/build ID, strict self-test and fault fields, status-only
+first contact, missing/legacy metadata, configuration provenance across resets,
+pre-dispatch evidence changes, commit-completion races, edited durations, limits
+1 and 5 versus 6/600, cancellations and repeated manual controls. Mock transport
+is mandatory for automated Start tests. Never substitute real serial hardware
+or imply that these fixtures establish physical accuracy or longer-run acceptance.

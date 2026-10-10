@@ -7,19 +7,44 @@ before switching. This selection never flashes or changes the board firmware.
 
 ## Important acceptance boundary
 
-**RF tests remain paused. Start is deliberately disabled in this build.** A
-confirmed static defect exists in the distributed spatial estimator. A corrected
-firmware build and its separate acceptance evidence are required before enabling
-new RF sessions. The controller's Start lifecycle is tested with synthetic mock
-serial responses only. No real hardware, RF start, flashing or longer-run
-acceptance was performed for this dashboard change.
+This preview2 candidate adds a narrowly scoped repaired-firmware bring-up gate.
+The reviewed policy accepts only version **0.2.1-rc1**, immutable application/
+toolchain build ID **846a3ae3184aa5d26e5d0ea3**, for manual **1–5 second bring-up**.
+It never enables legacy v0.2.0 or general/longer data collection. The corresponding
+reviewed BIN is 342,532 bytes with SHA-256
+`d534e6b6da25520d911c25bb23593bc5a086becce962186c5e4ffa6cc38d19ec`.
+The BIN hash is separate from the firmware's source/toolchain build ID.
 
-The original firmware does not stream TI TLV and does not provide a validated
-sitting/standing/walking classifier. No person count, posture, activity or spatial
-accuracy is inferred. JSON fields remain raw exploratory observations. Even a
-complete frame with zero acquisition fault is not proof of physical accuracy.
-Top-three output truncation is visibly flagged; it must not be mistaken for a
-complete set of targets. Original output never enters the TI scene or ML engine.
+Start can unlock only when all of these are true:
+
+- Connected and coherently acknowledged idle, configured and fault-free state,
+  with no unconfirmed stop, command desynchronization or capture overflow.
+- Exactly the approved firmware version `0.2.1-rc1` and immutable application/
+  toolchain `build_id` in a current explicit status response.
+- `selftest_version:1`, `selftest_ok:true` and `selftest_mask:0` in that same
+  response, with fault, capture_fault, rf_fault, rf_error and deadline_misses all
+  exactly zero, followed by its coherent matching successful status ACK. An observed
+  identity must agree with version and build ID. Missing/old/mismatched fields
+  never count as a pass.
+- A freshly configured **1–5 second** session, followed by a separate user click
+  on Start. The underlying firmware's 600-second capability does not enable
+  longer sessions in this preview.
+
+The self-test runs at boot after UART opens and before radio/acquisition init.
+Status reports that boot's cached result; querying it does not rerun the test or
+start RF. Failure keeps the command UART available and blocks RF initialization/
+start in firmware. This checks analytic spatial/code cases only. It does not
+validate physical sensing, RF acquisition, phase/axis calibration, activity or
+world height. The UI does not render spatial coordinates or infer person counts.
+
+The receipt is volatile and connection-bound. Disconnect, identity/reboot,
+staged configuration changes, malformed input, command errors/cancellation or observed
+running data invalidate it. Each manual Start consumes its receipt. A fresh
+successful status can establish a new one; there is no automatic RF restart.
+
+The original firmware is JSON Lines, not TI TLV. Quality flags and unknown values
+remain raw observations. The v0.2.0 spatial-estimator defect remains explicit;
+repaired code/self-test results do not establish end-to-end physical accuracy.
 
 ## Local workflow
 
@@ -29,15 +54,21 @@ complete set of targets. Original output never enters the TI scene or ML engine.
    control**. No commands are sent on connection. Query status explicitly. Both
    the status object and matching successful status ACK are required. An idle,
    fault-free reply clears the unconfirmed-stop warning.
-3. Configure only sends, one at a time with matching successful ACKs:
+3. Configure is locked until the exact accepted-build/self-test/fault-free idle
+   status receipt has been observed. It then sends, one at a time with matching
+   successful ACKs:
    `orConfig 1`, `profile room64_v1`, `mount 1219 0 unknown`,
    `detect 4 30 64 8`, `session N`, `commit`, followed by a status query.
-   N must be an integer 1–600; default is 5 seconds. Mount describes the supplied
-   bracket-top height 1.219 m and 0° tilt, with unknown antenna offset. It is not
+   N must be an integer 1–5 in this bring-up preview; default is 5 seconds. Mount describes the supplied
+   bracket-top height 1.219 m and a configured test tilt of 0°, with unknown antenna
+   offset. Actual physical tilt remains unconfirmed. It is not
    a world-coordinate calibration. Commit does not start RF.
-4. Start remains unavailable pending firmware acceptance. There is no UI bypass.
-   The bounded controller implementation will require confirmed idle/configured
-   state and a separate manual start action when that gate is reviewed later.
+4. Start unlocks only after a successful bounded Configure on this connection/
+   boot and a fresh matching repaired-build/self-test status receipt. The button
+   names the committed duration. Editing it requires Configure again. A reconnect
+   or identity reset requires status, then Configure again; configured:true alone
+   cannot establish the board's actual duration. Start is a separate manual click.
+   Old firmware and longer runs remain blocked.
 5. Stop requests RF stop and then asks for fresh status. A stop ACK alone, a fault,
    a timeout or stopping/running status never counts as confirmed stopped. If it
    cannot confirm idle, the warning remains: use Stop/query again or reconnect.
@@ -73,7 +104,9 @@ The `original-radar-capture` version 1 JSON includes:
   these offsets before replaying if a disconnect left a partial line.
 - Command events, host timestamps, firmware identity if received, observed state,
   unconfirmed-stop flag, frames, quality issues and annotations.
-- Explicit spatial-defect/RF-pause, clock/timing and dataset-rights limitations.
+- The pinned RF acceptance policy, reported boot self-test, volatile receipt and
+  consumed-gate event for each requested run. These never rewrite the raw bytes.
+- Explicit bring-up-only, clock/timing, physical-validation and dataset-rights limitations.
 
 Decode base64 to recover the original JSONL stream. Re-serializing parsed sensor
 objects is not an equivalent archival copy. The raw JSONL download preserves

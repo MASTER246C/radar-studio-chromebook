@@ -22,15 +22,15 @@ class Decoder{
  finish(){if(this.line.length||this.discard)this.onIssue('Incomplete final JSONL record',this.lines+1);this.line=[];this.discard=false;}
 }
 class Session{
- constructor({write,onChange=()=>{},setUnconfirmed=()=>{},unconfirmed=false,timeoutMs=5000,rfEnabled=false,now=()=>Date.now(),maxBytes=8*1024*1024}={}){
-  Object.assign(this,{write,onChange,setUnconfirmed,unconfirmed,timeoutMs,rfEnabled,now,maxBytes});this.connected=false;this.state='unknown';this.configured=false;this.pending=null;this.busy=false;this.cancelled=false;this.desynced=false;this.raw=[];this.bytes=0;this.issues=[];this.events=[];this.droppedIssues=0;this.droppedEvents=0;this.annotations=[];this.frames=0;this.lastFrame=null;this.identity=null;this.lastSequence=null;this.epoch=0;this.connectionEpoch=0;this.openTransition=null;this.overflow=false;this.unsavedBytes=0;this.createdAt=now();this.stateRevision=0;this.decoder=this.newDecoder();
+ constructor({write,onChange=()=>{},setUnconfirmed=()=>{},unconfirmed=false,timeoutMs=5000,rfEnabled=false,rfPolicy=null,now=()=>Date.now(),maxBytes=8*1024*1024}={}){
+  this.rfPolicy=Object.freeze({...rfPolicy});this.selftestReceipt=null;this.lastSelftestReport=null;Object.assign(this,{write,onChange,setUnconfirmed,unconfirmed,timeoutMs,rfEnabled,now,maxBytes});this.connected=false;this.state='unknown';this.configured=false;this.pending=null;this.busy=false;this.cancelled=false;this.desynced=false;this.raw=[];this.bytes=0;this.issues=[];this.events=[];this.droppedIssues=0;this.droppedEvents=0;this.annotations=[];this.frames=0;this.lastFrame=null;this.identity=null;this.lastSequence=null;this.epoch=0;this.connectionEpoch=0;this.openTransition=null;this.overflow=false;this.unsavedBytes=0;this.createdAt=now();this.stateRevision=0;this.bootGeneration=0;this.configurationGeneration=0;this.decoder=this.newDecoder();
  }
  newDecoder(){return new Decoder((r,line)=>this.record(r,line),(message,line)=>this.issue(message,{line}));}
  event(type,detail={}){if(this.events.length>=2048){this.droppedEvents++;this.onChange();return;}this.events.push({type,host_utc_ms:this.now(),epoch:this.epoch,connection_epoch:this.connectionEpoch,raw_byte_offset:this.bytes,observed_byte_offset:this.bytes+this.unsavedBytes,...detail});this.onChange();}
- issue(message,detail={}){if(this.issues.length>=2048){this.droppedIssues++;this.onChange();return;}this.issues.push({message,host_utc_ms:this.now(),epoch:this.epoch,connection_epoch:this.connectionEpoch,raw_byte_offset:this.bytes,observed_byte_offset:this.bytes+this.unsavedBytes,...detail});this.onChange();}
- uncertain(value){this.unconfirmed=value;this.setUnconfirmed(value);this.onChange();}
- attach(write){if(this.connected)throw Error('Already connected');this.write=write;this.connectionEpoch++;this.lastSequence=null;this.decoder=this.newDecoder();this.connected=true;this.lastFrame=null;this.state='unknown';this.configured=false;this.desynced=false;this.uncertain(true);this.event('connected');}
- detach(reason='disconnected'){
+ issue(message,detail={}){this.selftestReceipt=null;this.stateRevision++;if(this.issues.length>=2048){this.droppedIssues++;this.onChange();return;}this.issues.push({message,host_utc_ms:this.now(),epoch:this.epoch,connection_epoch:this.connectionEpoch,raw_byte_offset:this.bytes,observed_byte_offset:this.bytes+this.unsavedBytes,...detail});this.onChange();}
+ uncertain(value){if(value)this.selftestReceipt=null;this.unconfirmed=value;this.setUnconfirmed(value);this.onChange();}
+ attach(write){if(this.connected)throw Error('Already connected');this.write=write;this.connectionEpoch++;this.bootGeneration++;this.seconds=null;this.selftestReceipt=null;this.lastSelftestReport=null;this.identity=null;this.lastSequence=null;this.decoder=this.newDecoder();this.connected=true;this.lastFrame=null;this.state='unknown';this.configured=false;this.desynced=false;this.uncertain(true);this.event('connected');}
+ detach(reason='disconnected'){this.bootGeneration++;this.seconds=null;this.selftestReceipt=null;
   if(['running','starting','stopping'].includes(this.state)||this.pending?.command==='start'||this.unconfirmed)this.uncertain(true);
   this.connected=false;this.configured=false;this.decoder.finish();if(this.pending)this.pending.finish(Error(reason));this.closeTransition(true,reason);this.event('disconnected',{reason});this.state='unknown';this.onChange();
  }
@@ -38,16 +38,16 @@ class Session{
   let at=0;while(at<bytes.length){const index=Math.floor(this.bytes/65536),offset=this.bytes%65536;if(!this.raw[index])this.raw[index]=new Uint8Array(65536);const n=Math.min(65536-offset,bytes.length-at);this.raw[index].set(bytes.subarray(at,at+n),offset);this.bytes+=n;at+=n;}this.decoder.push(bytes);this.onChange();
  }
  record(r,line){
-  if(r.type==='identity')this.identity=JSON.parse(JSON.stringify(r));
+  if(r.type==='identity'){this.bootGeneration++;this.seconds=null;this.stateRevision++;this.selftestReceipt=null;this.lastSelftestReport=null;this.identity=JSON.parse(JSON.stringify(r));this.configured=false;this.state='unknown';this.uncertain(true);}
   if(r.type==='frame'){
-   this.stateRevision++;this.frames++;this.lastFrame=JSON.parse(JSON.stringify(r));
+   this.selftestReceipt=null;this.stateRevision++;this.frames++;this.lastFrame=JSON.parse(JSON.stringify(r));
    if(!r.complete||r.capture_fault||r.missed_frames||r.deadline_misses)this.issue('Frame acquisition fault/incomplete data',{line,sequence:r.sequence,capture_fault:r.capture_fault,missed_frames:r.missed_frames,deadline_misses:r.deadline_misses});
    if(r.truncated)this.issue('Top-three output truncated; detections omitted',{line,sequence:r.sequence});
    if(this.lastSequence!==null&&r.sequence!==this.lastSequence+1)this.issue('Sequence gap/reset/duplicate',{line,sequence:r.sequence,previous:this.lastSequence});this.lastSequence=r.sequence;
    this.state='running';this.uncertain(true);
   }
   if(r.type==='status'){
-   this.stateRevision++;this.state=r.state;this.configured=r.configured;
+   this.selftestReceipt=null;this.lastSelftestReport={firmware_version:r.firmware_version??null,build_id:r.build_id??null,selftest_version:r.selftest_version??null,selftest_ok:r.selftest_ok??null,selftest_mask:r.selftest_mask??null,fault:r.fault??null,capture_fault:r.capture_fault??null,rf_fault:r.rf_fault??null,rf_error:r.rf_error??null,deadline_misses:r.deadline_misses??null};this.stateRevision++;this.state=r.state;this.configured=r.configured;
    if(r.fault||r.state==='fault'){this.issue('Firmware fault',{line,fault:r.fault});this.uncertain(true);}
    if(['running','starting','stopping'].includes(r.state))this.uncertain(true);
    // An explicit fresh status request is needed to clear uncertainty, never an unrelated ACK/identity.
@@ -55,40 +55,59 @@ class Session{
    if(r.state==='idle')this.closeTransition(true,'Firmware session ended');
   }
   if(r.type==='ack'){
-   const p=this.pending;if(p&&p.sent&&r.command===p.command){if(r.code!==0)p.finish(Error('Command rejected: '+r.command+' ('+r.code+')'));else{p.ack=r;p.check();}}
-   else this.event('unmatched_ack',{command:r.command,code:r.code});
+   const p=this.pending;if(p&&p.sent&&r.command===p.command){if(r.code!==0){this.selftestReceipt=null;p.finish(Error('Command rejected: '+r.command+' ('+r.code+')'));}else{p.ack=r;p.check();}}
+   else {this.stateRevision++;this.selftestReceipt=null;if(['orConfig','profile','mount','detect','session','commit'].includes(r.command))this.seconds=null;if(['running','starting','stopping','fault'].includes(r.state))this.uncertain(true);this.event('unmatched_ack',{command:r.command,code:r.code});}
   }
   this.onChange();
  }
- command(text){
+ command(text,dispatchGuard=null){
   if(!this.connected||!this.write)return Promise.reject(Error('Not connected'));
   if(this.pending)return Promise.reject(Error('Another command is awaiting acknowledgement'));
   const command=text.split(' ')[0];
   if(this.desynced&&!['stop','status'].includes(command))return Promise.reject(Error('Command timeout/cancellation: reconnect and query status before configuring'));
   return new Promise((resolve,reject)=>{
-   const p={command,ack:null,status:null,finish:err=>{if(this.pending!==p)return;clearTimeout(p.timer);this.pending=null;err?reject(err):resolve(p);this.onChange();},check:()=>{if(p.ack&&(command!=='status'||p.status)){if(command==='status'&&(p.statusRevision!==this.stateRevision||p.ack.state!==p.status.state||p.ack.configured!==p.status.configured)){p.finish(Error('State changed after status; query again'));return;}if(command==='status'&&p.status.state==='idle'&&p.status.fault===0&&!this.desynced){this.uncertain(false);this.closeTransition(true,'Observed idle status');}p.finish();}}};
+   const p={command,ack:null,status:null,finish:err=>{if(this.pending!==p)return;clearTimeout(p.timer);this.pending=null;if(err)this.selftestReceipt=null;err?reject(err):resolve(p);this.onChange();},check:()=>{if(p.ack&&(command!=='status'||p.status)){if(command==='status'&&(p.statusRevision!==this.stateRevision||p.ack.state!==p.status.state||p.ack.configured!==p.status.configured)){p.finish(Error('State changed after status; query again'));return;}if(command==='status'&&p.status.state==='idle'&&p.status.fault===0&&!this.desynced){this.uncertain(false);this.closeTransition(true,'Observed idle status');if(this.matchesAcceptedSelftest(p.status))this.selftestReceipt={connection_epoch:this.connectionEpoch,state_revision:this.stateRevision,host_utc_ms:this.now(),firmware_version:p.status.firmware_version,build_id:p.status.build_id,selftest_version:p.status.selftest_version,selftest_ok:true,selftest_mask:0,fault:0,capture_fault:0,rf_fault:0,rf_error:0,deadline_misses:0};}p.finish();}}};
    this.pending=p;p.timer=setTimeout(()=>{this.desynced=true;p.finish(Error('No matching acknowledged response for '+command));},this.timeoutMs);
-   this.event('command',{command:text});Promise.resolve().then(()=>{if(this.pending!==p||!this.connected)throw Error('Command cancelled before write');p.sent=true;return this.write(new TextEncoder().encode(text+'\n'));}).catch(e=>{if(p.sent){this.desynced=true;this.uncertain(true);}p.finish(e);});
+   this.event('command',{command:text});Promise.resolve().then(()=>{if(this.pending!==p||!this.connected)throw Error('Command cancelled before write');if(dispatchGuard&&!dispatchGuard())throw Error('Start authorization invalidated before dispatch');p.sent=true;return this.write(new TextEncoder().encode(text+'\n'));}).catch(e=>{if(p.sent){this.desynced=true;this.uncertain(true);}p.finish(e);});
   });
  }
  async status(){if(this.busy)throw Error('An operation is in progress');this.busy=true;this.cancelled=false;this.onChange();try{const p=await this.command('status');if(this.cancelled)throw Error('Cancelled');if(this.desynced)throw Error('Command stream is desynchronized; reconnect before trusting idle');return p.status;}finally{this.busy=false;this.onChange();}}
+ invalidateConfiguration(){this.configurationGeneration++;this.seconds=null;this.onChange();}
+ configureBlockReason(){
+  const r=this.selftestReceipt;if(this.rfPolicy.approved!==true||this.busy||!this.connected||this.state!=='idle'||this.unconfirmed||this.desynced||this.overflow||!r||r.connection_epoch!==this.connectionEpoch||r.state_revision!==this.stateRevision||!this.matchesAcceptedSelftest(r))return 'Query accepted repaired firmware status with successful onboard self-test and fault-free idle before Configure';return '';
+ }
  async configure(seconds){
-  if(!Number.isInteger(seconds)||seconds<1||seconds>600)throw Error('Session must be an integer from 1 to 600 seconds');
+  const blocked=this.configureBlockReason();
+  const generation=++this.configurationGeneration,boot=this.bootGeneration,connection=this.connectionEpoch,stagedRevision=this.stateRevision;
+  const check=()=>{if(this.cancelled)throw Error('Cancelled');if(generation!==this.configurationGeneration||boot!==this.bootGeneration||connection!==this.connectionEpoch||!this.connected||this.state!=='idle'||this.unconfirmed)throw Error('Configuration interrupted by connection, identity or state change');};
+  this.seconds=null;
+  if(!Number.isInteger(seconds)||seconds<1||seconds>5)throw Error('Session must be an integer from 1 to 5 seconds for repaired-firmware bring-up');
+  if(blocked)throw Error(blocked);
   if(this.busy||this.unconfirmed||this.state!=='idle')throw Error('Query status and confirm idle before configuring');
-  this.busy=true;this.cancelled=false;this.configured=false;this.onChange();
-  try{for(const line of ['orConfig 1','profile room64_v1','mount 1219 0 unknown','detect 4 30 64 8','session '+seconds,'commit']){if(this.cancelled)throw Error('Cancelled');const p=await this.command(line);if(p.ack.state!=='idle')throw Error('Configuration ACK did not report idle');}if(this.cancelled)throw Error('Cancelled');const p=await this.command('status');if(this.cancelled)throw Error('Cancelled');if(p.status.state!=='idle'||!p.status.configured||p.status.fault)throw Error('Configuration not confirmed idle/committed');this.seconds=seconds;this.event('configured',{seconds});}finally{this.busy=false;this.onChange();}
+  this.selftestReceipt=null;this.busy=true;this.cancelled=false;this.configured=false;this.onChange();
+  try{for(const line of ['orConfig 1','profile room64_v1','mount 1219 0 unknown','detect 4 30 64 8','session '+seconds,'commit']){check();if(this.stateRevision!==stagedRevision)throw Error('Configuration evidence changed while staging');const p=await this.command(line,()=>{try{check();return this.stateRevision===stagedRevision;}catch(_){return false;}});check();if(this.stateRevision!==stagedRevision)throw Error('Configuration evidence changed while staging');if(p.ack.state!=='idle')throw Error('Configuration ACK did not report idle');}check();const p=await this.command('status');check();if(p.statusRevision!==this.stateRevision)throw Error('Configuration status changed before confirmation');if(p.status.state!=='idle'||!p.status.configured||p.status.fault)throw Error('Configuration not confirmed idle/committed');this.seconds=seconds;this.event('configured',{seconds});}finally{this.busy=false;this.onChange();}
+ }
+ matchesAcceptedSelftest(r){
+  const p=this.rfPolicy;
+  return p.approved===true&&typeof p.buildId==='string'&&p.buildId.length>0&&p.firmwareVersion==='0.2.1-rc1'&&p.selftestVersion===1&&Number.isInteger(p.maxSeconds)&&p.maxSeconds>=1&&p.maxSeconds<=5&&r.firmware_version===p.firmwareVersion&&r.build_id===p.buildId&&r.selftest_version===p.selftestVersion&&r.selftest_ok===true&&r.selftest_mask===0&&r.fault===0&&r.capture_fault===0&&r.rf_fault===0&&r.rf_error===0&&r.deadline_misses===0&&(!this.identity||(this.identity.version===p.firmwareVersion&&this.identity.build_id===p.buildId));
+ }
+ startBlockReason(){
+  if(!this.rfEnabled||this.rfPolicy.approved!==true)return 'RF tests paused: repaired full-build review and explicit approval are pending';
+  if(this.busy||!this.connected||!this.configured||this.state!=='idle'||this.unconfirmed||this.overflow||this.desynced)return 'Start requires a confirmed idle, configured device and complete capture';
+  if(!Number.isInteger(this.seconds)||this.seconds<1||this.seconds>5||this.seconds>this.rfPolicy.maxSeconds)return 'Configure a bounded 1–5 second bring-up session first';
+  const r=this.selftestReceipt;if(!r||r.connection_epoch!==this.connectionEpoch||r.state_revision!==this.stateRevision||!this.matchesAcceptedSelftest(r))return 'Start blocked: query fresh status with the exact accepted repaired build and successful version-1 onboard self-test';
+  return '';
  }
  async start(){
-  if(!this.rfEnabled)throw Error('RF tests paused: fixed firmware acceptance is required');
-  if(this.busy||!this.configured||this.state!=='idle'||this.unconfirmed||this.overflow)throw Error('Start requires a confirmed idle, configured device and complete capture');
-  this.busy=true;this.cancelled=false;this.epoch++;this.lastSequence=null;this.lastFrame=null;this.uncertain(true);this.event('session_requested',{seconds:this.seconds});
-  try{await this.command('start');if(this.cancelled)throw Error('Cancelled');let p=await this.command('status');if(this.cancelled)throw Error('Cancelled');if(p.status.state!=='running'||p.status.fault)throw Error('Running state not confirmed; Stop and query status');this.event('running_confirmed');}finally{this.busy=false;this.onChange();}
+  const blocked=this.startBlockReason();if(blocked)throw Error(blocked);
+  const receipt=this.selftestReceipt,authorizedRevision=this.stateRevision,authorizedConnection=this.connectionEpoch,authorizedSeconds=this.seconds;this.selftestReceipt=null;this.busy=true;this.cancelled=false;this.epoch++;this.event('selftest_gate_accepted',{receipt,policy:this.rfPolicy,duration_seconds:this.seconds});this.lastSequence=null;this.lastFrame=null;this.uncertain(true);this.event('session_requested',{seconds:this.seconds});
+  try{await this.command('start',()=>this.stateRevision===authorizedRevision&&this.connectionEpoch===authorizedConnection&&this.seconds===authorizedSeconds&&this.state==='idle'&&this.configured&&!this.desynced&&!this.overflow&&!this.cancelled&&this.matchesAcceptedSelftest(receipt));if(this.cancelled)throw Error('Cancelled');let p=await this.command('status');if(this.cancelled)throw Error('Cancelled');if(p.status.state!=='running'||p.status.fault||this.connectionEpoch!==authorizedConnection||this.seconds!==authorizedSeconds||!this.matchesAcceptedSelftest(p.status))throw Error('Running state and accepted self-test not confirmed; Stop and query status');this.event('running_confirmed');}finally{this.busy=false;this.onChange();}
  }
  async stop(){
   if(this.busy)throw Error('Cancel the pending operation first');this.busy=true;this.cancelled=false;this.uncertain(true);this.closeTransition(true,'Stop requested');
   try{await this.command('stop');if(this.cancelled)throw Error('Cancelled');const p=await this.command('status');if(this.cancelled)throw Error('Cancelled');if(p.status.state!=='idle'||p.status.fault||this.unconfirmed)throw Error('Idle not confirmed; device may still be running');this.event('stopped_confirmed');}finally{this.busy=false;this.onChange();}
  }
- cancel(){this.cancelled=true;this.desynced=true;if(this.pending?.command==='start'||['running','starting','stopping'].includes(this.state))this.uncertain(true);if(this.pending)this.pending.finish(Error('Cancelled; command may already have reached device'));this.event('operation_cancelled');}
+ cancel(){this.selftestReceipt=null;this.cancelled=true;this.desynced=true;if(this.pending?.command==='start'||['running','starting','stopping'].includes(this.state))this.uncertain(true);if(this.pending)this.pending.finish(Error('Cancelled; command may already have reached device'));this.event('operation_cancelled');}
  annotate(kind,label){if(this.annotations.length>=10000)throw Error('Annotation limit reached; save this capture');if(!this.connected||this.state!=='running'||this.overflow)throw Error('Annotations require a receiving run');if(!['activity','transition_start','transition_end'].includes(kind)||!['sitting','standing','walking','unknown','sit-to-stand','movement-onset'].includes(label))throw Error('Unsupported annotation');
   if((kind==='activity'&&!['sitting','standing','walking','unknown'].includes(label))||(kind!=='activity'&&!['sit-to-stand','movement-onset'].includes(label)))throw Error('Annotation kind/label mismatch');
   if(kind==='transition_start'&&this.openTransition)throw Error('End the open transition first');if(kind==='transition_end'&&(!this.openTransition||this.openTransition.label!==label))throw Error('No matching transition');
@@ -96,7 +115,7 @@ class Session{
  }
  closeTransition(incomplete,reason){if(this.openTransition){this.annotations.push({kind:'transition_end',label:this.openTransition.label,epoch:this.openTransition.epoch,connection_epoch:this.openTransition.connection_epoch,host_utc_ms:this.now(),sensor_timestamp_us:this.lastFrame?.timestamp_us??null,source:'system',review_status:'unreviewed',incomplete,reason});this.openTransition=null;}}
  rawBytes(){const bytes=new Uint8Array(this.bytes);let n=0;for(const c of this.raw){const count=Math.min(c.length,this.bytes-n);bytes.set(c.subarray(0,count),n);n+=count;}return bytes;}
- snapshot(){let binary='';for(const byte of this.rawBytes())binary+=String.fromCharCode(byte);const base64=typeof btoa==='function'?btoa(binary):Buffer.from(binary,'binary').toString('base64');return JSON.parse(JSON.stringify({schema:'original-radar-capture',version:1,protocol:PROTOCOL,created_utc_ms:this.createdAt,exported_utc_ms:this.now(),serial:{baud:115200,dataBits:8,stopBits:1,parity:'none',flowControl:'none'},raw_encoding:'base64',raw_jsonl_bytes:base64,raw_byte_count:this.bytes,identity:this.identity,events:this.events,annotations:this.annotations,issues:this.issues.concat(this.decoder.line.length||this.decoder.discard?[{message:'Incomplete final JSONL record at export',host_utc_ms:this.now(),epoch:this.epoch}]:[]),frames:this.frames,state:this.state,stop_unconfirmed:this.unconfirmed,capture_overflow:this.overflow,dropped_issue_count:this.droppedIssues,dropped_event_count:this.droppedEvents,unsaved_byte_count:this.unsavedBytes,buffered_bytes:this.decoder.line.length,open_transition:this.openTransition,limits:{spatial_estimator_defect:true,rf_tests_paused:true,activity_inference:false,people_count_inference:false,host_clock:'Date.now, unsynchronized with sensor',annotation_timing:'human click, latency unknown',license_status:'capture rights not granted by source license'}}));}
+ snapshot(){let binary='';for(const byte of this.rawBytes())binary+=String.fromCharCode(byte);const base64=typeof btoa==='function'?btoa(binary):Buffer.from(binary,'binary').toString('base64');return JSON.parse(JSON.stringify({schema:'original-radar-capture',version:1,protocol:PROTOCOL,created_utc_ms:this.createdAt,exported_utc_ms:this.now(),serial:{baud:115200,dataBits:8,stopBits:1,parity:'none',flowControl:'none'},raw_encoding:'base64',raw_jsonl_bytes:base64,raw_byte_count:this.bytes,identity:this.identity,rf_acceptance_policy:this.rfPolicy,rf_start_block_reason:this.startBlockReason(),onboard_selftest_report:this.lastSelftestReport,selftest_receipt:this.selftestReceipt,events:this.events,annotations:this.annotations,issues:this.issues.concat(this.decoder.line.length||this.decoder.discard?[{message:'Incomplete final JSONL record at export',host_utc_ms:this.now(),epoch:this.epoch}]:[]),frames:this.frames,state:this.state,stop_unconfirmed:this.unconfirmed,capture_overflow:this.overflow,dropped_issue_count:this.droppedIssues,dropped_event_count:this.droppedEvents,unsaved_byte_count:this.unsavedBytes,buffered_bytes:this.decoder.line.length,open_transition:this.openTransition,limits:{distributed_v020_spatial_defect:true,rf_bringup_only:true,rf_tests_paused:this.rfPolicy.approved!==true,onboard_selftest_is_not_physical_validation:true,activity_inference:false,people_count_inference:false,host_clock:'Date.now, unsynchronized with sensor',annotation_timing:'human click, latency unknown',license_status:'capture rights not granted by source license'}}));}
 }
 return {PROTOCOL,validate,Decoder,Session};
 });

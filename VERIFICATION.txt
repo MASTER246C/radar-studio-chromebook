@@ -1,3 +1,46 @@
+V0.7.0-preview.2 VERIFICATION — 10 October 2026
+Narrow repaired-firmware bring-up gate; not general hardware validation.
+
+APPROVED POLICY SCOPE
+- Only version 0.2.1-rc1 / immutable source-toolchain build 846a3ae3184aa5d26e5d0ea3.
+- Corresponding separately reviewed BIN: 342,532 bytes; SHA-256
+  d534e6b6da25520d911c25bb23593bc5a086becce962186c5e4ffa6cc38d19ec.
+- First hardware action is status only. Configure requires a current-connection
+  matching queried status/ACK showing exact build, selftest_version 1,
+  selftest_ok true, selftest_mask 0 and all reported fault diagnostics zero.
+- Start additionally requires a successful committed 1–5 second local configure
+  on the same connection/boot, with pre-dispatch revision guards. Manual only.
+- Old firmware, longer runs, unknown/missing fields and stale receipts remain
+  blocked. No automatic RF restart. Stop and Save remain separate controls.
+
+PASSED
+- node tests/run-all.js: 22 deterministic suites.
+- Controller/parser/capture: 69/69 synthetic cases.
+- Repaired firmware acceptance gate: 151/151 synthetic cases.
+- Mock DOM/Web Serial UI: 40/40 cases.
+- All 19 legacy TI/motion/capture/offline suites retained and passed.
+- All 47 application/tool/test JavaScript files passed node --check.
+- Preview1 source tree and immutable ZIP unchanged by this candidate.
+- Source license unchanged; no real captures, private research or vendor BIN/CFG
+  included. Firmware binary is a separate artifact, not in this viewer package.
+
+NOT PERFORMED
+- No serial hardware, onboard self-test receipt, RF start, flashing, target data
+  collection, physical spatial accuracy or longer-run validation performed.
+- Real rendered-browser QA remains unperformed. Prior preview native Chromium
+  launch was blocked by Unix socket policy; the existing cloud browser could
+  not reach the executor localhost. No bypass/alternate retry attempted here.
+- Mock/synthetic checks cannot establish physical sensing performance. Firmware
+  static/emulation acceptance authorizes only this narrow conditional workflow.
+
+Protocol note: no request IDs exist. ACK/state correlation is best effort.
+Timeout/cancel/write-error requires reconnect recovery. Reconnect/identity reset
+also erases committed-duration provenance, requiring status then local Configure
+again; a remote configured:true flag alone never establishes the run duration.
+
+Historical preview1 results follow; these do not describe preview2's conditional
+gate and must not be read as enabling any legacy firmware:
+
 V0.7.0-preview.1 VERIFICATION — 10 October 2026
 Original JSON protocol preview; RF Start intentionally disabled.
 

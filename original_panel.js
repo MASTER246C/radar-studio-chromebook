@@ -5,13 +5,16 @@ const $=id=>document.getElementById(id),selector=$('transportProtocol');if(!sele
 let port=null,writer=null,reader=null,readTask=null,choosing=false,closing=false,selected='ti',message='',overflowStopping=false,operation=null;
 // Persist only a safety bit, never captures, annotations, device identity or coordinates.
 let remembered=false;try{remembered=localStorage.getItem('original-radar-stop-unconfirmed')==='true';}catch(_){remembered=true;}
-const session=new OriginalRadar.Session({unconfirmed:remembered,rfEnabled:false,onChange:refresh,setUnconfirmed:value=>{try{localStorage.setItem('original-radar-stop-unconfirmed',String(value));}catch(_){message='Safety warning storage unavailable. Confirm idle before leaving this page.';}}});
+const session=new OriginalRadar.Session({unconfirmed:remembered,rfEnabled:true,rfPolicy:OriginalRadarAcceptance,onChange:refresh,setUnconfirmed:value=>{try{localStorage.setItem('original-radar-stop-unconfirmed',String(value));}catch(_){message='Safety warning storage unavailable. Confirm idle before leaving this page.';}}});
 function refresh(){
  const active=!!port,busy=session.busy||choosing||closing;
  $('originalConnect').disabled=active||busy||!('serial' in navigator)||!isSecureContext;
- $('originalConfigure').disabled=!active||busy||session.state!=='idle'||session.unconfirmed||session.desynced;
+ $('originalConfigure').disabled=!active||busy||!!session.configureBlockReason();
  $('originalStatus').disabled=!active||busy;
- $('originalStart').disabled=true; // Acceptance gate: never enable RF from this review build.
+ const startReason=session.startBlockReason();$('originalStart').disabled=!!startReason;
+ $('originalStart').textContent=startReason?'Start · bring-up gate locked':'Start '+session.seconds+'-second bring-up test';
+ const report=session.lastSelftestReport;const summary=report?JSON.stringify(report):'No current-connection onboard self-test report';
+ $('originalSelftest').textContent=summary+' · Locally configured duration: '+(session.seconds??'none')+' seconds · '+(startReason||'Manual 1–5 second bring-up only; physical sensing remains unvalidated.');
  $('originalStop').disabled=!active||busy;
  $('originalCancel').disabled=!session.busy;
  $('originalDisconnect').disabled=!active||choosing||closing;
@@ -52,11 +55,12 @@ selector.onchange=()=>{
  if(port||choosing||closing||session.busy){selector.value=selected;message='Disconnect before changing protocol.';refresh();return;}
  const event=new CustomEvent('radar-transport-change',{detail:{protocol:next},cancelable:true});window.dispatchEvent(event);
  if(event.defaultPrevented){selector.value=selected;return;}
- selected=next;$('tiDashboard').hidden=next==='original';$('originalPanel').hidden=next!=='original';$('modeBadge').textContent=next==='original'?'ORIGINAL JSON · RF PAUSED':'OFFLINE';
+ selected=next;$('tiDashboard').hidden=next==='original';$('originalPanel').hidden=next!=='original';$('modeBadge').textContent=next==='original'?'ORIGINAL JSON · BRING-UP ONLY':'OFFLINE';
 };
 $('originalConnect').onclick=connect;$('originalStatus').onclick=()=>run(()=>session.status());
 $('originalConfigure').onclick=()=>run(()=>session.configure(Number($('originalSeconds').value)));
-$('originalStart').onclick=()=>run(()=>session.start());$('originalStop').onclick=()=>run(()=>session.stop());
+$('originalSeconds').oninput=()=>{session.invalidateConfiguration();message='Duration edited. Configure again before Start.';refresh();};
+$('originalStart').onclick=()=>run(()=>{if(Number($('originalSeconds').value)!==session.seconds){session.invalidateConfiguration();throw Error('Duration changed. Configure again before Start.');}return session.start();});$('originalStop').onclick=()=>run(()=>session.stop());
 $('originalCancel').onclick=()=>{session.cancel();message='Cancelled. Commands already sent may still execute. Stop/query status before proceeding.';refresh();};
 $('originalDisconnect').onclick=disconnect;$('originalSave').onclick=()=>save(false);$('originalSaveRaw').onclick=()=>save(true);
 $('originalActivity').onclick=()=>run(()=>session.annotate('activity',$('originalLabel').value));
