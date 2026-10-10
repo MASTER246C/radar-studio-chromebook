@@ -1,5 +1,13 @@
 # Radar Studio Chromebook
 
+**Mount reference height: 2.00 meters from floor to the flat TOP of the tripod mount, excluding screws.**
+
+This is the selected experimental activity-collection setup, with a final **15-degree downward tilt**. The mount reference is not the antenna/chip-center height. After setting the final tilt, measure the signed **vertical** offset from the mount-top reference plane to the antenna/chip center:
+
+**Antenna-center height = 2.00 m + measured signed vertical chip-center offset.**
+
+The chip is above the mount in the current photographed arrangement, so its offset is positive, but its numeric value is still unknown. Do not guess it or substitute 2.00 m for chip height. The owner plans to adjust the setup when ready to load the software; that adjustment and calibration have not yet been completed. This is a repeatable experimental standard, not a universal optimum or a proven most-accurate setting. Verify and record the actual geometry before collection; no firmware `sensorPosition` or other configuration value is inferred here.
+
 **Built specifically for the Texas Instruments IWR6843AOPEVM (IWR6843AOP) radar board.** The user-reported live setup is **Rev G**. This is not a generic viewer for all xWR or xWRL devices.
 
 A dependency-free local browser application using ChromeOS Web Serial. **v0.5** adds the original **Motion Signature Lab**, observed sitting/standing/walking examples, measured calibration, local model training/evaluation and complete received-UART capture. Start with [MOTION_LAB.md](MOTION_LAB.md). The application still consumes compatible TI firmware output; no original radar firmware or real-data accuracy claim is included. It does not flash firmware or send commands merely because a profile or file is selected.
