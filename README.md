@@ -6,6 +6,17 @@
 
 An experimental, dependency-free browser viewer for this board's compatible radar output over USB serial. It is a **web app**, not a Chrome extension and not a firmware flasher.
 
+## Downloads and setup dependencies
+
+**[Official downloads and exact TI package paths → DOWNLOADS.md](DOWNLOADS.md)**
+
+- **Run the viewer:** this release folder + normal ChromeOS Chrome/Web Serial + Python 3 for the local server. No TI SDK, CCS or UniFlash needed when firmware already works.
+- **Get matching firmware/configs:** [TI Radar Toolbox](https://www.ti.com/tool/download/RADAR-TOOLBOX); [exact 4.00.00.05 AOP BIN/CFG paths](DOWNLOADS.md#exact-paths-inside-radar-toolbox-4000005).
+- **Flash firmware separately:** [TI UniFlash Linux/Windows](https://www.ti.com/tool/download/UNIFLASH) and [IWR6843AOPEVM board documentation](https://www.ti.com/tool/IWR6843AOPEVM).
+- **Custom firmware builds / optional Windows drivers:** [SDK, CCS and Silicon Labs links](DOWNLOADS.md). These are not blanket viewer prerequisites.
+
+Vendor downloads remain at their official sources; they are not bundled or relicensed here.
+
 ## Start here
 
 1. Open this repository's **Releases** section and choose **v0.1** or **v0.2**.
