@@ -229,3 +229,19 @@ new-file writes. No module fetches a remote model or sends data to an account.
 checks. `tests/offline_browser.optional.test.js` is a separate Playwright smoke
 check; launch is blocked by this executor's Unix-socket restriction and is not
 counted as passed. Synthetic fixtures are logic tests, not recognizer validation.
+
+
+## v0.7.0-preview.1 original protocol isolation
+
+`original_radar.js` implements JSONL validation, a bounded exact-byte capture,
+command/state controller and separate human annotation metadata.
+`original_panel.js` provides its isolated one-port UI. `radar-transport-change`
+prevents switching while either workflow owns a serial port/chooser. Original
+frames never feed the TI parser, scene or motion classifier.
+
+The aggregate runner now includes 21 suites, with 69 synthetic core tests and
+21 mock panel cases for original firmware. Real browser rendering and physical
+USB/RF acceptance are separate. Start is hard-disabled in both UI and its
+production controller options. Do not lift this gate as a UI-only change; fixed
+firmware acceptance and an explicit review are required. See ORIGINAL_RADAR.md
+for serial correlation limits, raw connection boundaries and bounded histories.

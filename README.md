@@ -1,3 +1,6 @@
+> v0.7.0-preview.1: separate original-radar-v1 JSON Lines review workflow.
+> **RF Start is hard-disabled pending corrected-firmware acceptance.** See [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
+
 # Radar Studio Chromebook
 
 **Mount height is configurable. Current user-reported reference: 4 feet (1.2192 m) from floor to the flat TOP of the bracket, excluding screws.**

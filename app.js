@@ -201,6 +201,10 @@
     state.profileChanging=true;configReadToken++;sourceRequest++;stopPlayback();refresh();
     (async()=>{await stopListening();state.profile=id;if(motion)motion.configFile(null,id);state.commands=[];state.configKind=null;ui.configFile.value='';ui.configInfo.textContent='No configuration loaded';ui.presentation.value=['gesture','speed','vitals','level'].includes(id)?id:'people';reset('offline');log('Selected '+id+'. Histories cleared. No device command or firmware change was made.');})().catch(e=>log(error(e))).finally(()=>{state.profileChanging=false;refresh();});
   });
+  window.addEventListener('radar-transport-change',event=>{
+    if(state.cli||state.data||state.choosing||state.sending||state.closing||state.profileChanging){event.preventDefault();log('Disconnect TI interfaces before changing firmware protocol.');if(typeof alert==='function')alert('Disconnect the TI interfaces before changing firmware protocol.');return;}
+    sourceRequest++;stopPlayback();reset('offline');
+  });
   CatalogUI.mount(ui.demoCatalog);
   refresh();render();log('Ready. Connect two serial interfaces, replay a local recording, or run a labeled synthetic demo.');
 })();

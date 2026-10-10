@@ -1,3 +1,11 @@
+# v0.7.0-preview.1 — original-radar-v1 manual controls (2026-10-10)
+
+- Separate one-port JSON Lines workflow; original TI demos and offline ML remain available.
+- Explicit Configure/Start/Stop/Save controller, matching ACKs plus fresh status, finite 1–600 second sessions, cancellation/disconnect/reconnect safety warning.
+- RF Start intentionally disabled pending fixed-firmware acceptance of the confirmed spatial-estimator defect.
+- Byte-exact raw JSONL and capture/metadata exports, timestamped human activity/transition annotations, explicit malformed/fault/truncation flags.
+- No hardware/RF tests, flashing, automatic starts, private captures or vendor artifacts included.
+
 # Changelog
 
 ## v0.6 — 2026-10-10 — Experimental local-ML foundation

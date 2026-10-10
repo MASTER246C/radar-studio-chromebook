@@ -1,19 +1,24 @@
 {
-  "release": "v0.6",
+  "release": "v0.7.0-preview.1",
   "date_utc": "2026-10-10",
-  "target_board": "Texas Instruments IWR6843AOPEVM / IWR6843AOP, user target Rev G",
-  "status": "experimental local offline ML foundation",
-  "catalog_toolbox_version": "4.00.00.05",
-  "catalog_artifacts": 37,
+  "status": "RF-disabled original JSON protocol pre-release for source and mock-workflow review",
+  "target_board": "IWR6843AOPEVM / IWR6843AOP",
+  "firmware_protocol": "original-radar-v1",
+  "rf_start_enabled": false,
+  "rf_acceptance": "blocked pending corrected spatial estimator firmware acceptance",
   "vendor_binary_or_config_contents_included": false,
   "user_capture_contents_included": false,
-  "deterministic_test_suites": "19 passed; node tests/run-all.js",
-  "motion_core_tests": 29,
-  "capture_recorder_tests": 24,
-  "independent_scoped_review": "No blocking findings remain after extraction/split/annotation/lineage/metadata/visibility fixes; read-only audit plus synthetic/mock tests",
-  "real_browser_rendering_verified": false,
-  "firmware_boundary": "Original browser application/features/classifier. Current TI firmware still supplies upstream points/tracks; no original firmware claimed.",
-  "dataset_license_status": "pending; separate from application license",
+  "private_research_contents_included": false,
+  "license": "unchanged source-available project LICENSE; no-resale and third-party restrictions preserved",
+  "deterministic_test_suites": 21,
+  "original_controller_tests": 69,
+  "original_mock_ui_tests": 21,
+  "javascript_syntax_files": 45,
+  "rendered_browser_verified": false,
+  "rendered_browser_limitation": "Native Playwright launch blocked by Unix socket permission; existing cloud browser could not reach executor-local server (ERR_CONNECTION_REFUSED). Visual QA not performed.",
+  "hardware_or_rf_verification": false,
+  "dataset_license_status": "capture rights not granted by source license",
+  "manifest_excludes_itself": true,
   "files": [
     {
       "path": ".gitignore",
@@ -22,8 +27,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size_bytes": 10583,
-      "sha256": "81c66f71379eaa2298fe3433d091254d3f0bd2779ceb13b9fcf602eebf6c7701"
+      "size_bytes": 11268,
+      "sha256": "94d703bd56c86681de9405838cf402f435222e8dfeaa45862e43c1116efecdb9"
     },
     {
       "path": "CHANGELOG.txt",
@@ -42,8 +47,8 @@
     },
     {
       "path": "DEVELOPING.md",
-      "size_bytes": 17499,
-      "sha256": "a3ebcdc51a81ff11b4409f3a978cb8eb9cb3e546d7e1db25426df87e6c07308c"
+      "size_bytes": 18384,
+      "sha256": "fa75548b873835f0e697c687bdd238b1e22a5434f8bb2ede6a14cf87bea9a84c"
     },
     {
       "path": "DOWNLOADS.md",
@@ -72,13 +77,18 @@
     },
     {
       "path": "MOTION_LAB.md",
-      "size_bytes": 41314,
-      "sha256": "47d2fdd3c7595544c3f179e4a0141ab2bb18e382642a84798c36cae99ed1ea80"
+      "size_bytes": 41690,
+      "sha256": "a15c9a73cb471ac7ba6b1083ffb44473dff19206a7a40eeb8ea578c3fb15f3ce"
     },
     {
       "path": "OFFLINE_ML.md",
-      "size_bytes": 29844,
-      "sha256": "d3ec1ba301679447d76357bde0b4bd850c7cb1b24fdb9104b0d5c601c86dc20f"
+      "size_bytes": 30411,
+      "sha256": "3f64d19c8854caa1123a8d959cbd50b28f54b23af3dd07d0e785d0161577b353"
+    },
+    {
+      "path": "ORIGINAL_RADAR.md",
+      "size_bytes": 6896,
+      "sha256": "37c33fa300bc613102a76cad9f77c3da8af5e0781ad632f37c2b437342197c58"
     },
     {
       "path": "PROTOCOL_EVIDENCE.md",
@@ -92,18 +102,23 @@
     },
     {
       "path": "QUICKSTART.md",
-      "size_bytes": 11791,
-      "sha256": "36a34253a9aa9651dba603ed6551ed35baebaf5e9e03c7244945420781a9015c"
+      "size_bytes": 12805,
+      "sha256": "cb384b49c3c3f7669639d4d7c8adf66dd754ce53ae888180b56b6b04fb86bf3e"
     },
     {
       "path": "README.md",
-      "size_bytes": 15788,
-      "sha256": "f683491c11e23f3d585fb58d69407e0307de378cf367ead16de8f710d8429acc"
+      "size_bytes": 16355,
+      "sha256": "649d38f8214ab29cb2883ed760159e6ebd7fede14069015748f0b8a162749077"
     },
     {
       "path": "RECORDER_API.md",
       "size_bytes": 6660,
       "sha256": "47f4f00c2ae131f9444a3683860c0dc60b28973ef835c412fdc3898da58b0144"
+    },
+    {
+      "path": "RELEASE_NOTES_v0.7.0-preview.1.md",
+      "size_bytes": 2994,
+      "sha256": "12c586cb66d4ca0135a1287ddaa92d2771e5b5771585e010a4accb05863fd304"
     },
     {
       "path": "SHARED_MODULES.json",
@@ -132,13 +147,13 @@
     },
     {
       "path": "VERIFICATION.txt",
-      "size_bytes": 6880,
-      "sha256": "8b54adee08f73aa7f5fc0314988b6c99b08444b13e259a875f2b4f5521336944"
+      "size_bytes": 8868,
+      "sha256": "a2ba5635b3d92813f37c2c87e30c759ee0346926333fe76104e23002d7030175"
     },
     {
       "path": "app.js",
-      "size_bytes": 24133,
-      "sha256": "7a021769b0fc4d330e09b2e70022b9a32cdd72c32dcbe4b2e906996b5414569c"
+      "size_bytes": 24552,
+      "sha256": "8f893c8375e7e4fc9fe1800c31f218287c7d5ac155661fac063fd322cb3ae27c"
     },
     {
       "path": "capture_recorder.js",
@@ -177,8 +192,8 @@
     },
     {
       "path": "index.html",
-      "size_bytes": 15346,
-      "sha256": "ae14bf3c343f4a2c79d77e9f4192a2051fec033d94530c1c411d3dd634d9332d"
+      "size_bytes": 19255,
+      "sha256": "30a440588d96177e1f95e386498648f7dfad4491ac6636d9f106e39df2463d33"
     },
     {
       "path": "legacy_panels.js",
@@ -221,6 +236,16 @@
       "sha256": "84feb45f3b6737b65def3477e62d039cce5b1764d59ce5cbbca2d7949fc5e0ec"
     },
     {
+      "path": "original_panel.js",
+      "size_bytes": 8170,
+      "sha256": "0fda9a4bd847eb9d0bc90ec82965b1d06bd9ee85b5cfc70b123add5c4cbf73a4"
+    },
+    {
+      "path": "original_radar.js",
+      "size_bytes": 15767,
+      "sha256": "6557bc8492ce15cc6f6554e36972254e527e10e42023dccb4958cb58f9d76a22"
+    },
+    {
       "path": "radar_protocol.js",
       "size_bytes": 17836,
       "sha256": "f1e6a76d2396709002e815813ca8f827e8d7b0cd01265f7a47a09e7dde3ba365"
@@ -237,8 +262,8 @@
     },
     {
       "path": "styles.css",
-      "size_bytes": 8461,
-      "sha256": "7ac14869e2e62bca6f7302dfb5e71ca1cce19b0ae4997b3171f403d0def66026"
+      "size_bytes": 8949,
+      "sha256": "48cefaf5a87ba7dcee828b1a76cc61d18c656ad60681313ed9942707ed96ac4f"
     },
     {
       "path": "telemetry_panels.js",
@@ -366,14 +391,24 @@
       "sha256": "faa32b96f14982b91e4fda2b5cc74f04f7dd83c5c32013110180a38b30f4eaf2"
     },
     {
+      "path": "tests/original_panel.test.js",
+      "size_bytes": 30193,
+      "sha256": "25816cdf3b042f90c76a71e3d7c77f37be19e1f4e3e3cda68f8c2939e02ed925"
+    },
+    {
+      "path": "tests/original_radar.test.js",
+      "size_bytes": 39556,
+      "sha256": "f56322260b2647ced7f1474ae1243c5a6c2e31203c1cf004b3bdc231893497c6"
+    },
+    {
       "path": "tests/protocol.test.js",
       "size_bytes": 3448,
       "sha256": "e04054a47024f300ae157cb7b6e8939bbd51c86f0b59caee76f6d799a1a05bf6"
     },
     {
       "path": "tests/run-all.js",
-      "size_bytes": 648,
-      "sha256": "956e944b938b7596df69c4fef1356c56539430c523f8a806d89ddf8396776a89"
+      "size_bytes": 682,
+      "sha256": "dbed82c5d878793cb7d6ccccf84bf6877c082d574fe1560dc8dca1d79d74d830"
     },
     {
       "path": "tests/scene.test.js",
@@ -416,13 +451,5 @@
       "sha256": "638bcddf56eed6d3e3963d6bd5cb8a595343837a3e452742abcad3205cf8dafe"
     }
   ],
-  "offline_feature_tests": 15,
-  "offline_model_tests": 35,
-  "offline_review_tests": 6,
-  "offline_cli_test": "passed real local subprocess workflow on synthetic data",
-  "offline_ui_test": "passed mock-DOM workflow; real browser launch blocked",
-  "hardware_tested_for_v06": false,
-  "pretrained_model_included": false,
-  "original_firmware_jsonl_supported_by_ml": false,
-  "preserved_remote_documentation_ref": "3f00632"
+  "source_base_commit": "d1e5ea282a906663d710828d232a488249c4d729"
 }

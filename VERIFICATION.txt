@@ -1,3 +1,36 @@
+V0.7.0-preview.1 VERIFICATION — 10 October 2026
+Original JSON protocol preview; RF Start intentionally disabled.
+
+PASSED
+- node tests/run-all.js: all 21 deterministic suites passed.
+- New original_radar.test.js: 69/69 synthetic controller/parser/capture tests.
+- New original_panel.test.js: 21/21 mock DOM/Web Serial UI cases.
+- All 19 existing TI, motion, capture and offline-ML suites retained and passed.
+- node --check: all 45 application/tool/test JavaScript files passed.
+- Independent read-only lifecycle review found no remaining blocking issue for
+  the RF-disabled preview after status/ACK races, dispatched-write uncertainty,
+  reconnect boundaries, cancellation and memory-bound fixes were verified.
+- LICENSE compared byte-for-byte with the v0.6 public ZIP: unchanged.
+- Public package contents inspected: no real sensor captures, firmware binaries,
+  vendor configuration/source, credentials or private research included.
+
+NOT PASSED / NOT PERFORMED
+- Optional Playwright/Chromium launch attempted but blocked by executor Unix
+  socket policy (process_singleton socket() Operation not permitted). No rendered
+  browser, touch-layout or real Chromebook appearance verification is claimed.
+  Existing cloud browser also attempted the local server URL and received
+  ERR_CONNECTION_REFUSED (separate localhost); visual QA remained unperformed.
+- No physical Web Serial, RF start, firmware flashing, spatial estimator or
+  longer-session hardware acceptance performed. All new runs were synthetic.
+- No person counting, activity/posture accuracy or safety-critical validation.
+
+RF Start remains hard-disabled pending fixed-firmware acceptance. The command
+protocol has no request IDs: token/state correlation cannot prove perfect reply
+freshness. Timeouts/cancellation/dispatched-write errors retain stop uncertainty;
+reconnect and explicit Stop/status are the documented conservative recovery.
+
+Historical v0.6 verification follows (does not describe new preview behavior):
+
 V0.6 VERIFICATION — 10 October 2026
 Local offline ML foundation; preserved TI fallback collector.
 

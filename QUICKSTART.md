@@ -1,3 +1,24 @@
+# v0.7.0-preview.1: original firmware preview
+
+Extract the complete ZIP into a new folder. Keep your existing v0.6 folder and
+private downloads separately. Run `./start-local.sh` (or
+`python3 -m http.server 8000 --bind 127.0.0.1` inside the extracted folder) and
+open `http://localhost:8000` in Chromebook Chrome. The app is static and uses
+local files only; there is no package-install step.
+
+Select **Original radar v1 · JSON Lines · one port** for that already-flashed
+firmware, or keep **TI demos** for the existing workflow. The selector does not
+flash anything. Read [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md) first.
+
+**RF Start is disabled. Further RF tests are paused until corrected firmware has
+separate acceptance evidence.** This preview is not an instruction to perform
+another hardware run. Mock/synthetic verification does not validate accuracy.
+
+The older TI workflow instructions below remain applicable only to matching TI
+firmware. Never send TI configuration to the original JSON firmware.
+
+---
+
 # Quick start: radar to Chromebook
 
 This guide runs Radar Studio locally in **ChromeOS Chrome**. Linux serves the app's files; Chrome talks to the radar over USB. You do not need ChromeOS Developer Mode, Node.js, a Python virtual environment, or the TI Python visualizer.
