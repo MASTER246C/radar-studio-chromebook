@@ -1,3 +1,9 @@
+Downloads documentation • 2026-10-10
+- Add official ChromeOS/TI/Silicon Labs links and archive-verified Toolbox
+  4.00.00.05 AOP firmware/config/visualizer paths.
+- Separate viewer runtime, optional flashing, Windows drivers and custom builds.
+- Vendor bytes remain excluded; existing release assets unchanged.
+
 License coverage clarification • 2026-10-10
 - Current license offer explicitly covers original material in v0.1 and v0.2,
   plus later versions unless separately noticed; only rights held are granted.
