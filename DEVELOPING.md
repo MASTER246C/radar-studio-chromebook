@@ -12,7 +12,7 @@ Radar Studio is a static, dependency-free Web Serial browser viewer. `index.html
 - `styles.css`, `index.html`, local favicons: presentation. v0.1 instead has top/front canvases and its earlier state handling.
 - `start-local.sh`: serves this folder only on loopback port 8000. It does not touch USB, install dependencies or flash firmware.
 
-Protocol interpretation was informed by TI visualizer sources, but this release contains newly written browser code and independent synthetic fixtures. Read `PROVENANCE.txt`; no license grant is invented for TI material or the project.
+Protocol interpretation was informed by TI visualizer sources, but this release contains newly written browser code and independent synthetic fixtures. Read `PROVENANCE.txt` and `LICENSE`; the source-available no-resale grant covers only original material the licensor has authority to license, excluding TI and other third-party material.
 
 ## Reproduce checks
 
@@ -52,7 +52,7 @@ Before claiming a hardware configuration supported, record board/revision, firmw
 - v0.1 has a known sparse-vitals display issue. v0.2 retains last real readings and marks live values stale after five seconds; that threshold is a display policy, not a physiological validity rule.
 - Arrival time drives trails/replay timing; it is not a synchronized sensor clock. Reused track IDs without an observable gap cannot be distinguished.
 - USB access can be blocked by managed-device policy or competing applications/Linux device sharing.
-- Vendor firmware/configuration licensing is unresolved; those files are intentionally excluded. No open-source license has been selected.
+- Vendor firmware/configuration licensing is unresolved; those files are intentionally excluded. Original material is source-available under `LICENSE`, with restrictions on resale and paid software access; it is not OSI-approved open source.
 
 ## Adding another demo
 
