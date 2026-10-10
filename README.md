@@ -1,10 +1,8 @@
 # Radar Studio Chromebook
 
-**Built specifically for the Texas Instruments IWR6843AOPEVM (IWR6843AOP) radar board.**
+**Built specifically for the Texas Instruments IWR6843AOPEVM (IWR6843AOP) radar board.** The user-reported live setup is **Rev G**. This is not a generic viewer for all xWR or xWRL devices.
 
-**Current user-tested hardware: IWR6843AOPEVM Rev G.** v0.1 has user-reported live ChromeOS tracking and vitals operation; v0.2 has synthetic/mock regression coverage, with updated hardware acceptance still pending. Support for other xWR boards is not established.
-
-An experimental, dependency-free browser viewer for this board's compatible radar output over USB serial. It is a **web app**, not a Chrome extension and not a firmware flasher.
+A dependency-free browser viewer using ChromeOS Web Serial. **v0.3** adds an evidence-backed official-demo catalogue, local artifact identity checks, and experimental gesture/ground-speed telemetry. It does not flash firmware or send commands merely because a profile or file is selected.
 
 ## Downloads and setup dependencies
 
@@ -19,60 +17,51 @@ Vendor downloads remain at their official sources; they are not bundled or relic
 
 ## Start here
 
-1. Open this repository's **Releases** section and choose **v0.1** or **v0.2**.
-2. Download the named `Radar_Studio_Chromebook_..._public.zip` release asset.
-3. Extract the **whole folder**, then follow [QUICKSTART.md](QUICKSTART.md).
-4. If something goes wrong, use [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+1. Download a version from this repository's **Releases** page. Keep each version in its own folder.
+2. Follow [QUICKSTART.md](QUICKSTART.md) to enable the ordinary Linux development environment if supported, extract the whole folder into Linux files, and run `sh start-local.sh`.
+3. Open `http://localhost:8000` in **normal ChromeOS Chrome** and confirm **v0.3** in the header.
+4. Select the demo matching the firmware already on your board. Read its catalogue coverage and limitations before starting.
+5. For local TI artifact checks, see [LOCAL_IMPORT.md](LOCAL_IMPORT.md). Import is metadata inspection, not flashing or loading the command sender.
 
-After setup, run `sh start-local.sh` from the extracted folder in the Chromebook Linux Terminal. Keep that Terminal open and visit **http://localhost:8000** in normal ChromeOS Chrome. Linux serves files; Chrome talks to the radar through Web Serial. No Python packages or Node.js are needed to run the app.
+Linux serves files only. You do not need Developer Mode, Node.js or the TI Python visualizer to run the app. No hosted app is implied by this source repository.
 
-Downloading uses local Chromebook storage. GitHub keeps the releases available for later downloads; you do not need to save them to Google Drive.
+## Demo coverage is deliberately explicit
 
-## Choose a version
+The catalogue contains **12 board-compatible TI demo families**, not 12 fully supported browser demos. Board support, wire-format support, UI completeness and actual hardware testing are separate claims.
 
-- **v0.1:** original top/front projections. The project owner reported live radar operation on their Chromebook. This is one user report, not broad compatibility validation. Known limitation: vitals can disappear during tracking-only frames.
-- **v0.2:** retained sparse vital-sign readings and waveform history, rotatable 3D sensor-coordinate display, bounded target trails, and radar favicon. Synthetic and mock-UI regression tests pass. Updated browser rendering and hardware behavior still require acceptance testing.
+| Catalogue profiles | Browser coverage in v0.3 |
+| --- | --- |
+| Out of Box; 3D People Tracking; Low-Power 3D People Tracking; Overhead 3D People Tracking; Vital Signs with People Tracking; Small Obstacle Detection | Partial, shared 40-byte framing and known point/track/vitals layouts. Special scene transforms, range/heatmaps, occupancy and full TI demo UI parity are not implemented. |
+| Gesture Recognition with ML | Experimental 1050/1051 feature/probability telemetry. Raw ANN values, not TI's postprocessed gesture decisions. This official build has a built-in config; external CFG sending is disabled. |
+| True Ground Speed | Experimental TLV1033 surface velocity with validity flag, freshness and history. Invalid values are shown as unavailable, not successful speed estimates. |
+| High Accuracy Level Sensing | Unsupported 36-byte header and special payloads. |
+| Area Scanner; Automated Doors and Gates | Unsupported 44-byte headers and distinct tracks/static-cloud outputs. |
+| Child Presence Detection with Classification | Dedicated output/zone semantics not implemented. No safety application is claimed. |
 
-Both are experimental prototypes. They are not complete replacements for the TI visualizer. Vitals are experimental firmware outputs, not suitable for medical diagnosis or monitoring. Trails cover only what the connected radar reports, not a whole-house map.
+Unsupported profiles can be explored in the catalogue, but this release blocks their live decoding, replay, synthetic demo and configuration sending. It never guesses an incompatible format. Choosing a profile stops local listening/playback and clears session histories; it does not alter the radar firmware.
 
-## Bring your own matching configuration
+See [DEMO_CATALOG.md](DEMO_CATALOG.md) for exact files, board-revision caveats, official guide paths, coverage and test status. The normal and low-power tracking binaries share a basename but have different hashes; names alone are insufficient.
 
-TI firmware, vendor configurations, TI Python sources, private manifests and personal recordings are excluded from this public repository and its release assets. Use your own exact known-working `.cfg` matching the firmware already installed. Updating the viewer does **not** require reflashing. See [CONFIG_GUIDE.txt](CONFIG_GUIDE.txt).
+## Local official BIN/CFG inspection
 
-Loading a configuration sends nothing. Sending it is a separate explicit action that may stop, reconfigure and restart the radar. Serial ports must be released by other applications first.
+Download TI Radar Toolbox **4.00.00.05** from [TI](https://www.ti.com/tool/download/RADAR-TOOLBOX), extract it, and choose your local BIN/CFG files in the catalogue inspector. The browser reads and hashes each selected file locally, checks filename/size/SHA-256, and can export a metadata-only audit JSON on request. A matching hash establishes identity with the catalogued file, not installed-firmware identity, physical-board compatibility, safety or authenticity beyond the source evidence.
 
-## Documentation and checks
+**No TI firmware, CFG contents, vendor Python files or personal recordings are included.** Imported bytes are not uploaded, stored persistently, executed, flashed, or automatically passed to the configuration sender. The ordinary **Choose configuration → Send configuration** controls remain a separate explicit workflow. Obtain and use TI artifacts under their own terms.
 
-- [Quickstart](QUICKSTART.md): download, extract, launch, connect and stop
-- [Troubleshooting](TROUBLESHOOTING.md): startup, port selection, stale readings, upgrades and common errors
-- [Technical details](TECHNICAL_NOTES.md): decoded packet formats, coordinate conventions and protective limits
-- [Developer handoff](DEVELOPING.md): architecture, protocol origins, tests and extension guidance
-- [Verification](VERIFICATION.txt): passed tests and untested boundaries
-- [Changes](CHANGELOG.txt): v0.2 behavior changes
-- [Provenance and licensing status](PROVENANCE.txt)
+## Versions and testing
 
-Optional developer tests (Python 3 and Node.js):
+- **v0.1:** original prototype; an early user reported live tracking/vitals on the Rev G board. It had a sparse-vitals display-state bug.
+- **v0.2:** retained per-subject vitals, 3D orbit view and bounded track trails; synthetic/mock regressions passed. Updated hardware acceptance remained pending.
+- **v0.3:** catalogue/import inspection, explicit protocol profiles, raw gesture and valid/invalid ground-speed telemetry. Source-derived fixtures, framing, metadata, retention and mocked integration tests pass. **New demo hardware operation and actual browser rendering remain unverified.**
 
-```sh
-python3 tests/build_fixtures.py
-node tests/protocol.test.js
-node tests/vitals.test.js
-node tests/trails.test.js
-node tests/scene.test.js
-node tests/ui.test.js
-```
+Run the dependency-free developer test suite with Node.js and Python 3 using [TEST_PLAN.md](TEST_PLAN.md). Source provenance and protocol decisions are documented in [PROTOCOL_EVIDENCE.md](PROTOCOL_EVIDENCE.md). See [CHANGELOG.md](CHANGELOG.md) for additions, changes and known limitations.
 
-These are synthetic/mocked checks, not live hardware proof. The optional Playwright test is not counted as a passed check.
+Vitals are experimental firmware estimates, **not medical measurements**. Tracks are firmware IDs, not verified identities; trails cover only what one radar reports, not an entire house. Sensor mounting transforms are not applied. Nothing here actuates doors, sends keystrokes or makes safety decisions.
 
-## Licensing status
+[Troubleshooting](TROUBLESHOOTING.md) · [Developer notes](DEVELOPING.md) · [Provenance](PROVENANCE.txt)
 
-Original material the licensor has authority to license is available under the [Radar Studio Chromebook Source-Available No-Resale License](LICENSE).
+## Licence
 
-- Personal use, internal business use, paid or unpaid teaching, and modification are allowed.
-- Free redistribution is allowed with the license and attribution retained and modified versions identified.
-- Selling the software or modified copies, paid product/bundle inclusion, and premium or hosted paid software access require separate written permission.
-- Texas Instruments and other third-party material are excluded and retain their own terms.
+Original material is **source-available, not OSI-approved open source**, under [LICENSE](LICENSE). Personal/internal-business use, paid teaching and free copies with the required notices are permitted under its terms; resale, paid bundles and premium hosted software access are restricted. TI material is excluded. Read the exact licence; this summary does not replace it.
 
-This is **source-available**, not OSI-approved open source. Read [LICENSE](LICENSE) for the controlling terms and [PROVENANCE.txt](PROVENANCE.txt) for origin details. The license was added to main on 2026-10-10; existing release ZIPs and tags were not rewritten.
-
-The licensor's current offer also covers original material in **v0.1 and v0.2**, and subsequent versions unless explicitly noticed otherwise. See [version coverage](LICENSE_COVERAGE.md). This does not cancel independently held prior rights; historical release archives remain unchanged.
+See [LICENSE_COVERAGE.md](LICENSE_COVERAGE.md) for the current grant covering earlier and future project versions, subject to its scope. Earlier immutable ZIPs may carry the notices as companion release assets.

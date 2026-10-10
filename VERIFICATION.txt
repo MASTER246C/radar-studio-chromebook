@@ -1,60 +1,27 @@
-VERIFICATION • 10 October 2026
+V0.3 VERIFICATION — 10 October 2026
+Target: Texas Instruments IWR6843AOPEVM (IWR6843AOP).
 
 PASSED
-- JavaScript syntax checks for app.js and radar_protocol.js.
-- 12 protocol test groups with independently written Python little-endian
-  fixtures: Cartesian/spherical/compressed points, side-info before points,
-  112-byte track records, two vital-signs patients, every possible two-chunk
-  split, byte-at-a-time stream, noise, consecutive packets, truncated input,
-  invalid packet/TLV sizes, unknown types, non-finite values, bounded noise
-  retention, and synthetic demonstration packets.
-- Node mocked DOM with real Web Streams: unsupported browser, synthetic labels
-  and vitals render code paths, two-port selection, duplicate-port rejection,
-  no commands on connect/load, live-ingest code path, split Done acknowledgement,
-  Error/timeout stopping later commands, repeated listener clicks, disconnect
-  during configuration, empty replay diagnostics, config-type/mismatch warnings,
-  rejection of the two known firmware filenames as replay files.
-- Public source bundle excludes vendor configs, firmware and private manifests.
+- JavaScript syntax for all application modules.
+- Python fixture generators for original and expanded formats.
+- Eight deterministic test suites via node tests/run-all.js:
+  protocol, expansion, vitals, trails, scene, telemetry, catalog, UI.
+- 37 official BIN/CFG metadata sizes/hashes independently checked against the
+  extracted official 4.00.00.05 archive during catalog construction.
+- Profile scope, built-in-gesture CFG guard, unsupported-profile block,
+  no-command selection/import behavior, metadata-only hash inspection.
+- Independent scoped review found a delayed-CFG-read/profile-switch race; fixed
+  with generation/profile checks and revalidated by regression and reviewer.
+- Exact supplied LICENSE hash verified; prior v0.1/v0.2 staging preserved.
 
-NOT RUN / NOT ESTABLISHED
-- Real browser visual/layout QA: local Chromium could not start because the
-  execution environment blocks its socket startup. Mock canvas calls do not
-  establish visual correctness. Optional Playwright test is supplied separately
-  in tests/browser.optional.test.js, but is not a passed check.
-- Chromebook CP2105 two-port enumeration and permission prompt.
-- Real 115200 CLI command/ack exchange or 921600 radar data streaming.
-- Hardware/firmware/config compatibility, sustained throughput, accuracy,
-  coordinates against physical mounting, and parity with TI's original UI.
-- Raw recorded radar-data replay against actual hardware recordings.
-  Firmware is not a data recording.
+NOT ESTABLISHED
+- Actual browser layout/rendering for this revision.
+- New demo USB enumeration, live CLI exchange or live radar output.
+- Sustained throughput, source/firmware-to-physical-unit identity, accuracy,
+  mounting transforms, complete TI visualizer parity or safety suitability.
+- Unknown/legacy headers; those remain intentionally unsupported.
 
-RUN AGAIN (optional development tools required)
-  python3 tests/build_fixtures.py
-  node tests/protocol.test.js
-  node tests/ui.test.js
-The app itself needs no Node.js, Python libraries, or external JS dependencies.
-Python 3 is needed only for the optional localhost-server route and fixture
-regeneration. The browser test additionally needs Playwright and Chromium.
-
-NEXT ACCEPTANCE TEST
-Launch on the actual Chromebook, see two serial ports, send the config already
-known to work with the existing firmware, receive advancing frame counts, then
-compare points/tracks/vitals with the Windows visualizer. Save the CLI log on
-any failure. No further firmware flashing is needed for this test.
-
-VERSION 0.2 REGRESSIONS PASSED
-- Six per-subject vitals-store tests: absent TLV retains values/time; all frames
-  of a chunk retained; independent subjects; bounded 150-sample history and
-  duplicate suppression; invalid samples rejected; new-session reset.
-- UI regression confirms vitals cards survive following tracking-only frames,
-  including a final non-vitals frame in the same chunk. Vitals turn stale while
-  tracking remains fresh, refresh on new vitals, and survive presentation changes.
-- Six trajectory-store tests: receipt timestamps, missing-target/reused-ID split,
-  frame/time gaps, duplicate suppression, independent tracks, reset, duration
-  expiry, bounded history and non-finite-coordinate rejection.
-- 3D mathematical/mock-canvas tests: XYZ top/front/orbit projection, zoom,
-  bounds/finite checks, labels/trajectories, pointer orbit/pinch/cancel, keyboard,
-  reset and zoom limits. UI tests exercise actual preset/zoom/reset controls and
-  synthetic trajectory accumulation, toggle and clear.
-- Local SVG and ICO radar favicons are included; all HTML asset references resolve
-  inside the package. Actual browser rendering still requires user validation.
+An early user reported v0.1 live tracking/vitals on Rev G. This report is kept
+separate from v0.3 fixture/mock validation. No firmware was executed, flashed
+or bundled while building this revision. See TEST_PLAN.md, PROTOCOL_EVIDENCE.md
+and CHANGELOG.md for reproducible checks and remaining acceptance gates.

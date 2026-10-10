@@ -23,3 +23,11 @@ work. Obtain and review the applicable TI package license for vendor material.
 
 No third-party JS/CSS dependencies are downloaded by the app. No endorsement
 by Texas Instruments, Google, Silicon Labs, or any medical authority is implied.
+
+Version 0.3 also inspected the official Radar Toolbox 4.00.00.05 firmware C
+transmitters, common TLV structs, gesture/ground-speed visualizer definitions
+and demo guides. PROTOCOL_EVIDENCE.md and DEMO_CATALOG.md identify these files.
+Only metadata and independently authored implementations/fixtures are included;
+no TI code, firmware bytes or configuration contents were copied into this
+release. Matching imported file hashes establishes artifact identity, not a
+right to redistribute the imported material or hardware compatibility.

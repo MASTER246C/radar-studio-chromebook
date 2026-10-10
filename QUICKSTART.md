@@ -6,9 +6,12 @@ This guide runs Radar Studio locally in **ChromeOS Chrome**. Linux serves the ap
 
 ## 1. Choose a version
 
+For v0.3, first read the selected official demo catalogue entry: some profiles are metadata-only and cannot be decoded. See [DEMO_CATALOG.md](DEMO_CATALOG.md) and [LOCAL_IMPORT.md](LOCAL_IMPORT.md).
+
 Use this repository's **Releases** page to choose a tagged version and download its viewer ZIP. Keep releases in separate folders; do not mix JavaScript files from different versions.
 
 - **v0.1:** first prototype; an early user reported live tracking and vitals operation. Its vitals display can disappear on frames without a vitals packet.
+- **v0.3:** official-demo catalogue, metadata-only local BIN/CFG checks, raw gesture telemetry and valid/invalid ground-speed history. New profiles are fixture/mock-tested, not hardware-validated.
 - **v0.2:** fixes that display-state problem, adds a rotatable 3D view and track trails, and includes a radar favicon. Protocol, retention, trajectory, projection and mocked UI tests pass. That does not establish hardware validation of this revision or visual verification on every Chromebook.
 
 A GitHub repository or release download is source delivery, not a running hosted application. Follow the local launch steps below.
@@ -24,10 +27,10 @@ If Linux is unavailable, stop here and seek an approved HTTPS hosting option. Do
 1. Open the downloaded ZIP in the Chromebook **Files** app.
 2. Copy/extract the **entire viewer folder** into **Linux files**. Keep all its files together, including `index.html`, the `.js` files, stylesheet and `start-local.sh`.
 3. Open **Terminal → Linux**.
-4. Type `ls` to see your folders. Change into the extracted viewer folder, using its actual name. For example, if it is `Radar_Studio_v0.2`:
+4. Type `ls` to see your folders. Change into the extracted viewer folder, using its actual name. For example, if it is `Radar_Studio_v0.3`:
 
 ```sh
-cd ~/Radar_Studio_v0.2
+cd ~/Radar_Studio_v0.3
 ls
 sh start-local.sh
 ```
@@ -44,7 +47,7 @@ In the **normal ChromeOS Chrome browser**, open:
 
 **http://localhost:8000**
 
-Use a full browser tab, not an embedded preview and not a browser installed inside Linux. In v0.2, check that the header says **v0.2**.
+Use a full browser tab, not an embedded preview and not a browser installed inside Linux. In this release, check that the header says **v0.3**.
 
 You may first choose **Run synthetic demo**. This checks the display controls without hardware. The generated tracks and rates are labeled **SYNTHETIC DEMO** and do not prove that the radar or USB connection works. Stop playback before testing live data.
 
@@ -57,7 +60,10 @@ You may first choose **Run synthetic demo**. This checks the display controls wi
 
 Do not pass the radar into Linux merely to run the file server. ChromeOS Chrome needs access to its serial interfaces. If the device has been shared with Linux and Chrome cannot open it, release that Linux sharing before retrying; see troubleshooting.
 
-## 6. Choose the two serial interfaces
+## 6. Choose the demo and two serial interfaces
+
+Choose the catalogue profile matching the firmware already flashed. This stops local playback/listening and clears old display history, but sends no device commands. Unsupported profiles disable decoding and config sending. For the official gesture build, external CFG sending is disabled because the firmware has a built-in configuration. Its live view needs the data port; a CLI connection is not required merely to listen.
+
 
 1. Click **Choose CLI port · 115200** and select the board's command interface.
 2. Click **Choose data port · 921600** and select its separate data interface.
@@ -70,7 +76,7 @@ A “connected” label means the port opened. It does not prove that the firmwa
 
 If the radar is **already configured and streaming**, use **Start listening** first; there is no need to send another config just to see the data.
 
-Otherwise:
+Otherwise (except the built-in-config gesture build):
 
 1. Choose the presentation matching the running demo: **People tracking** or **Vital signs**. This changes the display, not the firmware.
 2. Choose the exact `.cfg` known to work with the **currently flashed firmware, board antenna variant and toolbox/demo version**.
@@ -78,9 +84,9 @@ Otherwise:
 4. Watch the CLI console. The app stops at an error or missing `Done` acknowledgement. Save the error instead of trying random profiles.
 5. Click **Start listening**. Look for increasing byte counts and frame numbers, then compare visible motion with the actual scene.
 
-For v0.2, drag the 3D view to orbit; use wheel/pinch or buttons to zoom. **Top**, **Front** and **Reset** help you orient it. Track trails show only received track positions in this radar's coverage, not a whole-house map or verified person identity. Coordinates are sensor-relative; mounting transforms are not applied.
+For v0.2 and later, drag the 3D view to orbit; use wheel/pinch or buttons to zoom. **Top**, **Front** and **Reset** help you orient it. Track trails show only received track positions in this radar's coverage, not a whole-house map or verified person identity. Coordinates are sensor-relative; mounting transforms are not applied.
 
-Vital-sign estimates are experimental firmware outputs, **not medical measurements**. v0.2 retains the last real samples with their own receipt time. **STALE** means no fresh vitals for over five seconds, even if tracking continues.
+Vital-sign estimates are experimental firmware outputs, **not medical measurements**. v0.2 and later retain the last real samples with their own receipt time. **STALE** means no fresh vitals for over five seconds, even if tracking continues.
 
 ## 8. Finish or update
 

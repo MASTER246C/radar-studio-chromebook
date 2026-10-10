@@ -4,11 +4,14 @@
  */
 (function (root) {
 'use strict';
+const SUPPORTED_PROFILES = Object.freeze(['oob','people','people-low-power','overhead','vitals','small-obstacle','gesture','speed']);
+function requireProfile(profile){if(!SUPPORTED_PROFILES.includes(profile))throw Error('Unsupported demo framing: '+profile+'; no decoder is implemented for this profile.');}
 const MAGIC = Uint8Array.of(2,1,4,3,6,5,8,7), MAX_PACKET = 1024*1024;
 function spherical(r,a,e,doppler,snr) {
   return {x:r*Math.sin(a)*Math.cos(e),y:r*Math.cos(a)*Math.cos(e),z:r*Math.sin(e),doppler,snr};
 }
-function parseFrame(bytes) {
+function parseFrame(bytes,profile="people") {
+  requireProfile(profile);
   if (!(bytes instanceof Uint8Array) || bytes.length < 40) throw Error('Short frame header');
   const d = new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
   if (!MAGIC.every((v,i)=>bytes[i]===v)) throw Error('Missing magic word');
@@ -41,6 +44,16 @@ function parseFrame(bytes) {
     } else if(type===1040) {
       multiple(136);
       for(let i=0;i<len;i+=136) out.vitals.push({id:p.getUint16(i,true),rangeBin:p.getUint16(i+2,true),breathDeviation:f(i+4),heartRate:f(i+8),breathRate:f(i+12),heartWaveform:Array.from({length:15},(_,j)=>f(i+16+j*4)),breathWaveform:Array.from({length:15},(_,j)=>f(i+76+j*4))});
+    } else if((type===1050 || type===1051) && profile==='gesture') {
+      if(len!==40)throw Error('Gesture TLV requires exactly 10 float32 values');
+      const values=Array.from({length:10},(_,i)=>f(i*4));
+      if(!values.every(Number.isFinite))throw Error('Non-finite gesture values');
+      if(type===1051 && values.some(v=>v<0||v>1))throw Error('Gesture probability outside 0..1');
+      if(type===1050)out.gestureFeatures=values;else out.gestureProbabilities=values;
+    } else if(type===1033 && profile==='speed') {
+      if(len!==8)throw Error('6843 ground-speed TLV requires 8-byte padded float/bool payload');
+      const value=f(0),valid=p.getUint8(4);if(!Number.isFinite(value)||valid>1)throw Error('Invalid ground-speed value/validity flag');
+      out.velocity={value,valid:valid===1};
     } else out.unknownTlvs.push(type);
     off+=len;
     if(out.points.length>32768 || out.tracks.length>4096 || out.vitals.length>32) throw Error("Frame exceeds prototype display limits");
@@ -55,7 +68,7 @@ function parseFrame(bytes) {
   return out;
 }
 class StreamDecoder {
-  constructor(){this.buffer=new Uint8Array(0);this.errors=0;this.discardedBytes=0;this.lastError='';}
+  constructor(profile="people"){requireProfile(profile);this.profile=profile;this.buffer=new Uint8Array(0);this.errors=0;this.discardedBytes=0;this.lastError='';}
   reset(){this.buffer=new Uint8Array(0);this.errors=0;this.discardedBytes=0;this.lastError='';}
   push(chunk){
     if(!(chunk instanceof Uint8Array)) throw Error('Expected byte array');
@@ -73,14 +86,24 @@ class StreamDecoder {
         const d=new DataView(this.buffer.buffer,this.buffer.byteOffset,this.buffer.byteLength), total=d.getUint32(12,true),nt=d.getUint32(32,true);
         if(total<40 || total>MAX_PACKET || nt>1024 || 40+nt*8>total){this.errors++;this.lastError='Invalid frame header';this.buffer=this.buffer.slice(1);continue;}
         if(this.buffer.length<total)break;
-        try{frames.push(parseFrame(this.buffer.subarray(0,total)));this.buffer=this.buffer.slice(total);}
+        try{frames.push(parseFrame(this.buffer.subarray(0,total),this.profile));this.buffer=this.buffer.slice(total);}
         catch(e){this.errors++;this.lastError=e.message;this.buffer=this.buffer.slice(1);}
       }
     }
     return frames;
   }
 }
-function makeSyntheticFrame(n=1){
+function makeSyntheticFrame(n=1,profile='people'){
+  requireProfile(profile);
+  if(profile==='gesture'||profile==='speed'){
+    const payloads=[];
+    if(profile==='gesture'){
+      const features=new Uint8Array(40),probabilities=new Uint8Array(40),f=new DataView(features.buffer),p=new DataView(probabilities.buffer),winner=Math.floor(n/30)%10;
+      for(let i=0;i<10;i++){f.setFloat32(i*4,Math.sin(n*.07+i),true);p.setFloat32(i*4,i===winner?.91:.01,true);}payloads.push([1050,features],[1051,probabilities]);
+    }else{const v=new Uint8Array(8),d=new DataView(v.buffer);d.setFloat32(0,2*Math.sin(n*.04),true);d.setUint8(4,n%30>=3?1:0);payloads.push([1033,v]);}
+    const size=40+payloads.reduce((n,p)=>n+8+p[1].length,0),bytes=new Uint8Array(Math.ceil(size/32)*32),d=new DataView(bytes.buffer);bytes.set(MAGIC);
+    [0x03060000,bytes.length,0xa6843,n,n*1000,0,payloads.length,0].forEach((v,i)=>d.setUint32(8+4*i,v,true));let off=40;for(const [type,payload]of payloads){d.setUint32(off,type,true);d.setUint32(off+4,payload.length,true);bytes.set(payload,off+8);off+=8+payload.length;}return bytes;
+  }
   const count=36, points=new Uint8Array(count*16),pd=new DataView(points.buffer),tracks=new Uint8Array(112),td=new DataView(tracks.buffer), vitals=new Uint8Array(136),vd=new DataView(vitals.buffer);
   const x=Math.sin(n*.04)*1.3,y=2.8+Math.cos(n*.03)*.5;
   for(let i=0;i<count;i++){const a=i*2.399;[x+.3*Math.sin(a),y+.2*Math.cos(a),.5+(i%12)*.1,Math.cos(n*.04)*.052].forEach((v,j)=>pd.setFloat32(i*16+j*4,v,true));}
@@ -91,6 +114,6 @@ function makeSyntheticFrame(n=1){
   buf.set(MAGIC);[0x03060000,buf.length,0xa6843,n,n*1000,count,tlvs.length,0].forEach((v,i)=>d.setUint32(8+i*4,v,true));
   let off=40; for(const [type,p] of tlvs){d.setUint32(off,type,true);d.setUint32(off+4,p.length,true);buf.set(p,off+8);off+=8+p.length;}return buf;
 }
-const api={StreamDecoder,parseFrame,makeSyntheticFrame,MAX_PACKET};
+const api={StreamDecoder,parseFrame,makeSyntheticFrame,MAX_PACKET,SUPPORTED_PROFILES};
 if(typeof module==='object'&&module.exports)module.exports=api;root.RadarProtocol=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

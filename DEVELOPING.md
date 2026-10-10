@@ -65,3 +65,11 @@ Start with a separately licensed official protocol description and a specific bo
 3. Review public contents: no firmware, vendor configs/source, credentials, private manifests, recordings or logs.
 4. Freeze the corresponding source commit, tag and named ZIP; include beginner guides, developer notes and provenance.
 5. Verify release asset download and checksums. Keep prior releases available and distinguish user reports from tested compatibility.
+
+## v0.3 additions
+
+Use `node tests/run-all.js` for all eight deterministic suites; regenerate both fixture files first as described in TEST_PLAN.md. `demo_catalog.js`/`demo-catalog.json` hold official metadata only; `catalog_ui.js` hashes user-selected files locally. `telemetry_panels.js` retains raw gesture and valid/invalid velocity independently. PROTOCOL_EVIDENCE.md records exact transmitter layouts and unsupported families.
+
+Changing a parser profile is explicit and clears session state. Unsupported profiles cannot construct a decoder. Gesture's built-in configuration disables the command sender. New profile acceptance needs real hardware/capture checks; do not rename fixture success as end-to-end compatibility.
+
+For v0.3 and later, CHANGELOG.md is the primary structured changelog; CHANGELOG.txt retains earlier notes. Preserve the exact LICENSE. Public release files must exclude all vendor BIN/CFG bytes, TI source trees and personal captures while retaining official metadata/source attribution.

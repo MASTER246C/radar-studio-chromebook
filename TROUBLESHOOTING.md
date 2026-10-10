@@ -108,3 +108,19 @@ Disconnect the old page and stop its server. Start from the **new extracted fold
 An early user reported live operation of v0.1; that is not broad device certification. v0.2 has protocol, sparse-vitals, trajectory, projection and mocked UI regression coverage. Actual rendered-browser verification and updated hardware acceptance were not completed in the development environment. Synthetic/mock tests do not replace a live comparison with the known-working TI setup.
 
 For an actionable report, include app version, Chromebook/ChromeOS version, board revision, firmware and config version/names, port labels, first CLI error, byte/frame counts, decoder diagnostics, and whether the issue occurs in live, replay or synthetic mode. Never include account credentials. Screenshots of the version label and counters can be useful.
+
+## v0.3 catalogue and import checks
+
+**Unsupported profile:** Area Scanner/Doors use different 44-byte headers; High Accuracy Level Sensing uses a different 36-byte layout; Child Presence Classification has unimplemented dedicated semantics. They are catalogue entries, not usable viewer modes in v0.3. No decoder is guessed.
+
+**Gesture CFG controls disabled:** intentional for the catalogued official build, which starts from its hard-coded configuration. Do not send a generic people-tracking CFG. Select the gesture profile and listen to its data output. Raw ANN values are not confirmed gestures or TI postprocessed decisions.
+
+**Ground-speed unavailable:** check the validity status. A `valid=false` packet is displayed as unavailable with a history gap, even if its float field is nonzero. Do not treat that field as a successful measurement.
+
+**Known artifact but profile mismatch:** a file matched a different catalogue profile. Ordinary and low-power people tracking may share the same binary basename; their hashes differ. Select the intended profile and review the official guide. Inspecting a BIN does not identify the firmware currently flashed.
+
+**Unverified local artifact:** name, size and hash did not all match. It may be edited, renamed, from another toolbox version or unrelated. Do not infer compatibility. Original filesystem paths are not verified by a browser file picker.
+
+**SHA-256 unavailable:** use localhost or approved HTTPS with Web Crypto. The metadata inspector reads local BIN/CFG bytes but never flashes, uploads, stores them persistently or loads the separate configuration sender. File inspection has a 16 MiB cap.
+
+Switching profiles while a connection/configuration transition is active is refused. Finish that action first. Changing a profile otherwise stops local listening/playback and clears retained histories, without a firmware write or radar command.
