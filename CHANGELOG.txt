@@ -1,3 +1,8 @@
+License coverage clarification • 2026-10-10
+- Current license offer explicitly covers original material in v0.1 and v0.2,
+  plus later versions unless separately noticed; only rights held are granted.
+- Preserve existing archive/tag checksums and independently held prior rights.
+
 License update • 2026-10-10
 - Add owner-authorized Source-Available No-Resale License for original material
   the licensor has authority to license; TI/third-party material is excluded.
