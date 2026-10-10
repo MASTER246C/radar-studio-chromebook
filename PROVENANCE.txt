@@ -12,9 +12,12 @@ Texas Instruments material or derivative works. This source release includes
 no TI Python files, firmware, vendor configuration files, vendor images,
 private input manifests, personal recordings, or private logs.
 
-No open-source license grant has been selected for this repository. Public
-visibility alone is not an open-source license. The owner must select any
-license for original contributions; any third-party rights remain unaffected.
+Original material the licensor has authority to license is covered by LICENSE,
+the Radar Studio Chromebook Source-Available No-Resale License, added to main
+on 2026-10-10. It permits personal/internal-business use, paid teaching and
+free redistribution subject to its terms, and restricts resale and paid access.
+It is source-available, not OSI-approved open source. Third-party rights remain
+affected only by their own applicable terms, not by this project license.
 No statement here resolves possible third-party rights in protocol-derived
 work. Obtain and review the applicable TI package license for vendor material.
 
