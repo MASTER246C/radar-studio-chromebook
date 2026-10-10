@@ -1,6 +1,10 @@
 # Radar Studio Chromebook
 
-An experimental, dependency-free browser viewer for compatible IWR6843AOP radar output over USB serial. It is a **web app**, not a Chrome extension and not a firmware flasher.
+**Built specifically for the Texas Instruments IWR6843AOPEVM (IWR6843AOP) radar board.**
+
+**Current user-tested hardware: IWR6843AOPEVM Rev G.** v0.1 has user-reported live ChromeOS tracking and vitals operation; v0.2 has synthetic/mock regression coverage, with updated hardware acceptance still pending. Support for other xWR boards is not established.
+
+An experimental, dependency-free browser viewer for this board's compatible radar output over USB serial. It is a **web app**, not a Chrome extension and not a firmware flasher.
 
 ## Start here
 
