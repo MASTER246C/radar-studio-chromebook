@@ -1,3 +1,9 @@
+Documentation update • 10 October 2026
+- Make the Texas Instruments IWR6843AOPEVM (IWR6843AOP) target prominent at
+  the top of README; scope current user-reported hardware to Rev G.
+- Distinguish v0.1 live ChromeOS report from v0.2 pending hardware acceptance.
+- No runtime changes or changes to existing release tags/ZIPs.
+
 Radar Studio 0.2 • 10 October 2026
 
 Vitals continuity fix
