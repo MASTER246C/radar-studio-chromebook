@@ -1,5 +1,5 @@
 {
-  "bundle": "v0.6-bundle1",
+  "bundle": "v0.6-bundle2",
   "canonical_repository": "https://github.com/MASTER246C/iwr6843aop-activity-recorder",
   "integration_repository": "https://github.com/MASTER246C/radar-studio-chromebook",
   "pin_type": "exact content SHA-256; no runtime remote loading",
@@ -62,7 +62,7 @@
     },
     {
       "path": "offline_features.js",
-      "sha256": "ca86d80482fe6bf1c0619f39689372035a9a87736de7235b7cc9ee5b869397c1"
+      "sha256": "349d9cf4ba932b646a7968c348072eda0a7a3fbd405545240a13be48071aa6c0"
     },
     {
       "path": "offline_model.js",
@@ -78,7 +78,7 @@
     },
     {
       "path": "tests/offline_features.test.js",
-      "sha256": "184f49d2c51f210c35d3331d195687b596627c70adffa776e1b51797007da271"
+      "sha256": "711fd3554a7da5f31829a0c3282d2194115f1e1cb8bd2de309be5a8cf47c4954"
     },
     {
       "path": "tests/offline_model.test.js",
@@ -96,5 +96,12 @@
       "path": "tests/offline_fixture.js",
       "sha256": "a7636a66edf89242d2d6c8ea95639b36e5d79b3cd056dce282f1dd51f023a6f0"
     }
-  ]
+  ],
+  "integration_viewer_version": "v0.9.0-preview.3",
+  "historical_origin": {
+    "bundle": "v0.6-bundle1",
+    "viewer_release": "v0.6",
+    "archive_sha256": "0253759439843f3452aa0c8d5cd152990d3ce8ee0cf08a50921db335cd32a805",
+    "status": "Historical archive unchanged; current files use the exact hashes below."
+  }
 }

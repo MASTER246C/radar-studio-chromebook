@@ -1,6 +1,6 @@
 # Original radar v2: dual-UART bring-up and candidate tracks
 
-Viewer **v0.9.0-preview.2** accepts only firmware **0.3.1-rc1 / build abb27b48c1bdb956c0de704b**, protocol **original-radar-v2**, with version-2 onboard self-test. The separate firmware BIN is 344836 bytes, SHA-256 `668476d4130f659cef4c1fea3b8eb436d5025f20853dc30ca83380f9bd38a6bf`.
+Viewer **v0.9.0-preview.3** accepts only firmware **0.3.1-rc1 / build abb27b48c1bdb956c0de704b**, protocol **original-radar-v2**, with version-2 onboard self-test. The separate firmware BIN is 344836 bytes, SHA-256 `668476d4130f659cef4c1fea3b8eb436d5025f20853dc30ca83380f9bd38a6bf`.
 
 Independent source, target-binary and synthetic host reviews support only the gated, manual **1–5 second** bring-up path. They are not physical hardware/RF acceptance, calibration or sensing-accuracy validation. Do not substitute another firmware build or edit the policy to bypass a failed gate. Old original-radar-v1 builds are blocked in this workflow. The existing TI workflows remain separate and unchanged.
 
@@ -19,9 +19,9 @@ The orthographic display now defaults to 20 m with 2/5/10/20 m choices and expli
 3. Enter measured mounting: floor to the **flat top of the mounting bracket, excluding screw heads**, 100–5000 mm; downward tilt −45° to +45° (positive downward, negative upward); optional signed vertical antenna offset −1000 to +1000 mm after final tilt. Leave unknown offset blank. Known bracket height plus offset must be positive. Confirm the measurement checkbox. Editable starting values are 1219 mm bracket-top height and 0° tilt, with antenna offset blank. They are not confirmed measurements: the checkbox starts unchecked, and other users must enter their actual measured values. These declarations are not phase/axis calibration and never enable world coordinates by themselves.
 4. Enter an integer duration from 1 to 5 seconds and click **Configure only**. Commands are `orConfig 1`, `profile room64_v1`, `mount <your measurements>`, `detect 4 30 64 8`, `session N`, `commit`, then fresh status. No RF starts.
 5. Click **Verify port pairing**. The host generates a fresh 128-bit nonce and sends `pair <32 lowercase hex>` on control. Only the separate data port may return the matching data_probe, exact build and configuration/session tuple. Only after observing that proof does the host send pairConfirm and obtain fresh matching control status/ACK. Pairing starts no RF. This is stream correlation, not authentication or a stable device ID.
-6. Stop if either port, framing, identity, self-test, fault state or nonce proof fails. Reconnect/reset and diagnose; never infer acceptance from partial output.
+6. Stop if either port, framing, identity, self-test, fault state or nonce proof fails. Reconnect/reset and diagnose; never infer acceptance from partial output. After successful no-RF checks, save the capture JSON and both control/data raw JSONL lanes, then stop here for review of the initial no-RF receipts.
 
-Only after these no-RF checks succeed should a **separate manual Start** be considered for the bounded test. No software build/test result authorizes an unattended or longer physical run. Keep the control port open for Stop/status. Closing the browser does not stop the board.
+Only after the initial no-RF receipts have been reviewed should a later **separately authorized manual Start** be considered for the bounded test. No software build/test result authorizes an unattended or longer physical run. Keep the control port open for Stop/status. Closing the browser does not stop the board.
 
 ## Reading the dashboard
 
@@ -68,6 +68,6 @@ Everything stays in the browser unless the user explicitly saves a local file. N
 
 ## Verification and remaining work
 
-Run `node tests/run-all.js` for all deterministic suites, including dual-controller and dual-panel cases. These use synthetic UART streams, fake browser objects and offline fixtures. Native Chromium execution was blocked by the environment's process-singleton socket restriction; no real-browser visual QA or physical hardware pass is claimed.
+Run `node tests/run-all.js` for all deterministic suites, including dual-controller and dual-panel cases. These use synthetic UART streams, fake browser objects and offline fixtures. Source-package checks are recorded in VERIFICATION.txt; hosted browser checks have a separate receipt. Physical hardware acceptance remains pending.
 
 Next acceptance is the no-RF status/probe/confirm sequence above. Consenting-person recordings and measured error evaluation follow only after physical bring-up. Existing candidate thresholds are hypotheses, not trained or validated people-tracking performance.

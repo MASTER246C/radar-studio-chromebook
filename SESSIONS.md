@@ -1,6 +1,6 @@
 # Guided sessions, replay and reviewed datasets
 
-Radar Studio v0.9.0-preview.2 adds local recording guidance and an original-radar review workflow. It does not train or validate a person detector. Existing TI offline tools remain separate.
+Radar Studio v0.9.0-preview.3 retains local recording guidance and an original-radar review workflow. It does not train or validate a person detector. Existing TI offline tools remain separate.
 
 ## Record a named session
 

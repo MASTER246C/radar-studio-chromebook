@@ -1,3 +1,10 @@
+# v0.9.0-preview.3
+
+- Reject ambiguous TI offline event windows touched by unfinished/incomplete annotations; retain clean event and source-reset behavior. Reconcile both shared-module copies as v0.6-bundle2.
+- Repair the Windows synthetic session export test using an OS temporary directory with readback and cleanup.
+- Require the initial no-RF receipt checkpoint before separately authorized RF tests. Correct current version/project descriptions and preserve historical archives.
+- See RELEASE_NOTES_v0.9.0-preview.3.md for related recorder continuity and Stop-confirmation fixes. Exact firmware gates, schemas and licenses are unchanged.
+
 # v0.9.0-preview.2
 
 Layout-only patch for session review and guided recording forms.

@@ -1,13 +1,13 @@
-v0.9.0-preview.2 local software preview verification (2026-10-11)
+v0.9.0-preview.3 software verification (2026-10-11)
 
-PASS: all 27 deterministic suites, including 18 original-session model cases and 8 session UI cases.
-PASS: 60 JavaScript syntax checks.
-PASS: independent final read-only review of raw-byte corroboration, bounded import validation, explicit review provenance, source/hash-bound restore, audit allowlists, undo attribution and privacy boundaries.
-PASS: cross-language synthetic export preparation with the separate Python training tools.
-PASS: original_dual.js and original_dual_acceptance.js remain byte-identical to the approved v0.8.0-preview.2 baseline. Exact firmware 0.3.1-rc1 / abb27b48c1bdb956c0de704b / self-test version 2 and manual 1–5 second gate unchanged.
+PASS: all 27 deterministic JavaScript suites on Windows with the normal tests/run-all.js runner, including 19 offline-feature cases, 18 original-session cases and 8 session UI cases.
+PASS: JavaScript syntax checks for all 60 packaged JavaScript source/test files.
+PASS: all 23 shared module/test/support files match the recorder after Git LF normalization and match SHARED_MODULES.json SHA-256 pins.
+PASS: all packaged source-file sizes and SHA-256 values match RELEASE_MANIFEST.json after Git LF normalization; historical binary assets use exact bytes.
+PASS: original_dual.js and original_dual_acceptance.js are unchanged from the prior main commit. Firmware acceptance remains 0.3.1-rc1 / abb27b48c1bdb956c0de704b / self-test version 2, with a separate manual 1–5 second gate.
 
-New tests cover source hashes and raw immutability; malformed/unadmitted records; tampered admission metadata; zero phasors; loss/fault/truncation diagnostics; duplicate samples; session timebase boundaries; strict byte/base64/depth limits; empty captures; unreviewed prompt separation; explicit sync markers; source-bound review restoration; multiple undo revisions; metadata allowlists; stale asynchronous imports; no device/network access; keyboard focus; named session and marker guards.
+New event regressions cover completed-plus-unfinished overlap, incomplete-ended overlap, clean later events, source-reset isolation and exact abutment. Session export uses an OS temporary directory, reads back the written JSON, and cleans up that test directory.
 
-This is a local software preview. No real-world classifier or person-tracking accuracy, physical sensor range, camera synchronization or device compatibility is validated. Rendered-browser and hardware/RF checks are not included. Synthetic tests establish software behavior only. User recordings and videos are not included in the package.
+Related recorder checks: 33 original training tests and 13 historical v1 host collector tests pass. Whole-segment timestamp/sequence gaps reject affected windows; failed Stop confirmation fails the collector result while preserving prior errors/interrupts.
 
-Layout patch: the review page now explicitly overrides the live sidebar grid, with scoped responsive forms and preserved canvas aspect ratio. Session/RF logic is unchanged; JavaScript differences are version metadata only. Live visual verification is delegated to the hosted release check.
+This receipt covers synthetic local software checks. Hosted deployment/browser checks are recorded separately. No hardware/RF test, onboard self-test receipt, physical calibration, camera synchronization, person-tracking accuracy or classifier accuracy is established. No private capture or trained model is packaged.

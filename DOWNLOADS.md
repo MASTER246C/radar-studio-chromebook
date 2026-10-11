@@ -4,7 +4,9 @@ For **Texas Instruments IWR6843AOPEVM (IWR6843AOP)**; the project's user-reporte
 
 ## Original dual-UART preview
 
-Viewer v0.9.0-preview.2 matches original-radar-v2 firmware **0.3.1-rc1 / build abb27b48c1bdb956c0de704b**. The separately supplied firmware BIN is 344836 bytes, SHA-256 `668476d4130f659cef4c1fea3b8eb436d5025f20853dc30ca83380f9bd38a6bf`. Do not use old one-port firmware with this workflow. Enhanced control is 115200; Standard data is 921600. First verify control status/ACK and no-RF nonce pairing. Read [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md) before any separately authorized 1–5 second bring-up.
+The corrected v0.9.0-preview.3 is in the current repository source folder (GitHub **Code → Download ZIP**) and the hosted edition. Existing release ZIPs retain their named historical versions and do not contain this patch. Keep the whole folder together and check the displayed version.
+
+Viewer v0.9.0-preview.3 matches original-radar-v2 firmware **0.3.1-rc1 / build abb27b48c1bdb956c0de704b**. The separately supplied firmware BIN is 344836 bytes, SHA-256 `668476d4130f659cef4c1fea3b8eb436d5025f20853dc30ca83380f9bd38a6bf`. Do not use old one-port firmware with this workflow. Enhanced control is 115200; Standard data is 921600. First verify control status/ACK and no-RF nonce pairing. Read [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md) before any separately authorized 1–5 second bring-up.
 
 The original tracker is independent experimental host code. It does not copy or fall back to a TI demo tracker. The TI workflows below remain separate options for matching TI firmware only.
 

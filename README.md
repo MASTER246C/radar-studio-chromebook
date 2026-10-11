@@ -1,6 +1,8 @@
 > New local workflow: [guided sessions, saved-capture replay, reviewed labels and hashed dataset export](SESSIONS.md). Original RF remains limited to separate manual 1–5 second takes. Camera choice is still open; no camera access is requested.
 
-> v0.9.0-preview.2: original dual-UART capture and experimental candidate tracks. Select Original radar v2 only with the exact matching 0.3.1-rc1 firmware; older one-port builds cannot unlock this workflow. See [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
+> v0.9.0-preview.3: original dual-UART capture and experimental candidate tracks. Select Original radar v2 only with the exact matching 0.3.1-rc1 firmware; older one-port builds cannot unlock this workflow. See [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
+
+The current repository source contains the v0.9.0-preview.3 correctness patch. Use the complete source folder or the [hosted viewer](https://radar-studio.master246c.chatgpt.site) and verify its version heading. Existing tagged release ZIPs remain unchanged historical archives; see [current release notes](RELEASE_NOTES_v0.9.0-preview.3.md).
 
 # Radar Studio Chromebook
 
@@ -14,7 +16,7 @@ Use only the viewer workflow matching the firmware already on your IWR6843AOP bo
 
 Recordings are handled in your browser and saved through explicit local downloads; opening the site does not submit recordings to GitHub or the dataset. Review consent and privacy before sharing any export. The software remains **source-available under its existing no-resale license**; required notices and separate third-party terms still apply.
 
-For original firmware, first perform control status/ACK and no-RF port-pairing checks. The exact candidate is **0.3.1-rc1 / build abb27b48c1bdb956c0de704b**. Choose Enhanced control at 115200 and Standard data at 921600, enter and confirm your measured mounting values, Configure, and Verify port pairing. A data-only nonce echo and fresh matching control self-test/status are required before a separate manual **1–5 second** Start. Pairing does not start RF. Old builds and longer runs remain blocked. Candidate IDs represent peaks, not people; at most three peaks are emitted. No people count, calibrated confidence, posture classifier or stable human identity is claimed. Hardware acceptance remains unverified.
+For original firmware, first perform control status/ACK and no-RF port-pairing checks. The exact candidate is **0.3.1-rc1 / build abb27b48c1bdb956c0de704b**. Choose Enhanced control at 115200 and Standard data at 921600, enter and confirm your measured mounting values, Configure, and Verify port pairing. Require a data-only nonce echo and fresh matching control self-test/status, save the capture JSON and both raw JSONL lanes, then **stop here for review of the initial no-RF receipts**. Only after that review should a separately authorized manual **1–5 second** sensing test be considered. Startup, configuration and pairing do not start RF. Old builds and longer runs remain blocked. Candidate IDs represent peaks, not people; at most three peaks are emitted. No people count, calibrated confidence, posture classifier or stable human identity is claimed. Hardware acceptance remains unverified.
 
 
 **Mount height is configurable; the UI offers editable 1219 mm/0° starting values but requires explicit measurement confirmation; other users must enter their own measurements. Historical project reference (not a default or calibration): 4 feet (1.2192 m) from floor to the flat TOP of the bracket, excluding screws.**
@@ -27,9 +29,9 @@ The earlier **2.00 m / 15-degree** arrangement was a planned experimental refere
 
 **Built specifically for the Texas Instruments IWR6843AOPEVM (IWR6843AOP) radar board.** The user-reported live setup is **Rev G**. This is not a generic viewer for all xWR or xWRL devices.
 
-A dependency-free browser application using Web Serial, served from the hosted site or a local file server. **v0.6** adds [local offline ML](OFFLINE_ML.md): train/save/load your own models, sort recordings into proposals, and human-review them in separate overlays. Open **Local offline ML** from the viewer. No account, upload, pretrained model or paid service is required.
+A dependency-free browser application using Web Serial, served from the hosted site or a local file server. **v0.6** introduced [local offline ML](OFFLINE_ML.md), retained in the current viewer: train/save/load your own models, sort recordings into proposals, and human-review them in separate overlays. Open **Local offline ML** from the viewer. No account, upload, pretrained model or paid service is required.
 
-**v0.5** introduced the original **Motion Signature Lab**, observed sitting/standing/walking examples, measured calibration, local model training/evaluation and complete received-UART capture. Start with [MOTION_LAB.md](MOTION_LAB.md). The application still consumes compatible TI firmware output; no original radar firmware or real-data accuracy claim is included. It does not flash firmware or send commands merely because a profile or file is selected.
+**v0.5** introduced the original **Motion Signature Lab**, observed sitting/standing/walking examples, measured calibration, local model training/evaluation and complete received-UART capture. Start with [MOTION_LAB.md](MOTION_LAB.md). That historical workflow consumes compatible TI firmware output. The current viewer also supports the separate matching original JSON firmware described in [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md); its firmware source and release are in the recorder repository. No real-data accuracy is established. The viewer does not flash firmware or send commands merely because a profile or file is selected.
 
 ## Official board and prerequisites
 
@@ -56,7 +58,7 @@ Vendor downloads remain at their official sources; they are not bundled or relic
 ## Start here
 
 1. [Open Radar Studio](https://radar-studio.master246c.chatgpt.site) in a full desktop/ChromeOS Chrome tab. No Linux server is needed for this hosted option.
-2. Read [QUICKSTART.md](QUICKSTART.md) and select the workflow matching the firmware already on your board. Read the catalogue coverage and limitations before using a TI profile; follow the status-only acceptance gate for original firmware.
+2. Read [QUICKSTART.md](QUICKSTART.md) and select the workflow matching the firmware already on your board. Read the catalogue coverage and limitations before using a TI profile. For original firmware, complete no-RF status/configuration/pairing, save the receipts and stop for review before any later separately authorized sensing test.
 3. Select serial ports only when you intend to connect. Do not mix TI configuration with the original JSON protocol. Opening the site does not flash firmware or start RF.
 4. Save recordings explicitly to your own device. Nothing is submitted to the dataset automatically.
 5. For a version-pinned local copy, download a ZIP from **Releases**, keep versions in separate folders, and follow the local-server instructions in [QUICKSTART.md](QUICKSTART.md). For local TI artifact checks, see [LOCAL_IMPORT.md](LOCAL_IMPORT.md).
@@ -128,12 +130,13 @@ v0.5 adds an original local experiment for **sitting, standing and walking** on
 this IWR6843AOPEVM setup. Read **[MOTION_LAB.md](MOTION_LAB.md)** before collecting
 examples: it covers calibration, human labels, separate training/evaluation
 sessions, uncertainty, privacy and the path toward future custom firmware.
-This section describes the v0.5 foundation. This folder displays v0.6; original v0.5 releases and tags remain unchanged.
+This section describes the historical v0.5 foundation retained in the current viewer; original v0.5 releases and tags remain unchanged.
 
-The new browser CPU classifier is a standardized nearest-centroid baseline built
+The v0.5 browser CPU classifier is a standardized nearest-centroid baseline built
 from observed examples. It still consumes the existing TI firmware's point/track
-output through the viewer. **No original on-board firmware or raw-ADC pipeline
-is included**, and no activity accuracy is established without real data.
+output through the viewer. **v0.5 included no original on-board firmware or raw-ADC
+pipeline**, and no activity accuracy is established without real data. The current
+original-firmware workflow is separate; see [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
 
 Motion calibration uses the measured floor-to-bracket-top reference height, a
 signed antenna-center offset, tilt and tolerance. Point and track coordinate
@@ -175,7 +178,7 @@ renaming adjacent sessions in one continuous stream cannot satisfy the split.
 ## Related repositories and shared module provenance
 
 - [Radar Studio Chromebook](https://github.com/MASTER246C/radar-studio-chromebook): integrated viewer, collector and Motion Signature Lab.
-- [Reusable activity recorder](https://github.com/MASTER246C/iwr6843aop-activity-recorder): reusable modules and tests; a separate code project, not a second capture application or a firmware build.
+- [Reusable activity recorder](https://github.com/MASTER246C/iwr6843aop-activity-recorder): reusable modules and tests, original sensing firmware source/releases and host training tools; use Radar Studio for the integrated browser application.
 - [Activity dataset](https://github.com/MASTER246C/iwr6843aop-activity-dataset): dataset scaffold and review plan, initially zero samples and draft terms.
 
 `SHARED_MODULES.json` pins the exact reusable module/test/supporting-fixture bytes
@@ -195,8 +198,8 @@ separately. All model outputs remain proposals until an explicit human review.
 Raw captures and observed labels are preserved; review overlays are derived files.
 
 “v1 foundation” describes the intended first end-to-end foundation, followed by
-original sensing work. It does not rename existing software releases: this
-software is v0.6, and published v0.5 tags/ZIPs remain unchanged. No pretrained
+original sensing work. It does not rename existing software releases: v0.6 was
+the offline-ML release, and published v0.5/v0.6 tags and ZIPs remain unchanged. No pretrained
 model or real-data recognition accuracy is claimed. Current TI-format training
 is distinct from the separately developed original JSON Lines firmware/collector;
 uncalibrated original observations are not silently accepted as TI-calibrated data.

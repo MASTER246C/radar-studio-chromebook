@@ -1,19 +1,23 @@
-# v0.9.0-preview.2: original dual-UART bring-up
+# v0.9.0-preview.3: original dual-UART bring-up
 
 ## Hosted option
 
 [Open Radar Studio](https://radar-studio.master246c.chatgpt.site) in a full desktop/ChromeOS Chrome tab with Web Serial. No local Linux server, Python or Developer Mode is required. Browser/device policies may restrict USB; do not bypass them. Opening the app sends no command, starts no RF and uploads no recordings.
 
-## Next bounded test, after installing this release
+## First acceptance: save no-RF receipts and stop for review
 
 1. Set the board's flashing switch to **I** and reset. Flash the exact 0.3.1-rc1 image with your supported flashing tool. Then set it to **O** and reset to run. Flashing is separate from the viewer; do not send viewer commands while in flashing mode.
-2. Open v0.9.0-preview.2. Choose **Enhanced control 115200**, then **Standard data 921600**. Click **Query control status** and verify exact build abb27b48c1bdb956c0de704b, self-test version 2 passing and zero faults.
+2. Open v0.9.0-preview.3. Choose **Enhanced control 115200**, then **Standard data 921600**. Click **Query control status** and verify exact build abb27b48c1bdb956c0de704b, self-test version 2 passing and zero faults.
 3. Check height **1219 mm**, tilt **0 degrees** and unknown/blank antenna offset against the actual mounting. Other users must replace these editable starting values with their own measurements. Tick the measurement confirmation only after checking.
 4. Click **Configure only**, then **Verify port pairing · no RF**. Both must succeed; neither starts RF.
-5. Click the separate **Start 5-second bring-up test**. After the bounded run, click **Query control status** and require **idle** with zero faults. Use Stop if needed; never assume closing the page stopped RF.
-6. Save the capture JSON, control JSONL bytes and data JSONL bytes. If status times out, save first and reconnect the control port; board reset alone does not clear browser desynchronization.
+5. Save the capture JSON, control JSONL bytes and data JSONL bytes from these no-RF checks. Require fresh matching status confirming **idle**, paired and zero faults. If status times out, save first and reconnect the control port; board reset alone does not clear browser desynchronization.
+6. **Stop the acceptance procedure here for review of the initial no-RF receipts. Do not click Start.** A failed status/configuration/pairing check is a failed acceptance check; never start RF to troubleshoot it.
 
-This is a bounded bring-up check, not physical detection-range or person-classification validation. The 20 m display is only a viewport; the unchanged current search window is about 0.8–5.9 m.
+Opening the app, firmware startup, configuration and pairing do not implicitly start RF. This initial checkpoint verifies control/data framing and correlation; it does not establish physical detection-range or person-classification accuracy.
+
+## Later separately authorized sensing test
+
+Only after the initial no-RF receipts have been reviewed should a separately authorized manual **1–5 second** sensing test be considered. Recheck control status and complete a fresh no-RF pairing sequence for the planned run; configuration changes, Stop/end or faults revoke pairing and each Start consumes it. Then click the separate **Start 5-second bring-up test** for a five-second take, watch data freshness and stop warnings, and use **Stop** if needed. Afterward, query control status and require **idle** with zero faults, then save the capture and both raw JSONL lanes. Never assume closing the page stopped RF. The 20 m display is only a viewport; the unchanged current search window is about 0.8–5.9 m.
 
 ## Original firmware path
 
@@ -23,14 +27,14 @@ Use only **original-radar-v2 / 0.3.1-rc1 / build abb27b48c1bdb956c0de704b** with
 2. Query control status. Require separate valid JSON status and ACK, the exact build, passing version-2 boot self-test and zero faults on both transports. Malformed output never counts as success.
 3. Enter measured floor-to-flat-bracket-top height (excluding screw heads), measured tilt, and optional signed antenna vertical offset; leave offset blank if unknown. Check the measurement confirmation. These entries are not phase/axis calibration.
 4. Choose an integer 1–5 seconds and Configure only. Then click Verify port pairing. A fresh random nonce travels through control and must return on data, followed by pairConfirm and fresh matching control status. This step does not start RF.
-5. Only after those no-RF checks succeed, a separate manual Start may run the bounded test. Watch the stop warning and data freshness; Stop remains on control if data fails. Closing the page does not stop the board. The firmware time cap is the fallback.
-6. Save capture JSON and, if needed, the separate control/data raw JSONL files. No upload is automatic. Pair again before another run.
+5. Save capture JSON and both separate control/data raw JSONL files, then **stop here for review of the initial no-RF receipts; do not click Start**. No upload is automatic. A successful pairing alone does not authorize sensing.
+6. Only after that review and separate authorization, follow **Later separately authorized sensing test** above for a manual 1–5 second run. Watch the stop warning and data freshness; Stop remains on control if data fails. Closing the page does not stop the board. The firmware time cap is the fallback. Save the run's capture and both raw lanes, and pair again before another run.
 
-The first physical acceptance step is status/ACK framing and no-RF pairing, not a sensing-accuracy claim. Candidate tracks are exploratory radar-peak associations; up to three peaks per frame are emitted. They are not people counts or trained sitting/standing predictions. See [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
+The first physical acceptance step is status/ACK framing, configuration and no-RF pairing, followed by saved-receipt review. Candidate tracks are exploratory radar-peak associations; up to three peaks per frame are emitted. They are not people counts or trained sitting/standing predictions. See [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
 
-## Optional version-pinned local copy
+## Optional current local copy
 
-Extract the complete ZIP into a new folder, separate from older releases and private recordings. Run `sh start-local.sh` (or `python3 -m http.server 8000 --bind 127.0.0.1`) there and open `http://localhost:8000` in Chrome. No dependency installation is needed.
+Use the complete current repository source folder (GitHub **Code → Download ZIP**) for v0.9.0-preview.3, separate from older releases and private recordings. Existing tagged ZIPs remain historical versions and do not contain these fixes. Run `sh start-local.sh` (or `python3 -m http.server 8000 --bind 127.0.0.1`) there and open `http://localhost:8000` in Chrome. No dependency installation is needed.
 
 The older TI workflow instructions below remain applicable only to matching TI
 firmware. Never send TI configuration to the original JSON firmware.
@@ -45,7 +49,7 @@ The remaining steps describe the optional local-server route in **ChromeOS Chrom
 
 ## 1. Choose a version
 
-For v0.6, first read the selected official demo catalogue entry: all profiles have selected partial/experimental decoding, with important application features still absent. See [DEMO_CATALOG.md](DEMO_CATALOG.md) and [LOCAL_IMPORT.md](LOCAL_IMPORT.md).
+For the retained TI workflow, first read the selected official demo catalogue entry: all profiles have selected partial/experimental decoding, with important application features still absent. See [DEMO_CATALOG.md](DEMO_CATALOG.md) and [LOCAL_IMPORT.md](LOCAL_IMPORT.md).
 
 Use this repository's **Releases** page to choose a tagged version and download its viewer ZIP. Keep releases in separate folders; do not mix JavaScript files from different versions.
 
@@ -183,4 +187,4 @@ for minimum capture counts, explicit event-none examples and the optional CLI.
 
 ## Record and review sessions
 
-Before frames arrive, prepare a named session in the dashboard. Follow the bounded test above, save the original capture, then open [Session replay and review](sessions.html). See [SESSIONS.md](SESSIONS.md) for keyboard labels, undo, review and dataset export. Prompts do not automatically become ground truth.
+Before frames arrive, prepare a named session in the dashboard. For original firmware, first save the no-RF acceptance capture and stop for receipt review as above. Only a later separately authorized sensing take supplies live radar frames. Save its original capture, then open [Session replay and review](sessions.html). See [SESSIONS.md](SESSIONS.md) for keyboard labels, undo, review and dataset export. Prompts do not automatically become ground truth.
