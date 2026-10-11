@@ -1,14 +1,11 @@
-v0.8.0-preview.2 verification (2026-10-11)
+v0.9.0-preview.1 local software preview verification (2026-10-11)
 
-PASS: all 25 deterministic suites after exact-policy approval.
-PASS: 55 JavaScript syntax checks.
-PASS: 37 dual-controller cases and 19 dual-panel cases; legacy suites preserved.
-PASS: independent final source review and supplemental exact-production-policy rejection of old versions, other builds, self-test version 1 and failure bit 256.
+PASS: all 27 deterministic suites, including 18 original-session model cases and 7 session UI cases.
+PASS: 60 JavaScript syntax checks.
+PASS: independent final read-only review of raw-byte corroboration, bounded import validation, explicit review provenance, source/hash-bound restore, audit allowlists, undo attribution and privacy boundaries.
+PASS: cross-language synthetic export preparation with the separate Python training tools.
+PASS: original_dual.js and original_dual_acceptance.js remain byte-identical to the approved v0.8.0-preview.2 baseline. Exact firmware 0.3.1-rc1 / abb27b48c1bdb956c0de704b / self-test version 2 and manual 1–5 second gate unchanged.
 
-The reviewed policy accepts only firmware 0.3.1-rc1, build abb27b48c1bdb956c0de704b, self-test version 2, under unchanged nonce, fresh control receipt, zero-fault, mounting-confirmation and manual 1–5 second gates. Firmware binary/source review passed separately.
+New tests cover source hashes and raw immutability; malformed/unadmitted records; tampered admission metadata; zero phasors; loss/fault/truncation diagnostics; duplicate samples; session timebase boundaries; strict byte/base64/depth limits; empty captures; unreviewed prompt separation; explicit sync markers; source-bound review restoration; multiple undo revisions; metadata allowlists; stale asynchronous imports; no device/network access; keyboard focus; named session and marker guards.
 
-Tests cover timeout recovery, board reset retaining desynchronization, immutable raw control/data bytes, bounded command/device reply histories, mounting defaults and mandatory confirmation, Configure-before-pair ordering, and display-only 20 m / near-view controls. Scene tests check 20 m boundaries, desktop/mobile aspect ratios, equal metric scale, close zoom and metric tick labels.
-
-Independent review also verified a saturated 2048-event history with 1100 status commands: promises settle and both raw lanes remain exact. Hardware/RF testing and rendered-browser validation are not claimed. Chromium launch was blocked before navigation by an environment socket restriction.
-
-The fixed documented RX polarity is not measured phase/axis calibration. The 20 m viewport does not expand the unchanged approximately 0.8–5.9 m room64_v1 search window or validate physical human range. Candidate tracks remain experimental peak associations.
+This is a local software preview. No real-world classifier or person-tracking accuracy, physical sensor range, camera synchronization or device compatibility is validated. Rendered-browser and hardware/RF checks are not included. Synthetic tests establish software behavior only. User recordings and videos are not included in the package.

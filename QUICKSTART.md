@@ -1,4 +1,4 @@
-# v0.8.0-preview.2: original dual-UART bring-up
+# v0.9.0-preview.1: original dual-UART bring-up
 
 ## Hosted option
 
@@ -7,7 +7,7 @@
 ## Next bounded test, after installing this release
 
 1. Set the board's flashing switch to **I** and reset. Flash the exact 0.3.1-rc1 image with your supported flashing tool. Then set it to **O** and reset to run. Flashing is separate from the viewer; do not send viewer commands while in flashing mode.
-2. Open v0.8.0-preview.2. Choose **Enhanced control 115200**, then **Standard data 921600**. Click **Query control status** and verify exact build abb27b48c1bdb956c0de704b, self-test version 2 passing and zero faults.
+2. Open v0.9.0-preview.1. Choose **Enhanced control 115200**, then **Standard data 921600**. Click **Query control status** and verify exact build abb27b48c1bdb956c0de704b, self-test version 2 passing and zero faults.
 3. Check height **1219 mm**, tilt **0 degrees** and unknown/blank antenna offset against the actual mounting. Other users must replace these editable starting values with their own measurements. Tick the measurement confirmation only after checking.
 4. Click **Configure only**, then **Verify port pairing · no RF**. Both must succeed; neither starts RF.
 5. Click the separate **Start 5-second bring-up test**. After the bounded run, click **Query control status** and require **idle** with zero faults. Use Stop if needed; never assume closing the page stopped RF.
@@ -180,3 +180,7 @@ Assign whole captures to training or held-out, train and save a local model, and
 review proposals. Save the prepared features, model and review overlay before
 closing the page. Original files are never edited. See [OFFLINE_ML.md](OFFLINE_ML.md)
 for minimum capture counts, explicit event-none examples and the optional CLI.
+
+## Record and review sessions
+
+Before frames arrive, prepare a named session in the dashboard. Follow the bounded test above, save the original capture, then open [Session replay and review](sessions.html). See [SESSIONS.md](SESSIONS.md) for keyboard labels, undo, review and dataset export. Prompts do not automatically become ground truth.

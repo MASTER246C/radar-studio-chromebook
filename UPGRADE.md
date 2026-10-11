@@ -1,13 +1,13 @@
-# Upgrading to v0.8.0-preview.2
+# Upgrading to v0.9.0-preview.1
 
 1. Stop and confirm idle in the old viewer, save both raw UART streams/capture JSON, then disconnect its ports. Keep private recordings separate from public software.
-2. Extract the new viewer into a separate folder or reload the hosted viewer after the new release is announced. Verify the v0.8.0-preview.2 heading.
+2. Extract the new viewer into a separate folder or reload the hosted viewer after the new release is announced. Verify the v0.9.0-preview.1 heading.
 3. This version's original workflow requires firmware 0.3.1-rc1/build abb27b48c1bdb956c0de704b and self-test version 2. Older 0.3.0 firmware cannot unlock it. Firmware flashing is a separate explicit action; this viewer never flashes automatically.
 4. Re-select Enhanced control 115200 and Standard data 921600. Query fresh control status; confirm exact identity/self-test/zero faults. Re-enter confirmed mounting, Configure only, then Verify port pairing · no RF. A manual 1–5 s Start remains separate.
 5. If a command times out, save capture and reconnect the control port. Resetting only the board does not clear the browser's desynchronization.
 6. A 20 m default display is only a viewport: the unchanged current search window is approximately 0.8–5.9 m and physical human range is unvalidated. Use range/zoom controls to inspect nearby points.
 
-See ORIGINAL_RADAR.md and RELEASE_NOTES_v0.8.0-preview.2.md. Historical upgrade notes below apply only to their named old workflows.
+See ORIGINAL_RADAR.md and RELEASE_NOTES_v0.9.0-preview.1.md. Historical upgrade notes below apply only to their named old workflows.
 
 # Upgrading to v0.6
 

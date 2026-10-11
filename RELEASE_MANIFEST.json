@@ -1,8 +1,8 @@
 {
-  "release": "v0.8.0-preview.2",
+  "release": "v0.9.0-preview.1",
   "date_utc": "2026-10-11",
-  "base_commit": "b7eaef00f4c8313a5b9399a0d38ac92c6d06340b",
-  "status": "Reviewed exact-build manual bring-up preview; physical sensing unvalidated",
+  "base_commit": "61ff650231bfe60ef67346fa71e19c203cabe78d",
+  "status": "Reviewed local session/replay/dataset software preview; no real-world classifier validation",
   "target_board": "IWR6843AOPEVM / IWR6843AOP",
   "firmware_protocol": "original-radar-v2",
   "rf_start_policy": "Exact reviewed firmware and self-test only; no-RF status/pairing first; separate manual 1\u20135 second Start",
@@ -24,12 +24,12 @@
   "private_research_contents_included": false,
   "current_main_mounting_material_preserved": true,
   "license": "Unchanged source-available LICENSE; no-resale and third-party restrictions preserved",
-  "deterministic_test_suites": 25,
+  "deterministic_test_suites": 27,
   "original_controller_tests": 69,
   "original_mock_ui_tests": 44,
   "accepted_firmware_gate_tests": 153,
-  "javascript_syntax_files": 55,
-  "independent_review": "Final independent source and exact-policy review passed; all 25 suites and 55 syntax checks passed. Separate firmware source/compiled-target/BIN review passed.",
+  "javascript_syntax_files": 60,
+  "independent_review": "Independent final local software review passed all 27 suites; raw corroboration, bounded imports, label audit and exact-source restore checked. RF transport and policy byte-identical to approved baseline.",
   "rendered_browser_verified": false,
   "rendered_browser_limitation": "Native Chromium launch blocked by process-singleton socket EPERM, including approved escalation. Dual UI tested in mocked DOM/canvas only; no visual pass claimed.",
   "hardware_or_rf_verification": false,
@@ -44,8 +44,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size_bytes": 15105,
-      "sha256": "43f932704005f8781e60f084c5ae881616024d18e87209014d5b2ddb9ab40596"
+      "size_bytes": 16178,
+      "sha256": "1aa261b784c7f4c0678e28b8a3d04f8bd60a9e1f5e9013d8b864541ec6af30dd"
     },
     {
       "path": "CHANGELOG.txt",
@@ -70,7 +70,7 @@
     {
       "path": "DOWNLOADS.md",
       "size_bytes": 8502,
-      "sha256": "e8ff1b41c44c3e8c7fd463729361515910fd8c0cf0c2ab18b57818d52e6decaf"
+      "sha256": "cbbfdbcd20ff97eaaf7930206516bbf2e60ec2bc426cd49ef6857426b0920983"
     },
     {
       "path": "LEGACY_PROTOCOL_EVIDENCE.md",
@@ -105,7 +105,7 @@
     {
       "path": "ORIGINAL_RADAR.md",
       "size_bytes": 10911,
-      "sha256": "76e5bc5a94f74301b2e2e1a0fead54afcd1740a1307994293a32d0dfe02bbbcd"
+      "sha256": "4f67db1cf75c2b048fd0aa388a2e113bebe4533dba935db7aa372cdeaeeb18c0"
     },
     {
       "path": "PROTOCOL_EVIDENCE.md",
@@ -119,13 +119,13 @@
     },
     {
       "path": "QUICKSTART.md",
-      "size_bytes": 16002,
-      "sha256": "2d4c855044cdbb4708aa04c648ce1ad4ce09d6a631f98111e2f465303cbc01a2"
+      "size_bytes": 16345,
+      "sha256": "1b7fdf96e958df98fd8d22b2afd80b89ce522b93793a7a379b37ffcec9498491"
     },
     {
       "path": "README.md",
-      "size_bytes": 19978,
-      "sha256": "e78460f0ca9108f030020d3f03287a59552640c012c5591d1d98f37971838785"
+      "size_bytes": 20225,
+      "sha256": "77bb071ba07b6de423e719e62576cf220e4c8fdfed9aeede88e8b6c04bf22e1a"
     },
     {
       "path": "RECORDER_API.md",
@@ -153,6 +153,16 @@
       "sha256": "276aaaf56ff4d7991525150ff03710ab20d88694dd8e25413ef06de6d137ac0f"
     },
     {
+      "path": "RELEASE_NOTES_v0.9.0-preview.1.md",
+      "size_bytes": 1072,
+      "sha256": "8fa012967dd6fb9309824875ecc6e596547ace42bb78c266cedf13b1721658ab"
+    },
+    {
+      "path": "SESSIONS.md",
+      "size_bytes": 6119,
+      "sha256": "fb08b5b4b20fdc446f48839db7764455615bd39e65ef45bd435cfe4d862d2127"
+    },
+    {
       "path": "SHARED_MODULES.json",
       "size_bytes": 3430,
       "sha256": "12c1e8fbeef3db1d981e6d0d5dd0a20f7f8dd7e5e0a513935dee5147a68f3d1a"
@@ -175,12 +185,12 @@
     {
       "path": "UPGRADE.md",
       "size_bytes": 3261,
-      "sha256": "4f0d0046c41ee0ef2eeed5c29e13b4eed841d76c762ff5222c8f2a0e9c7f151b"
+      "sha256": "7b4c54fd157f73880db27fea064be8478fb68d926f5bbb5056f50e44cfb940b0"
     },
     {
       "path": "VERIFICATION.txt",
-      "size_bytes": 1595,
-      "sha256": "e63d2f8992c9b4d219496f030591cdafaad5e9cf473ba9073b833c122313df9f"
+      "size_bytes": 1571,
+      "sha256": "1f4dc7abd437fb8c45e1e019823a4fc67289a61b2ee3557ad178e29aea4b98b6"
     },
     {
       "path": "app.js",
@@ -224,8 +234,8 @@
     },
     {
       "path": "index.html",
-      "size_bytes": 26263,
-      "sha256": "c1dcf8c5fc9bdca04a1d9033b213ff69c8e7b95775853fc0e5020d6ba991f8ea"
+      "size_bytes": 28071,
+      "sha256": "76ecad3601da35ea67fc6b3c59e6ec1f64680b69c1b1f89a899edec24110e927"
     },
     {
       "path": "legacy_panels.js",
@@ -284,8 +294,8 @@
     },
     {
       "path": "original_dual_panel.js",
-      "size_bytes": 15715,
-      "sha256": "0f6d991e766775b4813b7348d3cae0d026cce4ef654cb2bb6527ff8b86d5af3f"
+      "size_bytes": 15858,
+      "sha256": "96157b3ea59ea0489d39379f0b1d6a55b71848e5aa8e0f7e1fd773c54bca7713"
     },
     {
       "path": "original_oneport.html",
@@ -303,6 +313,11 @@
       "sha256": "5773c7252c4624741937b71449483ad751b7feb6b187836b2397bc10471a7248"
     },
     {
+      "path": "original_sessions.js",
+      "size_bytes": 19024,
+      "sha256": "afe6b80b5cac6d6e6b17aebb1c0ba13a23442eb87e660d3a0b0bf793cef2208b"
+    },
+    {
       "path": "original_tracker.js",
       "size_bytes": 5906,
       "sha256": "a744602a20e00fa6c558451e9f949eddeaac23166a995adcbc973163b104098b"
@@ -316,6 +331,21 @@
       "path": "radar_scene.js",
       "size_bytes": 8154,
       "sha256": "d3587f805d5df3e4d5637ca3b8a33dd555d52ee12e5f993927c4c4641d4115f5"
+    },
+    {
+      "path": "session_guide.js",
+      "size_bytes": 3324,
+      "sha256": "e5f018eba4270822d3a35d2ea63b5a8c7b67b1d94081278fe06c85a4921f8127"
+    },
+    {
+      "path": "session_replay.js",
+      "size_bytes": 6453,
+      "sha256": "7948c0a7d343c883ab08eb65ca850ab63f28166aa419b18f43b47290b6f5d413"
+    },
+    {
+      "path": "sessions.html",
+      "size_bytes": 3629,
+      "sha256": "2c69a1e7cab474d0d01f261f99f7888aecc9e2dbc01c69203ffdbe3e76bba8de"
     },
     {
       "path": "start-local.sh",
@@ -478,6 +508,11 @@
       "sha256": "801257867c7340e07b5365fb64290dd75aed8b36a82d55033e6f1be1365bc4aa"
     },
     {
+      "path": "tests/original_sessions.test.js",
+      "size_bytes": 8354,
+      "sha256": "eebda91ae8d1a274e7e47d623ce68fa0a26f4b8cce2a09050f28eb70df704669"
+    },
+    {
       "path": "tests/original_tracker.test.js",
       "size_bytes": 5905,
       "sha256": "586dd7b3c739e20040183ced79ccb63a8ee82547fe194766c72bc50372dfe4af"
@@ -494,13 +529,18 @@
     },
     {
       "path": "tests/run-all.js",
-      "size_bytes": 755,
-      "sha256": "1e0ec34b20d87d228db9ae10808b8fb588260876503bf6920034041d2a94573a"
+      "size_bytes": 788,
+      "sha256": "1121641cf612e15538fd700ba350420a9bfc79cf59c7b9e01b3c7d5cd81f2bc2"
     },
     {
       "path": "tests/scene.test.js",
       "size_bytes": 5304,
       "sha256": "28cf3d77cfe0e49fef3e9d98d30006d7d952c6e75a4f217919e845b8b01b9872"
+    },
+    {
+      "path": "tests/session_ui.test.js",
+      "size_bytes": 5465,
+      "sha256": "26a8f43817ee288ba41730fe8ee90ed791d842481554e0ffc579ea60711f21cb"
     },
     {
       "path": "tests/telemetry.test.js",
@@ -546,7 +586,7 @@
   "dual_panel_tests": 19,
   "hosted_current_main_docs_preserved": true,
   "contribution_uploads_enabled": false,
-  "base_release": "v0.8.0-preview.1",
+  "base_release": "v0.8.0-preview.2",
   "display_range_default_m": 20,
   "display_range_options_m": [
     2,
@@ -558,5 +598,12 @@
   "profile_search_window_m_approx": [
     0.8,
     5.9
-  ]
+  ],
+  "original_session_tests": 18,
+  "session_ui_tests": 7,
+  "dataset_schema": "original-radar-dataset",
+  "dataset_schema_version": 1,
+  "camera_access_enabled": false,
+  "camera_compatibility_validated": false,
+  "python_training_bundled": false
 }

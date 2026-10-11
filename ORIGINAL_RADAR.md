@@ -1,6 +1,6 @@
 # Original radar v2: dual-UART bring-up and candidate tracks
 
-Viewer **v0.8.0-preview.2** accepts only firmware **0.3.1-rc1 / build abb27b48c1bdb956c0de704b**, protocol **original-radar-v2**, with version-2 onboard self-test. The separate firmware BIN is 344836 bytes, SHA-256 `668476d4130f659cef4c1fea3b8eb436d5025f20853dc30ca83380f9bd38a6bf`.
+Viewer **v0.9.0-preview.1** accepts only firmware **0.3.1-rc1 / build abb27b48c1bdb956c0de704b**, protocol **original-radar-v2**, with version-2 onboard self-test. The separate firmware BIN is 344836 bytes, SHA-256 `668476d4130f659cef4c1fea3b8eb436d5025f20853dc30ca83380f9bd38a6bf`.
 
 Independent source, target-binary and synthetic host reviews support only the gated, manual **1–5 second** bring-up path. They are not physical hardware/RF acceptance, calibration or sensing-accuracy validation. Do not substitute another firmware build or edit the policy to bypass a failed gate. Old original-radar-v1 builds are blocked in this workflow. The existing TI workflows remain separate and unchanged.
 
