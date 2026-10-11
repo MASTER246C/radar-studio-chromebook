@@ -17,7 +17,7 @@
 <div class="row"><button id="originalConnect">Choose Enhanced control port · 115200</button><button id="originalDataConnect">Choose Standard data port · 921600</button><button id="originalStatus">Query control status</button></div>
 <div class="row"><button id="originalDisconnect">Disconnect control safely</button><button id="originalDataDisconnect">Disconnect data</button></div>
 <p class="fine">A control-issued random nonce must be echoed on the data port and confirmed on control before Start. This detects mismatched ports and stale sessions; it is correlation, not authentication. If data is lost during a run, the viewer attempts Stop through control. Keep control connected. Firmware's 1–5 second cap is the fallback.</p>
-<p class="fine">Order: Query control status → enter and confirm mounting → Configure only → Verify port pairing · no RF → separate manual Start (1–5 seconds). Pairing is unavailable until Configure succeeds.</p>
+<p class="fine">Initial no-RF checkpoint: Query control status → enter and confirm mounting → Configure only → Verify port pairing · no RF → save capture JSON and both raw UART streams → stop for receipt review. Later separately authorized sensing: repeat fresh gates → separate manual Start (1–5 seconds). Pairing is unavailable until Configure succeeds.</p>
 <p id="originalPairState" role="status"></p><p id="originalRecovery" class="notice" role="alert"></p>
 <div class="browser-checks"><h3>Browser connection and gate checks</h3><p id="originalState" role="status"></p><p id="originalSelftest" role="status"></p></div>
 <label>Bring-up session limit (seconds, 1–5)<input id="originalSeconds" type="number" min="1" max="5" step="1" value="5"></label>

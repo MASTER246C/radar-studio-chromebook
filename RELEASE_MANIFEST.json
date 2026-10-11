@@ -5,7 +5,7 @@
   "status": "Correctness patch: event ambiguity, no-RF receipt workflow, Windows tests and current metadata",
   "target_board": "IWR6843AOPEVM / IWR6843AOP",
   "firmware_protocol": "original-radar-v2",
-  "rf_start_policy": "Exact reviewed firmware and self-test only; save and review initial no-RF status/pairing receipts before a later separately authorized manual 1\u20135 second Start",
+  "rf_start_policy": "Exact reviewed firmware and self-test only; save and review initial no-RF status/pairing receipts before a later separately authorized manual 1–5 second Start",
   "accepted_firmware": {
     "version": "0.3.1-rc1",
     "build_id": "abb27b48c1bdb956c0de704b",
@@ -245,7 +245,8 @@
     {
       "path": "index.html",
       "size_bytes": 28135,
-      "sha256": "0b4f38d41ca0d5fe2589920ab6e1d859f32e8033a6e76f5000492da2bf8210bb"
+      "sha256": "9af171d63b2cf221689121c07119608ce03e20f28a91ec162eb6fd8ca6645ac3",
+      "bytes": 28287
     },
     {
       "path": "legacy_panels.js",
