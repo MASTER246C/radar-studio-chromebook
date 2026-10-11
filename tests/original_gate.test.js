@@ -5,7 +5,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync(require.resolve('../original_radar.js'),'utf8');
 const PROTOCOL='original-radar-v1';
-const POLICY=Object.freeze({approved:true,firmwareVersion:'0.2.1-rc1',buildId:'synthetic-gate-only-build',selftestVersion:1,maxSeconds:5});
+const POLICY=Object.freeze({approved:true,firmwareVersion:'0.2.2-rc1',buildId:'synthetic-gate-only-build',selftestVersion:1,maxSeconds:5});
 const tests=[],test=(name,run)=>tests.push({name,run});
 const wire=r=>new TextEncoder().encode(JSON.stringify(r)+'\n');
 const status=(extra={})=>({type:'status',protocol:PROTOCOL,state:'idle',configured:true,fault:0,frames:0,capture_fault:0,rf_fault:0,rf_error:0,deadline_misses:0,firmware_version:POLICY.firmwareVersion,build_id:POLICY.buildId,selftest_version:1,selftest_ok:true,selftest_mask:0,...extra});
@@ -43,7 +43,7 @@ test('Exact repaired firmware and acknowledged idle/configured status allow one 
 for(const [name,policy] of [
  ['absent',undefined],['null',null],['unapproved',{...POLICY,approved:false}],['truthy approval',{...POLICY,approved:'true'}],
  ['missing approval',(({approved,...p})=>p)(POLICY)],['missing build',{...POLICY,buildId:undefined}],['empty build',{...POLICY,buildId:''}],
- ['wrong firmware policy',{...POLICY,firmwareVersion:'0.2.0'}],['wrong selftest policy',{...POLICY,selftestVersion:2}]
+ ['wrong firmware policy',{...POLICY,firmwareVersion:'0.2.0'}],['superseded RC1 policy',{...POLICY,firmwareVersion:'0.2.1-rc1'}],['wrong selftest policy',{...POLICY,selftestVersion:2}]
 ])test('Policy '+name+' cannot authorize the repaired fixture',async()=>{const m=await diagnosed({rfPolicy:policy});await blocked(m);await configureBlocked(m);});
 for(const field of ['firmware_version','build_id','selftest_version','selftest_ok','selftest_mask','fault','capture_fault','rf_fault','rf_error','deadline_misses'])test('Missing '+field+' cannot establish or preserve a start receipt',async()=>{
  const m=await ready(),r=status();delete r[field];await queryWith(m,r);noReceipt(m);await blocked(m);await configureBlocked(m);
@@ -58,8 +58,11 @@ for(const [name,extra] of [
 for(const field of ['capture_fault','rf_fault','rf_error','deadline_misses'])for(const value of [1,-1,'0',null,true])test('Status '+field+'='+JSON.stringify(value)+' cannot retain a good receipt',async()=>{
  const m=await ready();await queryWith(m,status({[field]:value}));noReceipt(m);await blocked(m);await configureBlocked(m);
 });
-test('Approved pinned repaired-build contract is exact and can arm an entirely mocked session',async()=>{
- const production=require('../original_acceptance.js');assert.equal(production.approved,true);assert.equal(production.firmwareVersion,'0.2.1-rc1');assert.equal(production.buildId,'846a3ae3184aa5d26e5d0ea3');assert.equal(production.maxSeconds,5);const m=mock({rfPolicy:{...production,approved:true}});let state='idle';m.respond=text=>{const token=text.split(' ')[0];if(token==='start')state='running';if(token==='stop')state='idle';m.feed(ack(token,{state}));if(token==='status')m.feed(status({state,firmware_version:production.firmwareVersion,build_id:production.buildId}));};await m.s.status();await m.s.configure(5);allowed(m);await m.s.start();assert.equal(m.s.state,'running');assert.equal(production.approved,true);assert.equal(m.s.events.filter(event=>event.type==='selftest_gate_accepted').length,1);
+test('Experimental production policy is locked pending exact new-build review',async()=>{
+ const production=require('../original_acceptance.js');assert.equal(production.approved,false);assert.equal(production.buildId,'e085ac80bef63e23cb8185f4');assert.equal(production.maxSeconds,5);const m=await diagnosed({rfPolicy:production});await blocked(m);await configureBlocked(m);
+});
+test('Pinned candidate build passes only an explicitly approved mocked policy',async()=>{
+ const production=require('../original_acceptance.js');const m=mock({rfPolicy:{...production,approved:true}});let state='idle';m.respond=text=>{const token=text.split(' ')[0];if(token==='start')state='running';if(token==='stop')state='idle';m.feed(ack(token,{state}));if(token==='status')m.feed(status({state,firmware_version:production.firmwareVersion,build_id:production.buildId}));};await m.s.status();await m.s.configure(5);allowed(m);await m.s.start();assert.equal(m.s.state,'running');assert.equal(m.s.events.filter(event=>event.type==='selftest_gate_accepted').length,1);
 });
 test('A legacy v0.2.0 identity and status remain readable but cannot authorize start',async()=>{
  const m=mock();m.feed(identity({version:'0.2.0'}));const legacy={type:'status',protocol:PROTOCOL,state:'idle',configured:true,fault:0,frames:0};

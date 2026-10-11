@@ -1,27 +1,25 @@
-# v0.7.0-preview.2: repaired-firmware bring-up gate
+# v0.8.0-preview.1: original dual-UART bring-up
 
-## Hosted option: no local server
+## Hosted option
 
-**[Open Radar Studio](https://radar-studio.master246c.chatgpt.site)** in a full desktop/ChromeOS Chrome tab with Web Serial. Use the matching firmware workflow and follow the unchanged acceptance gate below. Browser port permission is explicit. Recordings remain browser-local until you choose a local download; no recording is submitted automatically. No Linux server, Python or Developer Mode is needed for this option. Managed-device policies may restrict USB/serial access; do not bypass them.
+[Open Radar Studio](https://radar-studio.master246c.chatgpt.site) in a full desktop/ChromeOS Chrome tab with Web Serial. No local Linux server, Python or Developer Mode is required. Browser/device policies may restrict USB; do not bypass them. Opening the app sends no command, starts no RF and uploads no recordings.
+
+## Original firmware path
+
+Use only **original-radar-v2 / 0.3.0-rc1 / build e0ce9b95204dee4ecbf0b9e0** with this preview. Flashing is separate. Older one-port original firmware is incompatible and blocked; do not send TI configuration commands to it.
+
+1. Select Original radar v2. Choose the Enhanced control interface at 115200, then the separate Standard data interface at 921600. The viewer never guesses COM numbers.
+2. Query control status. Require separate valid JSON status and ACK, the exact build, passing version-1 boot self-test and zero faults on both transports. Malformed output never counts as success.
+3. Enter measured floor-to-flat-bracket-top height (excluding screw heads), measured tilt, and optional signed antenna vertical offset; leave offset blank if unknown. Check the measurement confirmation. These entries are not phase/axis calibration.
+4. Choose an integer 1–5 seconds and Configure only. Then click Verify port pairing. A fresh random nonce travels through control and must return on data, followed by pairConfirm and fresh matching control status. This step does not start RF.
+5. Only after those no-RF checks succeed, a separate manual Start may run the bounded test. Watch the stop warning and data freshness; Stop remains on control if data fails. Closing the page does not stop the board. The firmware time cap is the fallback.
+6. Save capture JSON and, if needed, the separate control/data raw JSONL files. No upload is automatic. Pair again before another run.
+
+The first physical acceptance step is status/ACK framing and no-RF pairing, not a sensing-accuracy claim. Candidate tracks are exploratory radar-peak associations; up to three peaks per frame are emitted. They are not people counts or trained sitting/standing predictions. See [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
 
 ## Optional version-pinned local copy
 
-Extract the complete ZIP into a new folder. Keep your existing v0.6 folder and
-private downloads separately. Run `./start-local.sh` (or
-`python3 -m http.server 8000 --bind 127.0.0.1` inside the extracted folder) and
-open `http://localhost:8000` in Chromebook Chrome. The app is static and uses
-local files only; there is no package-install step.
-
-Select **Original radar v1 · JSON Lines · one port** for that already-flashed
-firmware, or keep **TI demos** for the existing workflow. The selector does not
-flash anything. Read [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md) first.
-
-**The first action is Query status only. Configure remains locked until the exact
-reviewed repaired build reports a passing boot self-test and fault-free idle.
-After successful current-connection Configure, a separate manual Start may run
-only 1–5 seconds. Old firmware and longer runs remain blocked. This is not general
-hardware validation.** This preview is not an instruction to perform
-another hardware run. Mock/synthetic verification does not validate accuracy.
+Extract the complete ZIP into a new folder, separate from older releases and private recordings. Run `sh start-local.sh` (or `python3 -m http.server 8000 --bind 127.0.0.1`) there and open `http://localhost:8000` in Chrome. No dependency installation is needed.
 
 The older TI workflow instructions below remain applicable only to matching TI
 firmware. Never send TI configuration to the original JSON firmware.

@@ -1,3 +1,5 @@
+CURRENT PREVIEW: v0.8.0-preview.1. Original candidate tracking is experimental and RF is locked pending independent acceptance of a new exact firmware build. See ORIGINAL_RADAR.md and RELEASE_NOTES_v0.8.0-preview.1.md. Any older release details below are historical and do not authorize RF in this preview.
+
 # Upgrading to v0.6
 
 1. Disconnect in the old viewer to release both serial ports.

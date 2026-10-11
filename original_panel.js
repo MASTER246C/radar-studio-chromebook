@@ -5,8 +5,18 @@ const $=id=>document.getElementById(id),selector=$('transportProtocol');if(!sele
 let port=null,writer=null,reader=null,readTask=null,choosing=false,closing=false,selected='ti',message='',overflowStopping=false,operation=null;
 // Persist only a safety bit, never captures, annotations, device identity or coordinates.
 let remembered=false;try{remembered=localStorage.getItem('original-radar-stop-unconfirmed')==='true';}catch(_){remembered=true;}
-const session=new OriginalRadar.Session({unconfirmed:remembered,rfEnabled:true,rfPolicy:OriginalRadarAcceptance,onChange:refresh,setUnconfirmed:value=>{try{localStorage.setItem('original-radar-stop-unconfirmed',String(value));}catch(_){message='Safety warning storage unavailable. Confirm idle before leaving this page.';}}});
+const tracker=new OriginalTracker.Tracker(),scene=new RadarScene($('originalScene'));let trackingEpoch=null;const derivedFrames=[];let derivedDropped=0;scene.attachPointerControls();
+const session=new OriginalRadar.Session({onFrame:frame=>{const result=tracker.update(frame,Date.now());if(derivedFrames.length===256){derivedFrames.shift();derivedDropped++;}derivedFrames.push({connection_epoch:session.connectionEpoch,session_epoch:session.epoch,sequence:frame.sequence,sensor_timestamp_us:frame.timestamp_us,host_utc_ms:Date.now(),...result});},unconfirmed:remembered,rfEnabled:true,rfPolicy:OriginalRadarAcceptance,onChange:refresh,setUnconfirmed:value=>{try{localStorage.setItem('original-radar-stop-unconfirmed',String(value));}catch(_){message='Safety warning storage unavailable. Confirm idle before leaving this page.';}}});
+function renderTracking(){
+ const result=tracker.snapshot(),observed=result.tracks.filter(t=>t.observed);
+ scene.setFrame(observed.length?{points:[],tracks:observed.map(t=>({id:t.id,x:t.xyz[0],y:t.xyz[1],z:t.xyz[2]}))}:null);
+ scene.setTrails(result.tracks.filter(t=>t.observed).map(t=>({id:t.id,points:t.trail})));scene.render();
+ $('originalTracks').textContent=result.reason+' · '+result.rejected+' invalid/unusable observations omitted.\n'+(result.tracks.map(t=>t.id+' · '+t.state+' · '+t.motion+' · confidence: '+t.confidence+' · '+t.uncertainty).join('\n')||'No candidate tracks.');
+}
 function refresh(){
+ const epoch=session.connectionEpoch+':'+session.bootGeneration+':'+session.epoch;
+ if(epoch!==trackingEpoch||!session.connected){tracker.reset('Connection/session reset; no live candidates');trackingEpoch=epoch;}
+ renderTracking();
  const active=!!port,busy=session.busy||choosing||closing;
  $('originalConnect').disabled=active||busy||!('serial' in navigator)||!isSecureContext;
  $('originalConfigure').disabled=!active||busy||!!session.configureBlockReason();
@@ -49,7 +59,7 @@ async function disconnect(){
  if(writer){writer.releaseLock();writer=null;}await old.close().catch(e=>{message='Port close: '+e.message;});
  if(session.connected)session.detach('User disconnected');closing=false;message=session.unconfirmed?'Disconnected; stop remains unconfirmed.':'Disconnected after observed idle (or no RF start observed).';refresh();
 }
-function save(rawOnly){const data=rawOnly?session.rawBytes():JSON.stringify(session.snapshot(),null,2);const blob=new Blob([data],{type:rawOnly?'application/x-ndjson':'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='original-radar-'+new Date().toISOString().replace(/[:.]/g,'-')+(rawOnly?'.jsonl':'.capture.json');a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);message='Local download requested. Keep both data and labels private. Saving does not stop RF.';refresh();}
+function save(rawOnly){const data=rawOnly?session.rawBytes():JSON.stringify({...session.snapshot(),derived_candidate_tracking:{schema:"original-candidate-tracks-v1",experimental:true,algorithm:"conservative-nearest-prediction-v1",stable_human_identity:false,people_count_inference:false,activity_inference:false,coordinate_space:"sensor-exploratory",frames:derivedFrames,dropped_derived_frames:derivedDropped}},null,2);const blob=new Blob([data],{type:rawOnly?'application/x-ndjson':'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='original-radar-'+new Date().toISOString().replace(/[:.]/g,'-')+(rawOnly?'.jsonl':'.capture.json');a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);message='Local download requested. Keep both data and labels private. Saving does not stop RF.';refresh();}
 selector.onchange=()=>{
  const next=selector.value;if(next===selected)return;
  if(port||choosing||closing||session.busy){selector.value=selected;message='Disconnect before changing protocol.';refresh();return;}
@@ -68,5 +78,8 @@ $('originalTransitionStart').onclick=()=>run(()=>session.annotate('transition_st
 $('originalTransitionEnd').onclick=()=>run(()=>session.annotate('transition_end',session.openTransition?.label||$('originalTransition').value));
 window.addEventListener('beforeunload',event=>{if(session.unconfirmed||session.bytes){if(session.unconfirmed)session.uncertain(true);event.preventDefault();event.returnValue='';}});
 if('serial' in navigator)navigator.serial.addEventListener('disconnect',event=>{if(event.target===port){message='Device unplugged. RF stop cannot be assumed.';session.detach('Device unplugged');disconnect();}});
+$('originalViewReset').onclick=()=>scene.preset('reset');
+window.addEventListener('resize',renderTracking);
+setInterval(()=>{tracker.expire(Date.now());renderTracking();},250);
 refresh();
 })();

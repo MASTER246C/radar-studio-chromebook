@@ -1,3 +1,13 @@
+# v0.8.0-preview.1
+
+- Original-radar-v2 dual-UART workflow: explicit Enhanced control115200 and Standard data921600 selection, independent decoders/raw streams, control-only receipts and no-RF cross-port nonce proof.
+- Exact 0.3.0-rc1/build e0ce9b95204dee4ecbf0b9e0 acceptance, mandatory measured mounting inputs, fresh self-test/fault gates and separate manual1–5s Start.
+- Local experimental candidate association/3D view with measured trails, ambiguity retirement and stale-data expiry. No people count, trained posture model, world geometry or stable identity claim.
+- Transport-loss/stale-data Stop through the retained control path; separate raw exports and bounded admission-labelled decoded copies, with explicit loss counters.
+- Existing TI workflows, hosted links, current mounting documentation and source-available/no-resale notices preserved. No uploads or contribution activation added.
+
+Older release notes below are historical and do not authorize old firmware in this workflow.
+
 # Hosted viewer documentation — 2026-10-11
 
 ## 2026-10-11 — Hosted Radar Studio launch

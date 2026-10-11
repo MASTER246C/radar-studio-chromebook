@@ -1,139 +1,57 @@
-# Original radar v1: manual capture review build
+# Original radar v2: dual-UART bring-up and candidate tracks
 
-This adds a separate one-port workflow to the existing local Chromebook Radar
-Studio dashboard. Select **Original radar v1 · JSON Lines · one port** above the
-dashboard. Existing TI demos retain their two-port TLV workflow. Disconnect
-before switching. This selection never flashes or changes the board firmware.
+Viewer **v0.8.0-preview.1** accepts only firmware **0.3.0-rc1 / build e0ce9b95204dee4ecbf0b9e0**, protocol **original-radar-v2**, with version-1 onboard self-test. The separate firmware BIN is 344644 bytes, SHA-256 `e945b06a120f63dcb9c76625983940686f3cecc5c69781d9a24eb02228ff5deb`.
 
-## Important acceptance boundary
+Independent source, target-binary and synthetic host reviews support only the gated, manual **1–5 second** bring-up path. They are not physical hardware/RF acceptance, calibration or sensing-accuracy validation. Do not substitute another firmware build or edit the policy to bypass a failed gate. Old original-radar-v1 builds are blocked in this workflow. The existing TI workflows remain separate and unchanged.
 
-This preview2 candidate adds a narrowly scoped repaired-firmware bring-up gate.
-The reviewed policy accepts only version **0.2.1-rc1**, immutable application/
-toolchain build ID **846a3ae3184aa5d26e5d0ea3**, for manual **1–5 second bring-up**.
-It never enables legacy v0.2.0 or general/longer data collection. The corresponding
-reviewed BIN is 342,532 bytes with SHA-256
-`d534e6b6da25520d911c25bb23593bc5a086becce962186c5e4ffa6cc38d19ec`.
-The BIN hash is separate from the firmware's source/toolchain build ID.
+## First hardware acceptance: no RF
 
-Start can unlock only when all of these are true:
+1. Choose **Enhanced control**, 115200 baud, and the separate **Standard data**, 921600 baud, on the same IWR6843AOPEVM. Both use 8 data bits, no parity, one stop bit and no flow control. The data interface is read-only to the host. COM numbers are not stable identities. Connection sends no command and starts no RF.
+2. Query control status first. Require separate LF-terminated JSON status and ACK, exact build/protocol/capability, passing boot self-test and zero application/capture/RF/deadline/transport faults. Malformed/concatenated JSON is rejected, never repaired into a receipt.
+3. Enter measured mounting: floor to the **flat top of the mounting bracket, excluding screw heads**, 100–5000 mm; downward tilt −45° to +45° (positive downward, negative upward); optional signed vertical antenna offset −1000 to +1000 mm after final tilt. Leave unknown offset blank. Known bracket height plus offset must be positive. Confirm the measurement checkbox. Public inputs have no private user defaults. These declarations are not phase/axis calibration and never enable world coordinates by themselves.
+4. Enter an integer duration from 1 to 5 seconds and click **Configure only**. Commands are `orConfig 1`, `profile room64_v1`, `mount <your measurements>`, `detect 4 30 64 8`, `session N`, `commit`, then fresh status. No RF starts.
+5. Click **Verify port pairing**. The host generates a fresh 128-bit nonce and sends `pair <32 lowercase hex>` on control. Only the separate data port may return the matching data_probe, exact build and configuration/session tuple. Only after observing that proof does the host send pairConfirm and obtain fresh matching control status/ACK. Pairing starts no RF. This is stream correlation, not authentication or a stable device ID.
+6. Stop if either port, framing, identity, self-test, fault state or nonce proof fails. Reconnect/reset and diagnose; never infer acceptance from partial output.
 
-- Connected and coherently acknowledged idle, configured and fault-free state,
-  with no unconfirmed stop, command desynchronization or capture overflow.
-- Exactly the approved firmware version `0.2.1-rc1` and immutable application/
-  toolchain `build_id` in a current explicit status response.
-- `selftest_version:1`, `selftest_ok:true` and `selftest_mask:0` in that same
-  response, with fault, capture_fault, rf_fault, rf_error and deadline_misses all
-  exactly zero, followed by its coherent matching successful status ACK. An observed
-  identity must agree with version and build ID. Missing/old/mismatched fields
-  never count as a pass.
-- A freshly configured **1–5 second** session, followed by a separate user click
-  on Start. The underlying firmware's 600-second capability does not enable
-  longer sessions in this preview.
+Only after these no-RF checks succeed should a **separate manual Start** be considered for the bounded test. No software build/test result authorizes an unattended or longer physical run. Keep the control port open for Stop/status. Closing the browser does not stop the board.
 
-The self-test runs at boot after UART opens and before radio/acquisition init.
-Status reports that boot's cached result; querying it does not rerun the test or
-start RF. Failure keeps the command UART available and blocks RF initialization/
-start in firmware. This checks analytic spatial/code cases only. It does not
-validate physical sensing, RF acquisition, phase/axis calibration, activity or
-world height. The UI does not render spatial coordinates or infer person counts.
+## Control authority and failure handling
 
-The receipt is volatile and connection-bound. Disconnect, identity/reboot,
-staged configuration changes, malformed input, command errors/cancellation or observed
-running data invalidate it. Each manual Start consumes its receipt. A fresh
-successful status can establish a new one; there is no automatic RF restart.
+Control accepts identity, status and ACK only. Data accepts data_probe and frame only. Data records cannot establish identity, satisfy commands, clear faults, claim idle/configured, or manufacture a self-test receipt. Every accepted frame must match the currently dispatched Start's nonce, configuration generation, session ID and both connection generations.
 
-The original firmware is JSON Lines, not TI TLV. Quality flags and unknown values
-remain raw observations. The v0.2.0 spatial-estimator defect remains explicit;
-repaired code/self-test results do not establish end-to-end physical accuracy.
+Configuration edits, reset, either reconnect/disconnect, malformed/wrong-lane/wrong-session data, safety faults and stale data revoke proof. Pairing is single-use across sessions. A second run needs a new pair/probe/confirm and fresh status. Nonces cannot be reused within the page; after 256 challenges reload only after confirming idle and saving data.
 
-## Local workflow
+After Start dispatch, the initial-data deadline is at most five seconds and tightens to one second after running is confirmed. Thereafter one second without a fresh matching monotonic frame, a duplicate/backward sensor sample, or a backward/nonfinite host freshness clock causes invalidation. The panel attempts a bounded Stop/status through the still-connected control port. If control is lost, a stop warning remains. The firmware's configured 1–5 second cap is the fallback; TX-only data UART cannot detect that the browser stopped receiving.
 
-1. Serve the folder using the existing start-local.sh or local HTTP server; open
-   the localhost page in Chromebook Chrome with Web Serial available.
-2. Select Original radar v1. Choose its one UART port, **115200 baud, 8N1, no flow
-   control**. No commands are sent on connection. Query status explicitly. Both
-   the status object and matching successful status ACK are required. An idle,
-   fault-free reply clears the unconfirmed-stop warning.
-3. Configure is locked until the exact accepted-build/self-test/fault-free idle
-   status receipt has been observed. It then sends, one at a time with matching
-   successful ACKs:
-   `orConfig 1`, `profile room64_v1`, `mount 1219 0 unknown`,
-   `detect 4 30 64 8`, `session N`, `commit`, followed by a status query.
-   N must be an integer 1–5 in this bring-up preview; default is 5 seconds. Mount describes the supplied
-   bracket-top height 1.219 m and a configured test tilt of 0°, with unknown antenna
-   offset. Actual physical tilt remains unconfirmed. It is not
-   a world-coordinate calibration. Commit does not start RF.
-4. Start unlocks only after a successful bounded Configure on this connection/
-   boot and a fresh matching repaired-build/self-test status receipt. The button
-   names the committed duration. Editing it requires Configure again. A reconnect
-   or identity reset requires status, then Configure again; configured:true alone
-   cannot establish the board's actual duration. Start is a separate manual click.
-   Old firmware and longer runs remain blocked.
-5. Stop requests RF stop and then asks for fresh status. A stop ACK alone, a fault,
-   a timeout or stopping/running status never counts as confirmed stopped. If it
-   cannot confirm idle, the warning remains: use Stop/query again or reconnect.
-6. Disconnect safely cancels pending work and attempts Stop/status when RF may be
-   running. It still permits disconnect if confirmation fails and keeps the
-   warning. Physically unplugging or closing the tab cannot guarantee RF stop.
-7. Save capture + annotations downloads a local `.capture.json`. Save original
-   JSONL bytes downloads the same received serial bytes unchanged. **Save does
-   not stop RF.** Stop/confirm idle first when a stopped recording is wanted.
+During manual Stop, matching queued tail frames are retained as raw bytes and ignored as observations; they cannot cancel the Stop/status recovery. Failed or unconfirmed Start never keeps an active data-admission stream. Data cannot overwrite a control-reported fault.
 
-All data stays in browser memory until explicit download; reload loses unsaved
-capture and annotations. Only the unconfirmed-stop boolean is stored locally
-across reload/reconnect. No capture, identity, annotation or coordinates are put
-in browser storage or uploaded. Browser storage can be cleared or unavailable;
-always query actual status after connecting rather than relying on the bit.
+## Experimental candidate tracking
 
-## Annotations and exports
+Original local host code associates finite numeric/in-field-of-view sensor detections and renders candidate IDs plus measured trails in an orbitable 3D view. Candidate IDs represent radar peaks, not people or stable human identities. The firmware emits **at most three peaks per frame**; multipath, split reflections and omitted peaks prevent interpreting candidate totals as a people count or full people point cloud.
 
-Activity marks (sitting, standing, walking, unknown) and transition boundaries
-(sit-to-stand, movement-onset) are separate human-observed, unreviewed records.
-They carry host UTC milliseconds, last received sensor timestamp/sequence when
-available and a host epoch. Human reaction latency is unknown; the two clocks
-are not synchronized. A transition interrupted by stop, idle or disconnect has
-an explicit incomplete ending. An open interval in an active export remains
-open. These are review inputs, not trained labels or validated ground truth.
+Sensor XYZ with numeric/in-FOV flags is exploratory. Phase/axis calibration and physical accuracy remain unverified. World XYZ is ignored, unknown coordinates stay unknown, and the grid is not a room floor. No sitting/standing classifier is trained or available. Low-motion/moving cues are unvalidated heuristics.
 
-The `original-radar-capture` version 1 JSON includes:
+- Reject unusable XYZ, flags, range inconsistency, acquisition faults and invalid/clipped/sequence-gap quality bits.
+- Use a 0.55 m association gate with bounded motion prediction for matching only. Predicted or missed positions are not plotted.
+- Ambiguous associations retire IDs from further matching; identity continuity through merges/crossings is not asserted.
+- Three consecutive associations yield a persistent-candidate evidence label, not a calibrated probability. Motion threshold is 0.25 m/s from smoothed displacement or absolute radial speed.
+- Gaps and dropouts break trails/persistence. Candidates expire after more than three misses, 0.8 sensor seconds or one host second without fresh data.
+- Bound storage to 12 candidates, 25 measured trail points each and 1,000,000 IDs per generation. These are storage controls, not target-count claims.
 
-- Exact UART bytes in `raw_jsonl_bytes`, base64 encoded; byte count and serial
-  settings. Invalid/truncated lines are preserved rather than silently fixed.
-- Connection boundaries with raw byte offsets and connection epochs. Raw bytes
-  from multiple connections concatenate without inserted newlines; split them at
-  these offsets before replaying if a disconnect left a partial line.
-- Command events, host timestamps, firmware identity if received, observed state,
-  unconfirmed-stop flag, frames, quality issues and annotations.
-- The pinned RF acceptance policy, reported boot self-test, volatile receipt and
-  consumed-gate event for each requested run. These never rewrite the raw bytes.
-- Explicit bring-up-only, clock/timing, physical-validation and dataset-rights limitations.
+## Local captures and provenance
 
-Decode base64 to recover the original JSONL stream. Re-serializing parsed sensor
-objects is not an equivalent archival copy. The raw JSONL download preserves
-bytes, not just semantic JSON. Saving twice cannot mutate the original bytes or
-previously returned export snapshots. Metadata remains separate from raw records.
-No private home recording is distributed in the review package.
+Capture JSON uses `schema: original-radar-capture`, `version: 2`, `protocol: original-radar-v2`.
 
-The capture is capped at 8 MiB. Once exceeded, further bytes are not stored and
-the capture is marked incomplete with an unsaved-byte count. Control parsing
-continues so Stop/status replies can be handled; the UI attempts Stop and retains uncertainty
-if confirmation fails. Do not treat it as a full capture. JSONL lines over 4096
-bytes, invalid UTF-8, wrong protocol, malformed records, acquisition faults,
-sequence gaps and incomplete final lines are flagged. Buffered partial bytes are
-also recorded in export metadata before disconnect. The protocol lacks request
-IDs; after timeout/cancel, configuration and stop-confirmation clearance are locked until reconnect/status to
-avoid blindly accepting delayed same-command responses. The wire protocol cannot prove perfect response freshness because it has no request IDs.
-After an uncertain disconnect/reconnect, explicitly use Stop plus status before
-any future accepted RF work. No automatic RF restart exists. Diagnostic issues
-and events are capped at 2048 each with visible/exported dropped counters;
-annotations are capped at 10,000. Raw storage uses fixed-size blocks so tiny
-serial chunks cannot create an unbounded number of allocations.
+- `raw_streams.control` and `raw_streams.data` hold exact, separately labelled received bytes as base64 and independent byte counts. Raw JSONL downloads preserve each port's bytes, including malformed or partial records. Never concatenate the lanes as though they were one UART.
+- Events and issues identify channel/connection context. Host UTC ordering is not sensor-clock synchronization. Human labels remain unreviewed annotations with unknown observer latency, never ground truth by default.
+- `accepted_data_frames` holds at most 256 copied frames admitted under an active matched tuple, with channel, exact start/end offsets into the data byte stream, connection generation, admission label and `human_reviewed:false`. Acquisition/quality/truncation flags stay intact; admission is not physical validation. `dropped_accepted_data_frames` makes retention loss explicit.
+- `derived_candidate_tracking` separately holds at most 256 local result records and its own dropped count. Neither derived field rewrites raw bytes or annotations. Radar power is not SNR.
+- The combined raw budget is 8 MiB. Overflow is flagged, invalidates readiness and triggers best-effort Stop; unsaved bytes and dropped diagnostic counts remain explicit.
 
-## Verification
+Everything stays in the browser unless the user explicitly saves a local file. No upload, public contribution, account or cloud inference was added. Keep captures/consent records private. Saving does not stop RF, and capture rights are not granted by the software license.
 
-Run `node tests/run-all.js` for deterministic tests. Controller and panel tests
-use independently generated synthetic records and mock Web Serial, not private
-captures or physical devices. Real Chromebook rendering/touch and USB/hardware
-acceptance remain separate, unperformed checks. See VERIFICATION.txt for the
-actual review-build results. Existing LICENSE and third-party notices still
-apply; source rights never grant rights to distribute participant capture data.
+## Verification and remaining work
+
+Run `node tests/run-all.js` for all deterministic suites, including dual-controller and dual-panel cases. These use synthetic UART streams, fake browser objects and offline fixtures. Native Chromium execution was blocked by the environment's process-singleton socket restriction; no real-browser visual QA or physical hardware pass is claimed.
+
+Next acceptance is the no-RF status/probe/confirm sequence above. Consenting-person recordings and measured error evaluation follow only after physical bring-up. Existing candidate thresholds are hypotheses, not trained or validated people-tracking performance.

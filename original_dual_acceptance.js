@@ -1,0 +1,2 @@
+/* Reviewed narrow bring-up policy. This is not general hardware or sensing validation. */
+(function(root){'use strict';const policy=Object.freeze({approved:true,firmwareVersion:'0.3.0-rc1',buildId:'e0ce9b95204dee4ecbf0b9e0',selftestVersion:1,maxSeconds:5,approvalScope:'Exact reviewed dual-UART build; no-RF status/pairing first, separate manual 1–5 second bring-up only; not physical validation'});if(typeof module==='object'&&module.exports)module.exports=policy;else root.OriginalDualAcceptance=policy;})(typeof globalThis!=='undefined'?globalThis:this);

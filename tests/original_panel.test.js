@@ -3,11 +3,11 @@
  * stay in memory, and every network entry point throws. No physical ports, RF,
  * browser storage, private captures, or external services are used. */
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
-const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
+const html=fs.readFileSync(path.join(__dirname,'../original_oneport.html'),'utf8');
 const enc=new TextEncoder(),dec=new TextDecoder(),pause=ms=>new Promise(r=>setTimeout(r,ms));
 const plain=value=>JSON.parse(JSON.stringify(value));
 const protocol='original-radar-v1';
-const TEST_ACCEPTANCE=Object.freeze({approved:true,firmwareVersion:'0.2.1-rc1',buildId:'synthetic-panel-only-build',selftestVersion:1,maxSeconds:5});
+const TEST_ACCEPTANCE=Object.freeze({approved:true,firmwareVersion:'0.2.2-rc1',buildId:'synthetic-panel-only-build',selftestVersion:1,maxSeconds:5});
 const repairedFields=(extra={})=>({firmware_version:TEST_ACCEPTANCE.firmwareVersion,build_id:TEST_ACCEPTANCE.buildId,selftest_version:1,selftest_ok:true,selftest_mask:0,capture_fault:0,rf_fault:0,rf_error:0,deadline_misses:0,...extra});
 const jsonl=record=>enc.encode(JSON.stringify({protocol,...record})+'\n');
 const status=(state='idle',configured=false,fault=0)=>({type:'status',state,configured,fault,frames:0,...repairedFields()});
@@ -183,7 +183,7 @@ test('approved panel requires a fresh matching ACK after unsolicited status inva
 });
 
 for(const [name,fields] of [
- ['legacy v0.2.0',repairedFields({firmware_version:'0.2.0'})],['wrong build',repairedFields({build_id:'different-build'})],['missing fields',{}],
+ ['superseded v0.2.1-rc1',repairedFields({firmware_version:'0.2.1-rc1'})],['legacy v0.2.0',repairedFields({firmware_version:'0.2.0'})],['wrong build',repairedFields({build_id:'different-build'})],['missing fields',{}],
  ['missing selftest result',(({selftest_ok,...rest})=>rest)(repairedFields())],['failed selftest',repairedFields({selftest_ok:false})],
  ['nonzero failure mask',repairedFields({selftest_mask:1})],['wrong selftest version',repairedFields({selftest_version:2})]
 ])test('approved panel blocks Configure and Start for '+name+' status',async()=>{
@@ -216,6 +216,16 @@ test('visible duration change without an input event cannot start the previously
 
 test('identity batched after final configure status and ACK cannot leave the panel armed',async()=>{
  const e=environment({acceptancePolicy:TEST_ACCEPTANCE});try{const u=e.ui,p=await e.connect();p.statusFields=repairedFields();await u.originalStatus.onclick();const boot={type:'identity',version:TEST_ACCEPTANCE.firmwareVersion,build_id:TEST_ACCEPTANCE.buildId,app:'original-radar-sensing',baud:115200,classifier:false,sensing:true};p.onWrite=(text,port)=>{const token=text.trim().split(' ')[0];if(token==='orConfig')port.configured=false;if(token==='commit')port.configured=true;if(token==='status')port.emit(Buffer.concat([jsonl({...status('idle',true),...repairedFields()}),jsonl(ack('status','idle',true)),jsonl(boot)]));else port.emitRecord(ack(token,'idle',port.configured));};await u.originalConfigure.onclick();assert(u.originalStart.disabled);assert.match(u.originalMessage.textContent,/Configuration interrupted/);p.onWrite=null;await u.originalStatus.onclick();assert(u.originalStart.disabled);assert(!p.writes.includes('start\n'));const saved=await e.capture();assert.equal(saved.events.filter(event=>event.type==='configured').length,0);await u.originalConfigure.onclick();assert(!u.originalStart.disabled);safetyOnly(e);}finally{e.dispose();}
+});
+
+test('custom candidate panel renders local derived tracks without rewriting raw bytes',async()=>{
+ const e=environment();try{const p=await e.connect();p.emitRecord(frame(1));p.emitRecord(frame(2));p.emitRecord(frame(3));await until(()=>/persistent candidate/.test(e.ui.originalTracks.textContent),'persistent candidate');assert.match(e.ui.originalTracks.textContent,/uncalibrated/);const saved=await e.capture();assert.equal(saved.derived_candidate_tracking.frames.length,3);assert.equal(saved.derived_candidate_tracking.stable_human_identity,false);assert.equal(saved.derived_candidate_tracking.people_count_inference,false);assert.deepEqual(Buffer.from(saved.raw_jsonl_bytes,'base64'),bytesReceived(p));assert.deepEqual(saved.derived_candidate_tracking.frames[2].tracks[0].xyz,[0,2.34,0]);assert(!p.writes.includes('start\n'));safetyOnly(e);}finally{e.dispose();}
+});
+test('candidate panel expires no-data tracks and resets on identity',async()=>{
+ const e=environment();try{const p=await e.connect();p.emitRecord(frame(1));await until(()=>/tentative candidate/.test(e.ui.originalTracks.textContent));e.advance(1100);for(const fn of e.intervals.values())fn();assert.match(e.ui.originalTracks.textContent,/No candidate tracks/);p.emitRecord(frame(2));await until(()=>/tentative candidate/.test(e.ui.originalTracks.textContent));p.emitRecord({type:'identity',version:'0.2.2-rc1',build_id:'synthetic',baud:115200,classifier:false});await until(()=>/No candidate tracks/.test(e.ui.originalTracks.textContent));safetyOnly(e);}finally{e.dispose();}
+});
+test('candidate UI retains caveats and is locked with distributed policy',async()=>{
+ assert.match(html,/at most three peaks/);assert.match(html,/never a stable human identity/);assert.match(html,/No people count or sitting\/standing model/);assert.match(html,/local processing/);const e=environment({acceptancePolicy:null});try{const p=await e.connect();await e.ui.originalStatus.onclick();assert(e.ui.originalStart.disabled);assert(e.ui.originalConfigure.disabled);assert(!p.writes.includes('start\n'));safetyOnly(e);}finally{e.dispose();}
 });
 
 (async()=>{let passed=0;for(const [name,fn] of cases){try{await fn();console.log('PASS original panel: '+name);passed++;}catch(error){console.error('FAIL original panel: '+name+'\n'+(error.stack||error));process.exitCode=1;}}console.log(`${passed}/${cases.length} original panel mock UI cases passed. No real browser, physical hardware, RF, network, or private captures were used.`);})().catch(error=>{console.error(error);process.exitCode=1;});

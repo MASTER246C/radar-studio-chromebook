@@ -1,5 +1,4 @@
-> v0.7.0-preview.2: select Original radar v1 for the single-port JSON workflow.
-> Only reviewed repaired build 846a3ae3184aa5d26e5d0ea3 (0.2.1-rc1), a fresh passing onboard self-test and current-connection bounded configuration can enable manual 1–5 second bring-up. Legacy firmware and longer runs stay blocked. This is not general hardware validation. See [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
+> v0.8.0-preview.1: original dual-UART capture and experimental candidate tracks. Select Original radar v2 only with the exact matching 0.3.0-rc1 firmware; older one-port builds cannot unlock this workflow. See [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
 
 # Radar Studio Chromebook
 
@@ -13,10 +12,10 @@ Use only the viewer workflow matching the firmware already on your IWR6843AOP bo
 
 Recordings are handled in your browser and saved through explicit local downloads; opening the site does not submit recordings to GitHub or the dataset. Review consent and privacy before sharing any export. The software remains **source-available under its existing no-resale license**; required notices and separate third-party terms still apply.
 
-For original firmware, first query status only. The reviewed preview gate remains pinned to **0.2.1-rc1 / build 846a3ae3184aa5d26e5d0ea3**, successful boot self-test and fault-free idle, then current-connection configuration and a separate manual **1–5 second** Start. Legacy firmware and longer runs remain blocked. Physical hardware/RF acceptance and measurement accuracy are not established by hosting.
+For original firmware, first perform control status/ACK and no-RF port-pairing checks. The exact candidate is **0.3.0-rc1 / build e0ce9b95204dee4ecbf0b9e0**. Choose Enhanced control at 115200 and Standard data at 921600, enter and confirm your measured mounting values, Configure, and Verify port pairing. A data-only nonce echo and fresh matching control self-test/status are required before a separate manual **1–5 second** Start. Pairing does not start RF. Old builds and longer runs remain blocked. Candidate IDs represent peaks, not people; at most three peaks are emitted. No people count, calibrated confidence, posture classifier or stable human identity is claimed. Hardware acceptance remains unverified.
 
 
-**Mount height is configurable. Current user-reported reference: 4 feet (1.2192 m) from floor to the flat TOP of the bracket, excluding screws.**
+**Mount height is configurable; the public UI starts blank and requires your own measurements. Historical project reference (not a default or calibration): 4 feet (1.2192 m) from floor to the flat TOP of the bracket, excluding screws.**
 
 The chip center is above that reference in the photographed arrangement. Its signed vertical offset is **estimated at +0.003175 to +0.00635 m**, giving an **estimated antenna-height interval of 1.222375–1.22555 m**. The midpoint is about **1.224 m**; it is not a calibrated measurement. **Actual downward tilt is unconfirmed.** Measure the final geometry after setting the physical tilt, and preserve the uncertainty in capture metadata.
 

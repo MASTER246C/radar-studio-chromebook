@@ -6,7 +6,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const source=fs.readFileSync(require.resolve('../original_radar.js'),'utf8');
 const {PROTOCOL,validate,Decoder,Session}=require('../original_radar.js');
 const tests=[];const test=(name,run)=>tests.push({name,run});
-const TEST_POLICY=Object.freeze({approved:true,firmwareVersion:'0.2.1-rc1',buildId:'synthetic-test-only-build',selftestVersion:1,maxSeconds:5});
+const TEST_POLICY=Object.freeze({approved:true,firmwareVersion:'0.2.2-rc1',buildId:'synthetic-test-only-build',selftestVersion:1,maxSeconds:5});
 const clone=x=>JSON.parse(JSON.stringify(x));
 const wire=(r,eol='\n')=>new TextEncoder().encode(JSON.stringify(r)+eol);
 const ack=(command='status',extra={})=>({type:'ack',protocol:PROTOCOL,command,code:0,state:'idle',configured:true,...extra});

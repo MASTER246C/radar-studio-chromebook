@@ -22,8 +22,8 @@ class Decoder{
  finish(){if(this.line.length||this.discard)this.onIssue('Incomplete final JSONL record',this.lines+1);this.line=[];this.discard=false;}
 }
 class Session{
- constructor({write,onChange=()=>{},setUnconfirmed=()=>{},unconfirmed=false,timeoutMs=5000,rfEnabled=false,rfPolicy=null,now=()=>Date.now(),maxBytes=8*1024*1024}={}){
-  this.rfPolicy=Object.freeze({...rfPolicy});this.selftestReceipt=null;this.lastSelftestReport=null;Object.assign(this,{write,onChange,setUnconfirmed,unconfirmed,timeoutMs,rfEnabled,now,maxBytes});this.connected=false;this.state='unknown';this.configured=false;this.pending=null;this.busy=false;this.cancelled=false;this.desynced=false;this.raw=[];this.bytes=0;this.issues=[];this.events=[];this.droppedIssues=0;this.droppedEvents=0;this.annotations=[];this.frames=0;this.lastFrame=null;this.identity=null;this.lastSequence=null;this.epoch=0;this.connectionEpoch=0;this.openTransition=null;this.overflow=false;this.unsavedBytes=0;this.createdAt=now();this.stateRevision=0;this.bootGeneration=0;this.configurationGeneration=0;this.decoder=this.newDecoder();
+ constructor({write,onFrame=()=>{},onChange=()=>{},setUnconfirmed=()=>{},unconfirmed=false,timeoutMs=5000,rfEnabled=false,rfPolicy=null,now=()=>Date.now(),maxBytes=8*1024*1024}={}){
+  this.rfPolicy=Object.freeze({...rfPolicy});this.selftestReceipt=null;this.lastSelftestReport=null;Object.assign(this,{write,onFrame,onChange,setUnconfirmed,unconfirmed,timeoutMs,rfEnabled,now,maxBytes});this.connected=false;this.state='unknown';this.configured=false;this.pending=null;this.busy=false;this.cancelled=false;this.desynced=false;this.raw=[];this.bytes=0;this.issues=[];this.events=[];this.droppedIssues=0;this.droppedEvents=0;this.annotations=[];this.frames=0;this.lastFrame=null;this.identity=null;this.lastSequence=null;this.epoch=0;this.connectionEpoch=0;this.openTransition=null;this.overflow=false;this.unsavedBytes=0;this.createdAt=now();this.stateRevision=0;this.bootGeneration=0;this.configurationGeneration=0;this.decoder=this.newDecoder();
  }
  newDecoder(){return new Decoder((r,line)=>this.record(r,line),(message,line)=>this.issue(message,{line}));}
  event(type,detail={}){if(this.events.length>=2048){this.droppedEvents++;this.onChange();return;}this.events.push({type,host_utc_ms:this.now(),epoch:this.epoch,connection_epoch:this.connectionEpoch,raw_byte_offset:this.bytes,observed_byte_offset:this.bytes+this.unsavedBytes,...detail});this.onChange();}
@@ -44,7 +44,7 @@ class Session{
    if(!r.complete||r.capture_fault||r.missed_frames||r.deadline_misses)this.issue('Frame acquisition fault/incomplete data',{line,sequence:r.sequence,capture_fault:r.capture_fault,missed_frames:r.missed_frames,deadline_misses:r.deadline_misses});
    if(r.truncated)this.issue('Top-three output truncated; detections omitted',{line,sequence:r.sequence});
    if(this.lastSequence!==null&&r.sequence!==this.lastSequence+1)this.issue('Sequence gap/reset/duplicate',{line,sequence:r.sequence,previous:this.lastSequence});this.lastSequence=r.sequence;
-   this.state='running';this.uncertain(true);
+   this.state='running';this.uncertain(true);this.onFrame(JSON.parse(JSON.stringify(r)));
   }
   if(r.type==='status'){
    this.selftestReceipt=null;this.lastSelftestReport={firmware_version:r.firmware_version??null,build_id:r.build_id??null,selftest_version:r.selftest_version??null,selftest_ok:r.selftest_ok??null,selftest_mask:r.selftest_mask??null,fault:r.fault??null,capture_fault:r.capture_fault??null,rf_fault:r.rf_fault??null,rf_error:r.rf_error??null,deadline_misses:r.deadline_misses??null};this.stateRevision++;this.state=r.state;this.configured=r.configured;
@@ -89,7 +89,7 @@ class Session{
  }
  matchesAcceptedSelftest(r){
   const p=this.rfPolicy;
-  return p.approved===true&&typeof p.buildId==='string'&&p.buildId.length>0&&p.firmwareVersion==='0.2.1-rc1'&&p.selftestVersion===1&&Number.isInteger(p.maxSeconds)&&p.maxSeconds>=1&&p.maxSeconds<=5&&r.firmware_version===p.firmwareVersion&&r.build_id===p.buildId&&r.selftest_version===p.selftestVersion&&r.selftest_ok===true&&r.selftest_mask===0&&r.fault===0&&r.capture_fault===0&&r.rf_fault===0&&r.rf_error===0&&r.deadline_misses===0&&(!this.identity||(this.identity.version===p.firmwareVersion&&this.identity.build_id===p.buildId));
+  return p.approved===true&&typeof p.buildId==='string'&&p.buildId.length>0&&p.firmwareVersion==='0.2.2-rc1'&&p.selftestVersion===1&&Number.isInteger(p.maxSeconds)&&p.maxSeconds>=1&&p.maxSeconds<=5&&r.firmware_version===p.firmwareVersion&&r.build_id===p.buildId&&r.selftest_version===p.selftestVersion&&r.selftest_ok===true&&r.selftest_mask===0&&r.fault===0&&r.capture_fault===0&&r.rf_fault===0&&r.rf_error===0&&r.deadline_misses===0&&(!this.identity||(this.identity.version===p.firmwareVersion&&this.identity.build_id===p.buildId));
  }
  startBlockReason(){
   if(!this.rfEnabled||this.rfPolicy.approved!==true)return 'RF tests paused: repaired full-build review and explicit approval are pending';

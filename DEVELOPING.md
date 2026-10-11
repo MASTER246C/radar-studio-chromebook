@@ -262,3 +262,11 @@ The aggregate runner now has 22 suites: the original 19 plus controller (69),
 mock panel (40) and accepted-build gate (151) cases. All are deterministic and
 synthetic. Source SHA review, test success and firmware emulator success do not
 replace actual board self-test receipts or authorize longer hardware runs.
+
+## v0.8.0-preview.1 dual-UART additions
+
+The current page loads original_dual.js, original_dual_acceptance.js and original_dual_panel.js. original_tracker.js processes admitted sensor frames locally. The original_oneport.html fixture and original_radar/original_panel modules are retained for historical regression coverage with their old acceptance policy locked; they are not the current supported original firmware workflow. The TI dashboard implementation remains unchanged.
+
+The dual controller has independent decoders/raw byte buffers. Control alone owns state and receipts; data frames pass matched-session admission before copied accepted-frame history and candidate processing. Session.checkDataFreshness() drives bounded stop-on-silence in the panel. During Stop, matching tails are raw-captured but do not cancel recovery. See ORIGINAL_RADAR.md for the complete protocol/measurement/acceptance contract.
+
+Run node tests/run-all.js (25 suites), including original_dual and original_dual_panel. Those tests use synthetic streams and never access a radar. VERSION1 capture semantics remain confined to the historical one-port tests; current capture schema is version2 with labelled raw_streams. No external service is involved.

@@ -1,18 +1,20 @@
 {
-  "release": "v0.7.0-preview.2",
-  "date_utc": "2026-10-10",
-  "base_commit": "1c2e56ec9c301f6e6562dac02fd3937566fcb76e",
-  "status": "Reviewed exact-build manual 1\u20135 second bring-up preview; no general hardware validation",
+  "release": "v0.8.0-preview.1",
+  "date_utc": "2026-10-11",
+  "base_commit": "1278b307d25fdcf656e854bd68debd4bfdb1dd72",
+  "status": "Independently reviewed dual-UART candidate; gated manual1-5s only; physical acceptance unverified",
   "target_board": "IWR6843AOPEVM / IWR6843AOP",
-  "firmware_protocol": "original-radar-v1",
-  "rf_start_policy": "Conditional manual only; queried accepted-build self-test/fault-free idle and current-connection bounded configuration required",
+  "firmware_protocol": "original-radar-v2",
+  "rf_start_policy": "Exact reviewed dual build + fresh self-test/fault-free control status + measured mounting + committed1-5s duration + data-only nonce proof + current correlated status; separate manual Start",
   "accepted_firmware": {
-    "version": "0.2.1-rc1",
-    "build_id": "846a3ae3184aa5d26e5d0ea3",
+    "version": "0.3.0-rc1",
+    "build_id": "e0ce9b95204dee4ecbf0b9e0",
     "selftest_version": 1,
     "max_session_seconds": 5,
-    "separate_binary_sha256": "d534e6b6da25520d911c25bb23593bc5a086becce962186c5e4ffa6cc38d19ec",
-    "separate_binary_size_bytes": 342532
+    "control_baud": 115200,
+    "data_baud": 921600,
+    "separate_binary_sha256": "e945b06a120f63dcb9c76625983940686f3cecc5c69781d9a24eb02228ff5deb",
+    "separate_binary_size_bytes": 344644
   },
   "legacy_v020_rf_start_enabled": false,
   "longer_runs_enabled": false,
@@ -21,14 +23,14 @@
   "private_research_contents_included": false,
   "current_main_mounting_material_preserved": true,
   "license": "Unchanged source-available LICENSE; no-resale and third-party restrictions preserved",
-  "deterministic_test_suites": 22,
+  "deterministic_test_suites": 25,
   "original_controller_tests": 69,
-  "original_mock_ui_tests": 40,
-  "accepted_firmware_gate_tests": 151,
-  "javascript_syntax_files": 47,
-  "independent_review": "No remaining blocker for narrow conditional manual bring-up policy; reviewed executable hashes retained",
+  "original_mock_ui_tests": 44,
+  "accepted_firmware_gate_tests": 153,
+  "javascript_syntax_files": 55,
+  "independent_review": "Host scope passed30 independent adversarial controller cases and12 dual UI cases; exact final policy rerun passed. Separate firmware source/target-binary review cleared.",
   "rendered_browser_verified": false,
-  "rendered_browser_limitation": "Not performed; prior native Chromium Unix socket launch restriction and separate cloud-browser localhost connection refusal. No bypass attempted.",
+  "rendered_browser_limitation": "Native Chromium launch blocked by process-singleton socket EPERM, including approved escalation. Dual UI tested in mocked DOM/canvas only; no visual pass claimed.",
   "hardware_or_rf_verification": false,
   "onboard_selftest_receipt_observed": false,
   "dataset_license_status": "Capture rights not granted by source license",
@@ -41,8 +43,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size_bytes": 12278,
-      "sha256": "1e990dc59d55e7d46f8993f79bbfe8284baf3f0c4b539a9a29858a7191db2ffb"
+      "size_bytes": 13859,
+      "sha256": "c91ff17bcc3fd82524097468b18b506065665e240a2c7150768833d0589b66d3"
     },
     {
       "path": "CHANGELOG.txt",
@@ -61,13 +63,13 @@
     },
     {
       "path": "DEVELOPING.md",
-      "size_bytes": 19383,
-      "sha256": "adea217a77eb454b9ff3764aeb3a882687de041f6acfbe31a27fa718a96c191d"
+      "size_bytes": 20621,
+      "sha256": "61cc6bb2df98575b651a8ca4e0f40fd3536e122d3632a3543ef5d9a1a2d2e191"
     },
     {
       "path": "DOWNLOADS.md",
-      "size_bytes": 7278,
-      "sha256": "ff52dda4288a369a3d8dbe21e1b5bc85a3008670deb05efdf52db7bb5ded9b7e"
+      "size_bytes": 8502,
+      "sha256": "cf31a55ddfe9f48ff9366a72edcdcbd5a3cd04ec37f5b988c641bedda36cf192"
     },
     {
       "path": "LEGACY_PROTOCOL_EVIDENCE.md",
@@ -101,8 +103,8 @@
     },
     {
       "path": "ORIGINAL_RADAR.md",
-      "size_bytes": 9002,
-      "sha256": "6450d0b8ca7df1bd816bb087f9c5b7b98d99fbf33bebeaa351a4e8241340613e"
+      "size_bytes": 8511,
+      "sha256": "2e026515072bc1de4a3740b8f13c431ac9d8c4f5902fc42627b3ccdd66e8ca82"
     },
     {
       "path": "PROTOCOL_EVIDENCE.md",
@@ -116,13 +118,13 @@
     },
     {
       "path": "QUICKSTART.md",
-      "size_bytes": 13045,
-      "sha256": "dc1e10096376db78c1246ee9dc75d581d10816e58b011c4686c66eaf144b1f97"
+      "size_bytes": 14524,
+      "sha256": "5cbc2e89f4fde3afc39ac3ba4b085adf071b8f3ef4325ab2a521a4aa32dc4760"
     },
     {
       "path": "README.md",
-      "size_bytes": 16565,
-      "sha256": "b553a6689cd179285a7520187c816820deef48bdaf404f63a67924dba15fc2a9"
+      "size_bytes": 18861,
+      "sha256": "a3be60eb8315577d7e9da1d8be455492f2dd55eb8b9bdee884539e6a24cf3171"
     },
     {
       "path": "RECORDER_API.md",
@@ -138,6 +140,11 @@
       "path": "RELEASE_NOTES_v0.7.0-preview.2.md",
       "size_bytes": 1657,
       "sha256": "770b28fbe48972c5260e80753accf367b446b5acac733de78594d250e46f203b"
+    },
+    {
+      "path": "RELEASE_NOTES_v0.8.0-preview.1.md",
+      "size_bytes": 1579,
+      "sha256": "00838d669628dec03136ae5309b32099109d04ccc03ae3ed5356bcfae2a8c74a"
     },
     {
       "path": "SHARED_MODULES.json",
@@ -161,13 +168,13 @@
     },
     {
       "path": "UPGRADE.md",
-      "size_bytes": 1922,
-      "sha256": "0f317ebdfa64c8b101f28185ae5652787437ed6c390ec20756060db1b045bfee"
+      "size_bytes": 2230,
+      "sha256": "b2ef7ed41dc5d22c30ab9780e62a00befd29769560fb734a6cf88436580ce387"
     },
     {
       "path": "VERIFICATION.txt",
-      "size_bytes": 11380,
-      "sha256": "84cbf8c79961777340cc7b6c068eaad7a4667ea427e6e45f03311a4d69635846"
+      "size_bytes": 1813,
+      "sha256": "3c3b56fd7f12dc29732094021a798baaed9b9fc677d2367e84955305a7912706"
     },
     {
       "path": "app.js",
@@ -211,8 +218,8 @@
     },
     {
       "path": "index.html",
-      "size_bytes": 19789,
-      "sha256": "d57b54d8af086c23534299370bfc0cacffe12bc5b39c48d21113f21657a3f5e2"
+      "size_bytes": 22537,
+      "sha256": "4e1b0b616e33c3c18238d8b11e68b01a146c7e7021ca68ba72703e70e0710059"
     },
     {
       "path": "legacy_panels.js",
@@ -256,18 +263,43 @@
     },
     {
       "path": "original_acceptance.js",
-      "size_bytes": 501,
-      "sha256": "42f8b6dc274a5c5ee0774df34eafc364a83211ab83e3b2b58e79cada45ce497e"
+      "size_bytes": 502,
+      "sha256": "33fc756a37b0643b6cd7140576f761ca8a22b88854d7190bb285792fad324221"
+    },
+    {
+      "path": "original_dual.js",
+      "size_bytes": 35475,
+      "sha256": "3613f6f376237699d1e77a5e08ce14550d406ee2b49e717647cc52e403faf59a"
+    },
+    {
+      "path": "original_dual_acceptance.js",
+      "size_bytes": 561,
+      "sha256": "01fa58a554f51fa40b51d6dabc9a7e78d00fdcc3b9a8c5f8797ecd467b1121df"
+    },
+    {
+      "path": "original_dual_panel.js",
+      "size_bytes": 14756,
+      "sha256": "42ecc97fd5d14ac257e6868256dfc7ab93b80b0641af0a5bbf89d9af192761e2"
+    },
+    {
+      "path": "original_oneport.html",
+      "size_bytes": 20958,
+      "sha256": "b39e956d314d66e45b324ef3758d21535c7270d36ba0498537daa9e53ad7fd31"
     },
     {
       "path": "original_panel.js",
-      "size_bytes": 8946,
-      "sha256": "9aa4409c787b16e9e73eaaf19c6f6d95ef9fb184fc6c224f8db6745450212937"
+      "size_bytes": 10773,
+      "sha256": "fd5b620c006472bc439eb9f8a828dbd9b5f7299f4997923df1af25895048212b"
     },
     {
       "path": "original_radar.js",
-      "size_bytes": 21178,
-      "sha256": "6d03927c0a4dbf2bae2d0ffc9a7a41cd291ad586f24ec5e86e165fd9265e554c"
+      "size_bytes": 21245,
+      "sha256": "5773c7252c4624741937b71449483ad751b7feb6b187836b2397bc10471a7248"
+    },
+    {
+      "path": "original_tracker.js",
+      "size_bytes": 5906,
+      "sha256": "a744602a20e00fa6c558451e9f949eddeaac23166a995adcbc973163b104098b"
     },
     {
       "path": "radar_protocol.js",
@@ -415,19 +447,39 @@
       "sha256": "faa32b96f14982b91e4fda2b5cc74f04f7dd83c5c32013110180a38b30f4eaf2"
     },
     {
+      "path": "tests/original_dual.test.js",
+      "size_bytes": 12270,
+      "sha256": "a11f68aa6ffd99d56ff360ca018e9d7a7925b8dd9006a5d74657fb069866a344"
+    },
+    {
+      "path": "tests/original_dual_panel.test.js",
+      "size_bytes": 17409,
+      "sha256": "0cfd1e46c28f57108144a65aeaec89a3a72942ef90e584622aab72a96161acd3"
+    },
+    {
       "path": "tests/original_gate.test.js",
-      "size_bytes": 25245,
-      "sha256": "2e7f825a7840098f7d639f9d8ac21686ab58e812a9b404fa19e422763fd85806"
+      "size_bytes": 25444,
+      "sha256": "1905ad498a9b6a612689ca4e7b7dbbe14abb12b400bbd41bb5441d6a170744bf"
     },
     {
       "path": "tests/original_panel.test.js",
-      "size_bytes": 41794,
-      "sha256": "daac70b9108294cc098412d45754494011d1139ba2532c398ebb1e2620411228"
+      "size_bytes": 43974,
+      "sha256": "f50c42ffaf31ffa37ab7b15693c2078c1deb9c17bf7985ac065720d2bc9791d9"
     },
     {
       "path": "tests/original_radar.test.js",
       "size_bytes": 40042,
-      "sha256": "8659190f49c52b61a0bcee047b7dd49b8773dd9cd3207a552e342424a451949a"
+      "sha256": "801257867c7340e07b5365fb64290dd75aed8b36a82d55033e6f1be1365bc4aa"
+    },
+    {
+      "path": "tests/original_tracker.test.js",
+      "size_bytes": 5905,
+      "sha256": "586dd7b3c739e20040183ced79ccb63a8ee82547fe194766c72bc50372dfe4af"
+    },
+    {
+      "path": "tests/original_tracking_browser.optional.test.js",
+      "size_bytes": 3409,
+      "sha256": "af5735c9af86461538ce7297a87ac2dcd3a2c2d86c2bab5a80028f87c94c9636"
     },
     {
       "path": "tests/protocol.test.js",
@@ -436,8 +488,8 @@
     },
     {
       "path": "tests/run-all.js",
-      "size_bytes": 698,
-      "sha256": "418a7a68c46df66ea3716a946def74c8c1a00968fd2ada02cc1e944da925bfe9"
+      "size_bytes": 755,
+      "sha256": "1e0ec34b20d87d228db9ae10808b8fb588260876503bf6920034041d2a94573a"
     },
     {
       "path": "tests/scene.test.js",
@@ -479,5 +531,13 @@
       "size_bytes": 1306,
       "sha256": "638bcddf56eed6d3e3963d6bd5cb8a595343837a3e452742abcad3205cf8dafe"
     }
-  ]
+  ],
+  "experimental_candidate_tracking": true,
+  "physical_tracking_validation": false,
+  "original_tracker_tests": 19,
+  "rf_policy_approved": true,
+  "dual_controller_tests": 31,
+  "dual_panel_tests": 12,
+  "hosted_current_main_docs_preserved": true,
+  "contribution_uploads_enabled": false
 }
