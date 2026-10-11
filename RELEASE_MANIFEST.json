@@ -1,8 +1,8 @@
 {
-  "release": "v0.9.0-preview.1",
+  "release": "v0.9.0-preview.2",
   "date_utc": "2026-10-11",
-  "base_commit": "61ff650231bfe60ef67346fa71e19c203cabe78d",
-  "status": "Reviewed local session/replay/dataset software preview; no real-world classifier validation",
+  "base_commit": "5edbc8a44bd27835a609506a0436fe5863c7c572",
+  "status": "Layout-only patch to reviewed local session/replay preview",
   "target_board": "IWR6843AOPEVM / IWR6843AOP",
   "firmware_protocol": "original-radar-v2",
   "rf_start_policy": "Exact reviewed firmware and self-test only; no-RF status/pairing first; separate manual 1\u20135 second Start",
@@ -29,7 +29,7 @@
   "original_mock_ui_tests": 44,
   "accepted_firmware_gate_tests": 153,
   "javascript_syntax_files": 60,
-  "independent_review": "Independent final local software review passed all 27 suites; raw corroboration, bounded imports, label audit and exact-source restore checked. RF transport and policy byte-identical to approved baseline.",
+  "independent_review": "Independent narrow layout review passed all 27 suites; transport/RF/replay logic unchanged, JavaScript changes version metadata only. Hosted visual verification follows separately.",
   "rendered_browser_verified": false,
   "rendered_browser_limitation": "Native Chromium launch blocked by process-singleton socket EPERM, including approved escalation. Dual UI tested in mocked DOM/canvas only; no visual pass claimed.",
   "hardware_or_rf_verification": false,
@@ -44,8 +44,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size_bytes": 16178,
-      "sha256": "1aa261b784c7f4c0678e28b8a3d04f8bd60a9e1f5e9013d8b864541ec6af30dd"
+      "size_bytes": 16905,
+      "sha256": "764d1ea0cc1dcb7a176edf24c858ca6a04d686d826ad72813b89801b5dafd37b"
     },
     {
       "path": "CHANGELOG.txt",
@@ -70,7 +70,7 @@
     {
       "path": "DOWNLOADS.md",
       "size_bytes": 8502,
-      "sha256": "cbbfdbcd20ff97eaaf7930206516bbf2e60ec2bc426cd49ef6857426b0920983"
+      "sha256": "44711e61845c201186bde13c442d8b38b71067c4783907773ea0d59d5a236b89"
     },
     {
       "path": "LEGACY_PROTOCOL_EVIDENCE.md",
@@ -105,7 +105,7 @@
     {
       "path": "ORIGINAL_RADAR.md",
       "size_bytes": 10911,
-      "sha256": "4f67db1cf75c2b048fd0aa388a2e113bebe4533dba935db7aa372cdeaeeb18c0"
+      "sha256": "d5df2f0b358437fd380e934165d05d413df9172f475b3022ccc8c2d689ad00cb"
     },
     {
       "path": "PROTOCOL_EVIDENCE.md",
@@ -120,12 +120,12 @@
     {
       "path": "QUICKSTART.md",
       "size_bytes": 16345,
-      "sha256": "1b7fdf96e958df98fd8d22b2afd80b89ce522b93793a7a379b37ffcec9498491"
+      "sha256": "449545c6c010b019527a78feacd56d2b9d5e27667e3abeddb8e519693d1aed9b"
     },
     {
       "path": "README.md",
       "size_bytes": 20225,
-      "sha256": "77bb071ba07b6de423e719e62576cf220e4c8fdfed9aeede88e8b6c04bf22e1a"
+      "sha256": "9c6ae6d3814260b1613c7ed7ad2778f9a8f541cb6eef5f8695afd109cc8da155"
     },
     {
       "path": "RECORDER_API.md",
@@ -158,9 +158,14 @@
       "sha256": "8fa012967dd6fb9309824875ecc6e596547ace42bb78c266cedf13b1721658ab"
     },
     {
+      "path": "RELEASE_NOTES_v0.9.0-preview.2.md",
+      "size_bytes": 726,
+      "sha256": "dae73510cd0fa9d726ba6e6b777ff673f4a5f49fa213240a1508c2c6c5255d67"
+    },
+    {
       "path": "SESSIONS.md",
       "size_bytes": 6119,
-      "sha256": "fb08b5b4b20fdc446f48839db7764455615bd39e65ef45bd435cfe4d862d2127"
+      "sha256": "3927cb6c6c6a891e557bcb7ae644ff505ed825e73b3766cebfdc53580876e6dd"
     },
     {
       "path": "SHARED_MODULES.json",
@@ -185,12 +190,12 @@
     {
       "path": "UPGRADE.md",
       "size_bytes": 3261,
-      "sha256": "7b4c54fd157f73880db27fea064be8478fb68d926f5bbb5056f50e44cfb940b0"
+      "sha256": "ead891c8c8045b4cd90b1fa55c188c8fe92d80e3b52d0c64198f6e99e8cce481"
     },
     {
       "path": "VERIFICATION.txt",
-      "size_bytes": 1571,
-      "sha256": "1f4dc7abd437fb8c45e1e019823a4fc67289a61b2ee3557ad178e29aea4b98b6"
+      "size_bytes": 1862,
+      "sha256": "6b28fdab32430f5ba5448640e1f2c9782cd13225490b24f56db5ca9c27670396"
     },
     {
       "path": "app.js",
@@ -234,8 +239,8 @@
     },
     {
       "path": "index.html",
-      "size_bytes": 28071,
-      "sha256": "76ecad3601da35ea67fc6b3c59e6ec1f64680b69c1b1f89a899edec24110e927"
+      "size_bytes": 28135,
+      "sha256": "9170506ec604ed3ffeb42dff675a706ba536469ec7fc35caf3d2f4c3bf033b60"
     },
     {
       "path": "legacy_panels.js",
@@ -315,7 +320,7 @@
     {
       "path": "original_sessions.js",
       "size_bytes": 19024,
-      "sha256": "afe6b80b5cac6d6e6b17aebb1c0ba13a23442eb87e660d3a0b0bf793cef2208b"
+      "sha256": "d1006b41fbf61da7bad7c9f24ac955b14c851c4ae97eae08809f20c36408c22a"
     },
     {
       "path": "original_tracker.js",
@@ -335,7 +340,7 @@
     {
       "path": "session_guide.js",
       "size_bytes": 3324,
-      "sha256": "e5f018eba4270822d3a35d2ea63b5a8c7b67b1d94081278fe06c85a4921f8127"
+      "sha256": "f05bce890d27413c6c95617679310a54972f0be848bfe03db0af65a9849f697e"
     },
     {
       "path": "session_replay.js",
@@ -344,8 +349,8 @@
     },
     {
       "path": "sessions.html",
-      "size_bytes": 3629,
-      "sha256": "2c69a1e7cab474d0d01f261f99f7888aecc9e2dbc01c69203ffdbe3e76bba8de"
+      "size_bytes": 3673,
+      "sha256": "5773bf7ebc5ae2eca2fbfbfe93f50cae9336b422539a07def035b931d979bc51"
     },
     {
       "path": "start-local.sh",
@@ -354,8 +359,8 @@
     },
     {
       "path": "styles.css",
-      "size_bytes": 10419,
-      "sha256": "12329982d8a3708f2825ecec1d65de25efefcb772eb84feda652d4f1267c008c"
+      "size_bytes": 12953,
+      "sha256": "5125e5fc4c9a6712741a6c28b6d441fc69eec5b374e329b170d2f262e7f2d89c"
     },
     {
       "path": "telemetry_panels.js",
@@ -539,8 +544,8 @@
     },
     {
       "path": "tests/session_ui.test.js",
-      "size_bytes": 5465,
-      "sha256": "26a8f43817ee288ba41730fe8ee90ed791d842481554e0ffc579ea60711f21cb"
+      "size_bytes": 6000,
+      "sha256": "243189474e7da808cf63797653e2b5a12c0e352d03c23391ea95aae5779eda65"
     },
     {
       "path": "tests/telemetry.test.js",
@@ -586,7 +591,7 @@
   "dual_panel_tests": 19,
   "hosted_current_main_docs_preserved": true,
   "contribution_uploads_enabled": false,
-  "base_release": "v0.8.0-preview.2",
+  "base_release": "v0.9.0-preview.1",
   "display_range_default_m": 20,
   "display_range_options_m": [
     2,
@@ -600,10 +605,11 @@
     5.9
   ],
   "original_session_tests": 18,
-  "session_ui_tests": 7,
+  "session_ui_tests": 8,
   "dataset_schema": "original-radar-dataset",
   "dataset_schema_version": 1,
   "camera_access_enabled": false,
   "camera_compatibility_validated": false,
-  "python_training_bundled": false
+  "python_training_bundled": false,
+  "layout_only_patch": true
 }

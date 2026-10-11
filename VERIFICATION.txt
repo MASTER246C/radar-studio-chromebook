@@ -1,6 +1,6 @@
-v0.9.0-preview.1 local software preview verification (2026-10-11)
+v0.9.0-preview.2 local software preview verification (2026-10-11)
 
-PASS: all 27 deterministic suites, including 18 original-session model cases and 7 session UI cases.
+PASS: all 27 deterministic suites, including 18 original-session model cases and 8 session UI cases.
 PASS: 60 JavaScript syntax checks.
 PASS: independent final read-only review of raw-byte corroboration, bounded import validation, explicit review provenance, source/hash-bound restore, audit allowlists, undo attribution and privacy boundaries.
 PASS: cross-language synthetic export preparation with the separate Python training tools.
@@ -9,3 +9,5 @@ PASS: original_dual.js and original_dual_acceptance.js remain byte-identical to 
 New tests cover source hashes and raw immutability; malformed/unadmitted records; tampered admission metadata; zero phasors; loss/fault/truncation diagnostics; duplicate samples; session timebase boundaries; strict byte/base64/depth limits; empty captures; unreviewed prompt separation; explicit sync markers; source-bound review restoration; multiple undo revisions; metadata allowlists; stale asynchronous imports; no device/network access; keyboard focus; named session and marker guards.
 
 This is a local software preview. No real-world classifier or person-tracking accuracy, physical sensor range, camera synchronization or device compatibility is validated. Rendered-browser and hardware/RF checks are not included. Synthetic tests establish software behavior only. User recordings and videos are not included in the package.
+
+Layout patch: the review page now explicitly overrides the live sidebar grid, with scoped responsive forms and preserved canvas aspect ratio. Session/RF logic is unchanged; JavaScript differences are version metadata only. Live visual verification is delegated to the hosted release check.

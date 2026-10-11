@@ -1,7 +1,7 @@
 /* Original local recording/review tools. Project LICENSE applies. No network or RF commands. */
 (function(root,factory){const api=factory(typeof module==='object'&&module.exports?require('./original_dual.js'):root.OriginalDual);if(typeof module==='object'&&module.exports)module.exports=api;else root.OriginalSessions=api;})(typeof globalThis!=='undefined'?globalThis:this,function(Dual){
 'use strict';
-const VERSION='0.9.0-preview.1',MAX_BYTES=24*1024*1024,MAX_LABELS=10000;
+const VERSION='0.9.0-preview.2',MAX_BYTES=24*1024*1024,MAX_LABELS=10000;
 const LABELS={activity:['walking','standing','sitting','unknown'],transition:['stand_up','sit_down','motion_onset','none','unknown']};
 const clone=x=>JSON.parse(JSON.stringify(x));
 function canonical(x,depth=0){if(depth>30)throw Error('Nesting limit exceeded');if(typeof x==='number'&&!Number.isFinite(x))throw Error('Nonfinite value');if(Array.isArray(x))return '['+x.map(v=>canonical(v,depth+1)).join(',')+']';if(x&&typeof x==='object')return '{'+Object.keys(x).sort().map(k=>JSON.stringify(k)+':'+canonical(x[k],depth+1)).join(',')+'}';const s=JSON.stringify(x);if(s===undefined)throw Error('Unsupported value');return s;}

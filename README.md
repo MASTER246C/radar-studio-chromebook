@@ -1,6 +1,6 @@
 > New local workflow: [guided sessions, saved-capture replay, reviewed labels and hashed dataset export](SESSIONS.md). Original RF remains limited to separate manual 1–5 second takes. Camera choice is still open; no camera access is requested.
 
-> v0.9.0-preview.1: original dual-UART capture and experimental candidate tracks. Select Original radar v2 only with the exact matching 0.3.1-rc1 firmware; older one-port builds cannot unlock this workflow. See [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
+> v0.9.0-preview.2: original dual-UART capture and experimental candidate tracks. Select Original radar v2 only with the exact matching 0.3.1-rc1 firmware; older one-port builds cannot unlock this workflow. See [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
 
 # Radar Studio Chromebook
 
