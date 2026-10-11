@@ -26,3 +26,12 @@
 
 /* Explicit independent firmware workflows; hidden dashboards cannot leak controls. */
 [hidden]{display:none!important}.protocol-selector,.original-panel{margin:1rem auto;padding:1.25rem;max-width:1100px;background:var(--panel,#111b28);border:1px solid #334155;border-radius:12px}.original-panel pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:28rem;overflow:auto}.original-panel .row{flex-wrap:wrap}.original-panel input{max-width:10rem}.original-panel h3{margin-top:1.5rem}
+
+/* Local-only device reply presentation; browser summaries are intentionally separate. */
+.prerequisite-links{max-width:1100px;margin:1rem auto;padding:1rem 1.25rem;border:1px solid #334155;border-radius:12px;background:var(--panel,#111b28)}
+.prerequisite-links summary{cursor:pointer;font-weight:650}.prerequisite-links li{margin:.55rem 0}.prerequisite-links a{color:#92c9ef}
+.browser-checks,.browser-action{padding:.8rem 1rem;margin:1rem 0;border:1px solid #334155;border-radius:10px;background:#142131}.original-panel .browser-checks h3,.original-panel .browser-action h3{font-size:.9rem;margin:0 0 .5rem;color:#a9bfd5}.browser-action p{margin:.35rem 0;min-height:1.4em}
+.device-terminals{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1rem;margin:1rem 0}.device-terminals>div{min-width:0}.original-panel .device-terminals h3{margin:.5rem 0;color:#d7e6f5;font-size:1rem}
+.original-panel pre.device-terminal{box-sizing:border-box;min-height:8rem;max-height:22rem;margin:.6rem 0;padding:1rem;border:1px solid #415670;border-radius:9px;background:#080f19;color:#d2e2f3;font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;tab-size:2}
+.device-terminal:focus{outline:2px solid #72aff5;outline-offset:2px}
+@media(max-width:760px){.device-terminals{grid-template-columns:1fr}.prerequisite-links{margin:1rem .5rem}.original-panel pre.device-terminal{max-height:18rem}}

@@ -1,20 +1,21 @@
 {
-  "release": "v0.8.0-preview.1",
+  "release": "v0.8.0-preview.2",
   "date_utc": "2026-10-11",
-  "base_commit": "1278b307d25fdcf656e854bd68debd4bfdb1dd72",
-  "status": "Independently reviewed dual-UART candidate; gated manual1-5s only; physical acceptance unverified",
+  "base_commit": "b7eaef00f4c8313a5b9399a0d38ac92c6d06340b",
+  "status": "Reviewed exact-build manual bring-up preview; physical sensing unvalidated",
   "target_board": "IWR6843AOPEVM / IWR6843AOP",
   "firmware_protocol": "original-radar-v2",
-  "rf_start_policy": "Exact reviewed dual build + fresh self-test/fault-free control status + measured mounting + committed1-5s duration + data-only nonce proof + current correlated status; separate manual Start",
+  "rf_start_policy": "Exact reviewed firmware and self-test only; no-RF status/pairing first; separate manual 1\u20135 second Start",
   "accepted_firmware": {
-    "version": "0.3.0-rc1",
-    "build_id": "e0ce9b95204dee4ecbf0b9e0",
-    "selftest_version": 1,
+    "version": "0.3.1-rc1",
+    "build_id": "abb27b48c1bdb956c0de704b",
+    "selftest_version": 2,
+    "polarity_selftest_failure_bit": 256,
     "max_session_seconds": 5,
     "control_baud": 115200,
     "data_baud": 921600,
-    "separate_binary_sha256": "e945b06a120f63dcb9c76625983940686f3cecc5c69781d9a24eb02228ff5deb",
-    "separate_binary_size_bytes": 344644
+    "separate_binary_sha256": "668476d4130f659cef4c1fea3b8eb436d5025f20853dc30ca83380f9bd38a6bf",
+    "separate_binary_size_bytes": 344836
   },
   "legacy_v020_rf_start_enabled": false,
   "longer_runs_enabled": false,
@@ -28,7 +29,7 @@
   "original_mock_ui_tests": 44,
   "accepted_firmware_gate_tests": 153,
   "javascript_syntax_files": 55,
-  "independent_review": "Host scope passed30 independent adversarial controller cases and12 dual UI cases; exact final policy rerun passed. Separate firmware source/target-binary review cleared.",
+  "independent_review": "Final independent source and exact-policy review passed; all 25 suites and 55 syntax checks passed. Separate firmware source/compiled-target/BIN review passed.",
   "rendered_browser_verified": false,
   "rendered_browser_limitation": "Native Chromium launch blocked by process-singleton socket EPERM, including approved escalation. Dual UI tested in mocked DOM/canvas only; no visual pass claimed.",
   "hardware_or_rf_verification": false,
@@ -43,8 +44,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size_bytes": 13859,
-      "sha256": "c91ff17bcc3fd82524097468b18b506065665e240a2c7150768833d0589b66d3"
+      "size_bytes": 15105,
+      "sha256": "43f932704005f8781e60f084c5ae881616024d18e87209014d5b2ddb9ab40596"
     },
     {
       "path": "CHANGELOG.txt",
@@ -69,7 +70,7 @@
     {
       "path": "DOWNLOADS.md",
       "size_bytes": 8502,
-      "sha256": "cf31a55ddfe9f48ff9366a72edcdcbd5a3cd04ec37f5b988c641bedda36cf192"
+      "sha256": "e8ff1b41c44c3e8c7fd463729361515910fd8c0cf0c2ab18b57818d52e6decaf"
     },
     {
       "path": "LEGACY_PROTOCOL_EVIDENCE.md",
@@ -103,8 +104,8 @@
     },
     {
       "path": "ORIGINAL_RADAR.md",
-      "size_bytes": 8511,
-      "sha256": "2e026515072bc1de4a3740b8f13c431ac9d8c4f5902fc42627b3ccdd66e8ca82"
+      "size_bytes": 10911,
+      "sha256": "76e5bc5a94f74301b2e2e1a0fead54afcd1740a1307994293a32d0dfe02bbbcd"
     },
     {
       "path": "PROTOCOL_EVIDENCE.md",
@@ -118,13 +119,13 @@
     },
     {
       "path": "QUICKSTART.md",
-      "size_bytes": 14524,
-      "sha256": "5cbc2e89f4fde3afc39ac3ba4b085adf071b8f3ef4325ab2a521a4aa32dc4760"
+      "size_bytes": 16002,
+      "sha256": "2d4c855044cdbb4708aa04c648ce1ad4ce09d6a631f98111e2f465303cbc01a2"
     },
     {
       "path": "README.md",
-      "size_bytes": 18861,
-      "sha256": "a3be60eb8315577d7e9da1d8be455492f2dd55eb8b9bdee884539e6a24cf3171"
+      "size_bytes": 19978,
+      "sha256": "e78460f0ca9108f030020d3f03287a59552640c012c5591d1d98f37971838785"
     },
     {
       "path": "RECORDER_API.md",
@@ -145,6 +146,11 @@
       "path": "RELEASE_NOTES_v0.8.0-preview.1.md",
       "size_bytes": 1579,
       "sha256": "00838d669628dec03136ae5309b32099109d04ccc03ae3ed5356bcfae2a8c74a"
+    },
+    {
+      "path": "RELEASE_NOTES_v0.8.0-preview.2.md",
+      "size_bytes": 1877,
+      "sha256": "276aaaf56ff4d7991525150ff03710ab20d88694dd8e25413ef06de6d137ac0f"
     },
     {
       "path": "SHARED_MODULES.json",
@@ -168,13 +174,13 @@
     },
     {
       "path": "UPGRADE.md",
-      "size_bytes": 2230,
-      "sha256": "b2ef7ed41dc5d22c30ab9780e62a00befd29769560fb734a6cf88436580ce387"
+      "size_bytes": 3261,
+      "sha256": "4f0d0046c41ee0ef2eeed5c29e13b4eed841d76c762ff5222c8f2a0e9c7f151b"
     },
     {
       "path": "VERIFICATION.txt",
-      "size_bytes": 1813,
-      "sha256": "3c3b56fd7f12dc29732094021a798baaed9b9fc677d2367e84955305a7912706"
+      "size_bytes": 1595,
+      "sha256": "e63d2f8992c9b4d219496f030591cdafaad5e9cf473ba9073b833c122313df9f"
     },
     {
       "path": "app.js",
@@ -218,8 +224,8 @@
     },
     {
       "path": "index.html",
-      "size_bytes": 22537,
-      "sha256": "4e1b0b616e33c3c18238d8b11e68b01a146c7e7021ca68ba72703e70e0710059"
+      "size_bytes": 26263,
+      "sha256": "c1dcf8c5fc9bdca04a1d9033b213ff69c8e7b95775853fc0e5020d6ba991f8ea"
     },
     {
       "path": "legacy_panels.js",
@@ -268,18 +274,18 @@
     },
     {
       "path": "original_dual.js",
-      "size_bytes": 35475,
-      "sha256": "3613f6f376237699d1e77a5e08ce14550d406ee2b49e717647cc52e403faf59a"
+      "size_bytes": 36290,
+      "sha256": "4558ca896898409239eb7ab7313285bac27da015541d78ba7a68ac8e9d5c549d"
     },
     {
       "path": "original_dual_acceptance.js",
       "size_bytes": 561,
-      "sha256": "01fa58a554f51fa40b51d6dabc9a7e78d00fdcc3b9a8c5f8797ecd467b1121df"
+      "sha256": "a6a75d5690b7db428eaca5763765a98b983a2ab50b967465c1bf07771bc6c308"
     },
     {
       "path": "original_dual_panel.js",
-      "size_bytes": 14756,
-      "sha256": "42ecc97fd5d14ac257e6868256dfc7ab93b80b0641af0a5bbf89d9af192761e2"
+      "size_bytes": 15715,
+      "sha256": "0f6d991e766775b4813b7348d3cae0d026cce4ef654cb2bb6527ff8b86d5af3f"
     },
     {
       "path": "original_oneport.html",
@@ -318,8 +324,8 @@
     },
     {
       "path": "styles.css",
-      "size_bytes": 8949,
-      "sha256": "48cefaf5a87ba7dcee828b1a76cc61d18c656ad60681313ed9942707ed96ac4f"
+      "size_bytes": 10419,
+      "sha256": "12329982d8a3708f2825ecec1d65de25efefcb772eb84feda652d4f1267c008c"
     },
     {
       "path": "telemetry_panels.js",
@@ -448,13 +454,13 @@
     },
     {
       "path": "tests/original_dual.test.js",
-      "size_bytes": 12270,
-      "sha256": "a11f68aa6ffd99d56ff360ca018e9d7a7925b8dd9006a5d74657fb069866a344"
+      "size_bytes": 15367,
+      "sha256": "a11c2cb67c42bb5741cfd90032ef9298615a93980c4d9ba3ae0c159cae86a3d6"
     },
     {
       "path": "tests/original_dual_panel.test.js",
-      "size_bytes": 17409,
-      "sha256": "0cfd1e46c28f57108144a65aeaec89a3a72942ef90e584622aab72a96161acd3"
+      "size_bytes": 23147,
+      "sha256": "2d4aed4315ec7411678961112a5a07403bb16747eef68e4e14c90b6731c2caf4"
     },
     {
       "path": "tests/original_gate.test.js",
@@ -493,8 +499,8 @@
     },
     {
       "path": "tests/scene.test.js",
-      "size_bytes": 3932,
-      "sha256": "c9e5d54b17a57f8f91cb0b0071e9354a93ff094f3563d1f9daa9a3ddb7111b35"
+      "size_bytes": 5304,
+      "sha256": "28cf3d77cfe0e49fef3e9d98d30006d7d952c6e75a4f217919e845b8b01b9872"
     },
     {
       "path": "tests/telemetry.test.js",
@@ -536,8 +542,21 @@
   "physical_tracking_validation": false,
   "original_tracker_tests": 19,
   "rf_policy_approved": true,
-  "dual_controller_tests": 31,
-  "dual_panel_tests": 12,
+  "dual_controller_tests": 37,
+  "dual_panel_tests": 19,
   "hosted_current_main_docs_preserved": true,
-  "contribution_uploads_enabled": false
+  "contribution_uploads_enabled": false,
+  "base_release": "v0.8.0-preview.1",
+  "display_range_default_m": 20,
+  "display_range_options_m": [
+    2,
+    5,
+    10,
+    20
+  ],
+  "rf_profile_unchanged": true,
+  "profile_search_window_m_approx": [
+    0.8,
+    5.9
+  ]
 }

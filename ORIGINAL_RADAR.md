@@ -1,19 +1,35 @@
 # Original radar v2: dual-UART bring-up and candidate tracks
 
-Viewer **v0.8.0-preview.1** accepts only firmware **0.3.0-rc1 / build e0ce9b95204dee4ecbf0b9e0**, protocol **original-radar-v2**, with version-1 onboard self-test. The separate firmware BIN is 344644 bytes, SHA-256 `e945b06a120f63dcb9c76625983940686f3cecc5c69781d9a24eb02228ff5deb`.
+Viewer **v0.8.0-preview.2** accepts only firmware **0.3.1-rc1 / build abb27b48c1bdb956c0de704b**, protocol **original-radar-v2**, with version-2 onboard self-test. The separate firmware BIN is 344836 bytes, SHA-256 `668476d4130f659cef4c1fea3b8eb436d5025f20853dc30ca83380f9bd38a6bf`.
 
 Independent source, target-binary and synthetic host reviews support only the gated, manual **1–5 second** bring-up path. They are not physical hardware/RF acceptance, calibration or sensing-accuracy validation. Do not substitute another firmware build or edit the policy to bypass a failed gate. Old original-radar-v1 builds are blocked in this workflow. The existing TI workflows remain separate and unchanged.
+
+## Candidate scope: documented polarity, timeout recovery and view only
+
+The firmware change corrects the documented AOP alternating physical-RX polarity (+1, −1, +1, −1). This is fixed hardware-convention compensation, not measured per-device phase calibration or verified axis orientation. The viewer does not infer calibration, invent XYZ, or enable world height because of this correction.
+
+A timed-out command leaves the browser command stream desynchronized. Save capture first, disconnect/reconnect the control port, then query fresh status and repeat Configure → Verify port pairing · no RF. Resetting only the board does not clear the browser's desynchronization. New bounded command_timeout and command_complete events are separate diagnostics; raw control/data bytes remain unchanged.
+
+The orthographic display now defaults to 20 m with 2/5/10/20 m choices and explicit zoom controls. This changes only the viewport. The unchanged room64_v1 search window covers approximately 0.8–5.9 m; physical human-detection range remains unvalidated. A 20 m display does not imply a 20 m sensing profile, people-tracking capability or room calibration. The 1–5 s RF gates are unchanged.
 
 ## First hardware acceptance: no RF
 
 1. Choose **Enhanced control**, 115200 baud, and the separate **Standard data**, 921600 baud, on the same IWR6843AOPEVM. Both use 8 data bits, no parity, one stop bit and no flow control. The data interface is read-only to the host. COM numbers are not stable identities. Connection sends no command and starts no RF.
 2. Query control status first. Require separate LF-terminated JSON status and ACK, exact build/protocol/capability, passing boot self-test and zero application/capture/RF/deadline/transport faults. Malformed/concatenated JSON is rejected, never repaired into a receipt.
-3. Enter measured mounting: floor to the **flat top of the mounting bracket, excluding screw heads**, 100–5000 mm; downward tilt −45° to +45° (positive downward, negative upward); optional signed vertical antenna offset −1000 to +1000 mm after final tilt. Leave unknown offset blank. Known bracket height plus offset must be positive. Confirm the measurement checkbox. Public inputs have no private user defaults. These declarations are not phase/axis calibration and never enable world coordinates by themselves.
+3. Enter measured mounting: floor to the **flat top of the mounting bracket, excluding screw heads**, 100–5000 mm; downward tilt −45° to +45° (positive downward, negative upward); optional signed vertical antenna offset −1000 to +1000 mm after final tilt. Leave unknown offset blank. Known bracket height plus offset must be positive. Confirm the measurement checkbox. Editable starting values are 1219 mm bracket-top height and 0° tilt, with antenna offset blank. They are not confirmed measurements: the checkbox starts unchecked, and other users must enter their actual measured values. These declarations are not phase/axis calibration and never enable world coordinates by themselves.
 4. Enter an integer duration from 1 to 5 seconds and click **Configure only**. Commands are `orConfig 1`, `profile room64_v1`, `mount <your measurements>`, `detect 4 30 64 8`, `session N`, `commit`, then fresh status. No RF starts.
 5. Click **Verify port pairing**. The host generates a fresh 128-bit nonce and sends `pair <32 lowercase hex>` on control. Only the separate data port may return the matching data_probe, exact build and configuration/session tuple. Only after observing that proof does the host send pairConfirm and obtain fresh matching control status/ACK. Pairing starts no RF. This is stream correlation, not authentication or a stable device ID.
 6. Stop if either port, framing, identity, self-test, fault state or nonce proof fails. Reconnect/reset and diagnose; never infer acceptance from partial output.
 
 Only after these no-RF checks succeed should a **separate manual Start** be considered for the bounded test. No software build/test result authorizes an unattended or longer physical run. Keep the control port open for Stop/status. Closing the browser does not stop the board.
+
+## Reading the dashboard
+
+The Control terminal shows the latest 16 actual parsed control replies. The Data terminal shows the last matched data probe or admitted frame. Both are labelled by source, monospace, keyboard-focusable and scroll/wrap long content. They are readable parsed JSON, not byte-for-byte raw files; use the separate raw exports for exact bytes.
+
+Browser action messages, gate summaries, instructions and safety warnings are separate panels. A browser message saying an action completed is not a device ACK. Mounting defaults 1219 mm/0° remain unconfirmed until the measurement checkbox is explicitly checked; other users must enter their actual measured values. The initial local confirmation does not change the board, while edits after configuration still invalidate readiness.
+
+Official board/prerequisite links are on the dashboard and in README/DOWNLOADS. Viewing needs no SDK/compiler; UniFlash is for flashing, Windows CP210x drivers only if needed, and Toolbox is optional for separate TI demos.
 
 ## Control authority and failure handling
 

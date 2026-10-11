@@ -1,4 +1,4 @@
-> v0.8.0-preview.1: original dual-UART capture and experimental candidate tracks. Select Original radar v2 only with the exact matching 0.3.0-rc1 firmware; older one-port builds cannot unlock this workflow. See [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
+> v0.8.0-preview.2: original dual-UART capture and experimental candidate tracks. Select Original radar v2 only with the exact matching 0.3.1-rc1 firmware; older one-port builds cannot unlock this workflow. See [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
 
 # Radar Studio Chromebook
 
@@ -12,10 +12,10 @@ Use only the viewer workflow matching the firmware already on your IWR6843AOP bo
 
 Recordings are handled in your browser and saved through explicit local downloads; opening the site does not submit recordings to GitHub or the dataset. Review consent and privacy before sharing any export. The software remains **source-available under its existing no-resale license**; required notices and separate third-party terms still apply.
 
-For original firmware, first perform control status/ACK and no-RF port-pairing checks. The exact candidate is **0.3.0-rc1 / build e0ce9b95204dee4ecbf0b9e0**. Choose Enhanced control at 115200 and Standard data at 921600, enter and confirm your measured mounting values, Configure, and Verify port pairing. A data-only nonce echo and fresh matching control self-test/status are required before a separate manual **1–5 second** Start. Pairing does not start RF. Old builds and longer runs remain blocked. Candidate IDs represent peaks, not people; at most three peaks are emitted. No people count, calibrated confidence, posture classifier or stable human identity is claimed. Hardware acceptance remains unverified.
+For original firmware, first perform control status/ACK and no-RF port-pairing checks. The exact candidate is **0.3.1-rc1 / build abb27b48c1bdb956c0de704b**. Choose Enhanced control at 115200 and Standard data at 921600, enter and confirm your measured mounting values, Configure, and Verify port pairing. A data-only nonce echo and fresh matching control self-test/status are required before a separate manual **1–5 second** Start. Pairing does not start RF. Old builds and longer runs remain blocked. Candidate IDs represent peaks, not people; at most three peaks are emitted. No people count, calibrated confidence, posture classifier or stable human identity is claimed. Hardware acceptance remains unverified.
 
 
-**Mount height is configurable; the public UI starts blank and requires your own measurements. Historical project reference (not a default or calibration): 4 feet (1.2192 m) from floor to the flat TOP of the bracket, excluding screws.**
+**Mount height is configurable; the UI offers editable 1219 mm/0° starting values but requires explicit measurement confirmation; other users must enter their own measurements. Historical project reference (not a default or calibration): 4 feet (1.2192 m) from floor to the flat TOP of the bracket, excluding screws.**
 
 The chip center is above that reference in the photographed arrangement. Its signed vertical offset is **estimated at +0.003175 to +0.00635 m**, giving an **estimated antenna-height interval of 1.222375–1.22555 m**. The midpoint is about **1.224 m**; it is not a calibrated measurement. **Actual downward tilt is unconfirmed.** Measure the final geometry after setting the physical tilt, and preserve the uncertainty in capture metadata.
 
@@ -28,6 +28,17 @@ The earlier **2.00 m / 15-degree** arrangement was a planned experimental refere
 A dependency-free browser application using Web Serial, served from the hosted site or a local file server. **v0.6** adds [local offline ML](OFFLINE_ML.md): train/save/load your own models, sort recordings into proposals, and human-review them in separate overlays. Open **Local offline ML** from the viewer. No account, upload, pretrained model or paid service is required.
 
 **v0.5** introduced the original **Motion Signature Lab**, observed sitting/standing/walking examples, measured calibration, local model training/evaluation and complete received-UART capture. Start with [MOTION_LAB.md](MOTION_LAB.md). The application still consumes compatible TI firmware output; no original radar firmware or real-data accuracy claim is included. It does not flash firmware or send commands merely because a profile or file is selected.
+
+## Official board and prerequisites
+
+- [IWR6843AOPEVM board](https://www.ti.com/tool/IWR6843AOPEVM) and [official SWRU546 board guide](https://www.ti.com/lit/pdf/SWRU546).
+- The hosted viewer needs a desktop/ChromeOS browser with Web Serial and compatible firmware already installed; no SDK or compiler is required to view.
+- [TI UniFlash](https://www.ti.com/tool/download/UNIFLASH) is for the separate flashing step.
+- [Silicon Labs CP210x VCP driver](https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers): Windows only if needed.
+- [TI Radar Toolbox](https://www.ti.com/tool/download/RADAR-TOOLBOX): optional separate TI demos, not a requirement for the original workflow.
+- [mmWave SDK](https://www.ti.com/tool/download/MMWAVE-SDK) and a matching compiler are developer-only firmware-build tools. See [DOWNLOADS.md](DOWNLOADS.md) for exact distinctions and demo paths.
+
+External TI/Silicon Labs downloads retain their own terms. This viewer does not redistribute TI firmware, SDKs or demo configuration files.
 
 ## Downloads and setup dependencies
 

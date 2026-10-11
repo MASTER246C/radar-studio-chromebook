@@ -1,7 +1,18 @@
+# v0.8.0-preview.2
+
+- Add separate labelled Control/Data parsed-device terminal panels, neutral browser summaries and official prerequisite links. Exact raw exports are unchanged.
+- Provide editable 1219 mm/0° starting values with offset unknown and confirmation unchecked; initial confirmation follows Query→Configure without an unnecessary extra status query.
+
+- Bind the original dual-UART workflow to firmware 0.3.1-rc1/build abb27b48c1bdb956c0de704b and self-test version 2. The firmware corrects documented alternating AOP RX polarity; this is not measured phase/axis calibration.
+- Show explicit save-capture/control-reconnect recovery after a command timeout. Board reset alone does not clear browser desynchronization. Add bounded command completion/timeout events without changing raw UART bytes.
+- Show Configure-before-Verify-port-pairing order.
+- Default the orthographic display to 20 m, with 2/5/10/20 m choices and zoom buttons. This is view-only: room64_v1 search remains approximately 0.8–5.9 m; physical human range is unvalidated.
+- Retain all dual-port, nonce, self-test/fault, current-connection and manual 1–5 s gates. No automatic RF/port/configuration, uploads, private capture fixtures or profile expansion.
+
 # v0.8.0-preview.1
 
-- Original-radar-v2 dual-UART workflow: explicit Enhanced control115200 and Standard data921600 selection, independent decoders/raw streams, control-only receipts and no-RF cross-port nonce proof.
-- Exact 0.3.0-rc1/build e0ce9b95204dee4ecbf0b9e0 acceptance, mandatory measured mounting inputs, fresh self-test/fault gates and separate manual1–5s Start.
+- Original-radar-v2 dual-UART workflow: explicit Enhanced control 115200 and Standard data 921600 selection, independent decoders/raw streams, control-only receipts and no-RF cross-port nonce proof.
+- Exact 0.3.0-rc1/build e0ce9b95204dee4ecbf0b9e0 acceptance, mandatory measured mounting inputs, fresh self-test/fault gates and separate manual 1–5 s Start.
 - Local experimental candidate association/3D view with measured trails, ambiguity retirement and stale-data expiry. No people count, trained posture model, world geometry or stable identity claim.
 - Transport-loss/stale-data Stop through the retained control path; separate raw exports and bounded admission-labelled decoded copies, with explicit loss counters.
 - Existing TI workflows, hosted links, current mounting documentation and source-available/no-resale notices preserved. No uploads or contribution activation added.

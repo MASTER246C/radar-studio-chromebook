@@ -1,15 +1,26 @@
-# v0.8.0-preview.1: original dual-UART bring-up
+# v0.8.0-preview.2: original dual-UART bring-up
 
 ## Hosted option
 
 [Open Radar Studio](https://radar-studio.master246c.chatgpt.site) in a full desktop/ChromeOS Chrome tab with Web Serial. No local Linux server, Python or Developer Mode is required. Browser/device policies may restrict USB; do not bypass them. Opening the app sends no command, starts no RF and uploads no recordings.
 
+## Next bounded test, after installing this release
+
+1. Set the board's flashing switch to **I** and reset. Flash the exact 0.3.1-rc1 image with your supported flashing tool. Then set it to **O** and reset to run. Flashing is separate from the viewer; do not send viewer commands while in flashing mode.
+2. Open v0.8.0-preview.2. Choose **Enhanced control 115200**, then **Standard data 921600**. Click **Query control status** and verify exact build abb27b48c1bdb956c0de704b, self-test version 2 passing and zero faults.
+3. Check height **1219 mm**, tilt **0 degrees** and unknown/blank antenna offset against the actual mounting. Other users must replace these editable starting values with their own measurements. Tick the measurement confirmation only after checking.
+4. Click **Configure only**, then **Verify port pairing · no RF**. Both must succeed; neither starts RF.
+5. Click the separate **Start 5-second bring-up test**. After the bounded run, click **Query control status** and require **idle** with zero faults. Use Stop if needed; never assume closing the page stopped RF.
+6. Save the capture JSON, control JSONL bytes and data JSONL bytes. If status times out, save first and reconnect the control port; board reset alone does not clear browser desynchronization.
+
+This is a bounded bring-up check, not physical detection-range or person-classification validation. The 20 m display is only a viewport; the unchanged current search window is about 0.8–5.9 m.
+
 ## Original firmware path
 
-Use only **original-radar-v2 / 0.3.0-rc1 / build e0ce9b95204dee4ecbf0b9e0** with this preview. Flashing is separate. Older one-port original firmware is incompatible and blocked; do not send TI configuration commands to it.
+Use only **original-radar-v2 / 0.3.1-rc1 / build abb27b48c1bdb956c0de704b** with this preview. Flashing is separate. Older one-port original firmware is incompatible and blocked; do not send TI configuration commands to it.
 
 1. Select Original radar v2. Choose the Enhanced control interface at 115200, then the separate Standard data interface at 921600. The viewer never guesses COM numbers.
-2. Query control status. Require separate valid JSON status and ACK, the exact build, passing version-1 boot self-test and zero faults on both transports. Malformed output never counts as success.
+2. Query control status. Require separate valid JSON status and ACK, the exact build, passing version-2 boot self-test and zero faults on both transports. Malformed output never counts as success.
 3. Enter measured floor-to-flat-bracket-top height (excluding screw heads), measured tilt, and optional signed antenna vertical offset; leave offset blank if unknown. Check the measurement confirmation. These entries are not phase/axis calibration.
 4. Choose an integer 1–5 seconds and Configure only. Then click Verify port pairing. A fresh random nonce travels through control and must return on data, followed by pairConfirm and fresh matching control status. This step does not start RF.
 5. Only after those no-RF checks succeed, a separate manual Start may run the bounded test. Watch the stop warning and data freshness; Stop remains on control if data fails. Closing the page does not stop the board. The firmware time cap is the fallback.

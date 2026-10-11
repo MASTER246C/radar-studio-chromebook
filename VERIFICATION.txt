@@ -1,17 +1,14 @@
-v0.8.0-preview.1 final verification (2026-10-11)
+v0.8.0-preview.2 verification (2026-10-11)
 
-PASS: node tests/run-all.js, all25 deterministic suites after the exact reviewed dual-UART policy was approved.
-- Historical original controller69, original panel44, original gate153 cases retained.
-- Original tracker19 cases.
-- Dual controller31 regression cases (30 independently authored adversarial cases plus production exact-pin check).
-- Dual panel12 cases, including silent/lost-data Stop, queued-tail Stop recovery, exact separate raw byte exports, admission offsets, mount validation and explicit pairing.
-PASS: independent dual-controller harness rerun after approval,30/30.
-PASS: all55 JavaScript syntax checks.
+PASS: all 25 deterministic suites after exact-policy approval.
+PASS: 55 JavaScript syntax checks.
+PASS: 37 dual-controller cases and 19 dual-panel cases; legacy suites preserved.
+PASS: independent final source review and supplemental exact-production-policy rejection of old versions, other builds, self-test version 1 and failure bit 256.
 
-Exact accepted firmware: original-radar-v2 /0.3.0-rc1/build e0ce9b95204dee4ecbf0b9e0 /selftest1. Policy approved only for gated manual1–5s bring-up. Enhanced control115200, Standard data921600. Data-only nonce proof and fresh correlated control receipt required. No auto-RF.
-Separate firmware BIN:344644bytes, SHA256 e945b06a120f63dcb9c76625983940686f3cecc5c69781d9a24eb02228ff5deb. Firmware source/target-binary independent review cleared separately. This viewer package does not contain that firmware BIN or vendor SDKs.
+The reviewed policy accepts only firmware 0.3.1-rc1, build abb27b48c1bdb956c0de704b, self-test version 2, under unchanged nonce, fresh control receipt, zero-fault, mounting-confirmation and manual 1–5 second gates. Firmware binary/source review passed separately.
 
-BROWSER LIMIT: native Chromium launch was blocked by process-singleton socket EPERM, including approved escalation. Dual UI tests use fake DOM/canvas and synthetic Web Serial. No rendered-browser or physical hardware/RF pass claimed.
-FIRST HARDWARE STEP: control status/ACK framing and no-RF pair/probe/confirm only. No physical accuracy/calibration/person-count/posture performance claim.
+Tests cover timeout recovery, board reset retaining desynchronization, immutable raw control/data bytes, bounded command/device reply histories, mounting defaults and mandatory confirmation, Configure-before-pair ordering, and display-only 20 m / near-view controls. Scene tests check 20 m boundaries, desktop/mobile aspect ratios, equal metric scale, close zoom and metric tick labels.
 
-Raw bytes remain exact, separate by lane. Bounded accepted_data_frames identifies matched active-session copies and exact raw offsets; admission is not human/physical validation. No uploads/contribution activation added.
+Independent review also verified a saturated 2048-event history with 1100 status commands: promises settle and both raw lanes remain exact. Hardware/RF testing and rendered-browser validation are not claimed. Chromium launch was blocked before navigation by an environment socket restriction.
+
+The fixed documented RX polarity is not measured phase/axis calibration. The 20 m viewport does not expand the unchanged approximately 0.8–5.9 m room64_v1 search window or validate physical human range. Candidate tracks remain experimental peak associations.
