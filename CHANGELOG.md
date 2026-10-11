@@ -1,3 +1,11 @@
+# Hosted viewer documentation — 2026-10-11
+
+## 2026-10-11 — Hosted Radar Studio launch
+
+- Linked the public hosted viewer for desktop/ChromeOS Chrome with Web Serial; local versioned downloads remain available.
+- Clarified matching firmware/configuration, browser-local recording/export and unchanged source-available/no-resale terms.
+- Hosting does not broaden hardware/demo compatibility, firmware acceptance or dataset-publication permission. Existing release tags, artifacts, licenses and notices are unchanged; release manifests continue to describe their frozen packages.
+
 # v0.7.0-preview.2 — accepted-build bring-up gate
 
 - Separate from published preview1. Reviewed policy pins version 0.2.1-rc1/build 846a3ae3184aa5d26e5d0ea3 for manual 1–5 second bring-up only.

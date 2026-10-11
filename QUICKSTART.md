@@ -1,5 +1,11 @@
 # v0.7.0-preview.2: repaired-firmware bring-up gate
 
+## Hosted option: no local server
+
+**[Open Radar Studio](https://radar-studio.master246c.chatgpt.site)** in a full desktop/ChromeOS Chrome tab with Web Serial. Use the matching firmware workflow and follow the unchanged acceptance gate below. Browser port permission is explicit. Recordings remain browser-local until you choose a local download; no recording is submitted automatically. No Linux server, Python or Developer Mode is needed for this option. Managed-device policies may restrict USB/serial access; do not bypass them.
+
+## Optional version-pinned local copy
+
 Extract the complete ZIP into a new folder. Keep your existing v0.6 folder and
 private downloads separately. Run `./start-local.sh` (or
 `python3 -m http.server 8000 --bind 127.0.0.1` inside the extracted folder) and
@@ -24,7 +30,7 @@ firmware. Never send TI configuration to the original JSON firmware.
 
 # Quick start: radar to Chromebook
 
-This guide runs Radar Studio locally in **ChromeOS Chrome**. Linux serves the app's files; Chrome talks to the radar over USB. You do not need ChromeOS Developer Mode, Node.js, a Python virtual environment, or the TI Python visualizer.
+The remaining steps describe the optional local-server route in **ChromeOS Chrome**. Linux serves the app's files; Chrome talks to the radar over USB. You do not need ChromeOS Developer Mode, Node.js, a Python virtual environment, or the TI Python visualizer.
 
 **Start with firmware that already works.** This app does not flash firmware. Its public download does not include TI firmware or configuration files. Obtain the appropriate demo and matching AOP configuration from [TI Radar Toolbox](https://www.ti.com/tool/download/RADAR-TOOLBOX), following that demo's instructions and licence.
 
@@ -41,13 +47,13 @@ Use this repository's **Releases** page to choose a tagged version and download 
 - **v0.5:** adds the integrated Motion Signature Lab, private complete-UART capture, observed activity/transition annotations and an experimental original browser classifier. See [MOTION_LAB.md](MOTION_LAB.md).
 - **v0.4:** adds explicit Area/Doors, Level and CPD raw-point formats. CPD classification and configuration sending remain unavailable; new hardware acceptance is pending.
 
-A GitHub repository or release download is source delivery, not a running hosted application. Follow the local launch steps below.
+A GitHub ZIP provides a version-pinned local copy. Use the hosted link above to run without a local server, or continue with these local launch steps.
 
 ## 2. Enable Linux, if needed
 
 On an eligible Chromebook, open **Settings → About ChromeOS → Developers → Linux development environment → Set up**. Follow the prompts. This is the normal Linux development environment, **not Developer Mode**. Do not change boot/security settings. Linux availability depends on the Chromebook and any administrator policies. See [Google's setup instructions](https://support.google.com/chromebook/answer/9145439?hl=en).
 
-If Linux is unavailable, stop here and seek an approved HTTPS hosting option. Do not bypass school/work restrictions. Double-clicking the HTML file is not the supported launch path: serial permissions for file URLs may differ.
+If Linux is unavailable, use the hosted option above if permitted by your administrator. Do not bypass school/work restrictions. Double-clicking the HTML file is not the supported launch path: serial permissions for file URLs may differ.
 
 ## 3. Extract the whole folder into Linux files
 
@@ -74,7 +80,7 @@ In the **normal ChromeOS Chrome browser**, open:
 
 **http://localhost:8000**
 
-Use a full browser tab, not an embedded preview and not a browser installed inside Linux. In this release, check that the header says **v0.6**.
+Use a full browser tab, not an embedded preview and not a browser installed inside Linux. Check the displayed version against the version you intended to open.
 
 You may first choose **Run synthetic demo**. This checks the display controls without hardware. The generated tracks and rates are labeled **SYNTHETIC DEMO** and do not prove that the radar or USB connection works. Stop playback before testing live data.
 

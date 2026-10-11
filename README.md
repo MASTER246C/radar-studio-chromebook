@@ -3,6 +3,19 @@
 
 # Radar Studio Chromebook
 
+## Hosted viewer
+
+**[Open Radar Studio](https://radar-studio.master246c.chatgpt.site)** · [Hosted help](https://radar-studio.master246c.chatgpt.site/help) · [Local offline ML](https://radar-studio.master246c.chatgpt.site/offline) · [Versioned viewer downloads](https://github.com/MASTER246C/radar-studio-chromebook/releases)
+
+Use a full tab in **Chrome on desktop or ChromeOS**, with Web Serial available and permitted by your browser/device administrator. USB access requires your explicit browser port selection. The hosted viewer does not need a Linux file server, Python, Node.js or Developer Mode.
+
+Use only the viewer workflow matching the firmware already on your IWR6843AOP board and its exact configuration. TI demos and the original JSON firmware are different protocols. Hosting does not flash firmware or establish compatibility with every demo or device.
+
+Recordings are handled in your browser and saved through explicit local downloads; opening the site does not submit recordings to GitHub or the dataset. Review consent and privacy before sharing any export. The software remains **source-available under its existing no-resale license**; required notices and separate third-party terms still apply.
+
+For original firmware, first query status only. The reviewed preview gate remains pinned to **0.2.1-rc1 / build 846a3ae3184aa5d26e5d0ea3**, successful boot self-test and fault-free idle, then current-connection configuration and a separate manual **1–5 second** Start. Legacy firmware and longer runs remain blocked. Physical hardware/RF acceptance and measurement accuracy are not established by hosting.
+
+
 **Mount height is configurable. Current user-reported reference: 4 feet (1.2192 m) from floor to the flat TOP of the bracket, excluding screws.**
 
 The chip center is above that reference in the photographed arrangement. Its signed vertical offset is **estimated at +0.003175 to +0.00635 m**, giving an **estimated antenna-height interval of 1.222375–1.22555 m**. The midpoint is about **1.224 m**; it is not a calibrated measurement. **Actual downward tilt is unconfirmed.** Measure the final geometry after setting the physical tilt, and preserve the uncertainty in capture metadata.
@@ -13,7 +26,7 @@ The earlier **2.00 m / 15-degree** arrangement was a planned experimental refere
 
 **Built specifically for the Texas Instruments IWR6843AOPEVM (IWR6843AOP) radar board.** The user-reported live setup is **Rev G**. This is not a generic viewer for all xWR or xWRL devices.
 
-A dependency-free local browser application using ChromeOS Web Serial. **v0.6** adds [local offline ML](OFFLINE_ML.md): train/save/load your own models, sort recordings into proposals, and human-review them in separate overlays. Open **Local offline ML** from the viewer. No account, upload, pretrained model or paid service is required.
+A dependency-free browser application using Web Serial, served from the hosted site or a local file server. **v0.6** adds [local offline ML](OFFLINE_ML.md): train/save/load your own models, sort recordings into proposals, and human-review them in separate overlays. Open **Local offline ML** from the viewer. No account, upload, pretrained model or paid service is required.
 
 **v0.5** introduced the original **Motion Signature Lab**, observed sitting/standing/walking examples, measured calibration, local model training/evaluation and complete received-UART capture. Start with [MOTION_LAB.md](MOTION_LAB.md). The application still consumes compatible TI firmware output; no original radar firmware or real-data accuracy claim is included. It does not flash firmware or send commands merely because a profile or file is selected.
 
@@ -21,7 +34,7 @@ A dependency-free local browser application using ChromeOS Web Serial. **v0.6** 
 
 **[Official downloads and exact TI package paths → DOWNLOADS.md](DOWNLOADS.md)**
 
-- **Run the viewer:** this release folder + normal ChromeOS Chrome/Web Serial + Python 3 for the local server. No TI SDK, CCS or UniFlash needed when firmware already works.
+- **Run the viewer:** [Open Radar Studio](https://radar-studio.master246c.chatgpt.site) in desktop/ChromeOS Chrome with Web Serial. Alternatively use a versioned release folder and Python 3 for a local server. No TI SDK, CCS or UniFlash needed when firmware already works.
 - **Get matching firmware/configs:** [TI Radar Toolbox](https://www.ti.com/tool/download/RADAR-TOOLBOX); [exact 4.00.00.05 AOP BIN/CFG paths](DOWNLOADS.md#exact-paths-inside-radar-toolbox-4000005).
 - **Flash firmware separately:** [TI UniFlash Linux/Windows](https://www.ti.com/tool/download/UNIFLASH) and [IWR6843AOPEVM board documentation](https://www.ti.com/tool/IWR6843AOPEVM).
 - **Custom firmware builds / optional Windows drivers:** [SDK, CCS and Silicon Labs links](DOWNLOADS.md). These are not blanket viewer prerequisites.
@@ -30,13 +43,13 @@ Vendor downloads remain at their official sources; they are not bundled or relic
 
 ## Start here
 
-1. Download a version from this repository's **Releases** page. Keep each version in its own folder.
-2. Follow [QUICKSTART.md](QUICKSTART.md) to enable the ordinary Linux development environment if supported, extract the whole folder into Linux files, and run `sh start-local.sh`.
-3. Open `http://localhost:8000` in **normal ChromeOS Chrome** and confirm **v0.6** in the header.
-4. Select the demo matching the firmware already on your board. Read its catalogue coverage and limitations before starting.
-5. For local TI artifact checks, see [LOCAL_IMPORT.md](LOCAL_IMPORT.md). Import is metadata inspection, not flashing or loading the command sender.
+1. [Open Radar Studio](https://radar-studio.master246c.chatgpt.site) in a full desktop/ChromeOS Chrome tab. No Linux server is needed for this hosted option.
+2. Read [QUICKSTART.md](QUICKSTART.md) and select the workflow matching the firmware already on your board. Read the catalogue coverage and limitations before using a TI profile; follow the status-only acceptance gate for original firmware.
+3. Select serial ports only when you intend to connect. Do not mix TI configuration with the original JSON protocol. Opening the site does not flash firmware or start RF.
+4. Save recordings explicitly to your own device. Nothing is submitted to the dataset automatically.
+5. For a version-pinned local copy, download a ZIP from **Releases**, keep versions in separate folders, and follow the local-server instructions in [QUICKSTART.md](QUICKSTART.md). For local TI artifact checks, see [LOCAL_IMPORT.md](LOCAL_IMPORT.md).
 
-Linux serves files only. You do not need Developer Mode, Node.js or the TI Python visualizer to run the app. No hosted app is implied by this source repository.
+For the optional local route, Linux/Python serves files only; Chrome owns USB serial. Developer Mode, Node.js and the TI Python visualizer are not viewer prerequisites.
 
 The main page keeps connection/configuration controls, the 3D view, vitals and
 recording status available. Less-used catalogue, playback and debug controls are

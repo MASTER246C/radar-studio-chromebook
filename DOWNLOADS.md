@@ -6,14 +6,16 @@ For **Texas Instruments IWR6843AOPEVM (IWR6843AOP)**; the project's user-reporte
 
 ### Run Radar Studio with firmware already working
 
-You need the complete Radar Studio release folder, normal **ChromeOS Chrome with Web Serial**, your supported Linux development environment with **Python 3** for the local file server, and your existing firmware's exact matching `.cfg`.
+For the hosted route, [Open Radar Studio](https://radar-studio.master246c.chatgpt.site) in normal **desktop or ChromeOS Chrome with Web Serial**. No Linux/Python server is needed. For a version-pinned local route, use the complete release folder and Python 3's local file server. In either case, select the workflow for the firmware already on your board and its exact matching configuration. The original JSON firmware has its own status/self-test gate; do not send it a TI `.cfg`.
+
+Recordings are processed in-browser and saved by explicit local download, with no automatic dataset submission. The existing source-available/no-resale software license and third-party notices are unchanged.
 
 - [Radar Studio releases](https://github.com/MASTER246C/radar-studio-chromebook/releases): download the named viewer ZIP and extract the whole folder.
 - [Chromebook Linux setup](https://support.google.com/chromebook/answer/9145439?hl=en): normal Linux development environment, not Developer Mode.
 - [Chrome Web Serial documentation](https://developer.chrome.com/docs/capabilities/serial): browser/secure-context requirements and serial access.
 - [Step-by-step launch](QUICKSTART.md): run `sh start-local.sh`, leave Terminal open, then open `http://localhost:8000` in normal ChromeOS Chrome.
 
-The viewer itself needs **no TI SDK, CCS, compiler, UniFlash, Node.js, pip packages or TI Python visualizer**. Python serves files only; Chrome owns the USB serial connection. If the radar is already configured and streaming, listening does not require resending a config. Updating the viewer does not require reflashing.
+The viewer itself needs **no TI SDK, CCS, compiler, UniFlash, Node.js, pip packages or TI Python visualizer**. For the optional local route, Python serves files only; Chrome owns the USB serial connection in either route. If the radar is already configured and streaming, listening does not require resending a config. Updating the viewer does not require reflashing.
 
 ### Obtain TI firmware, configurations or reference software
 
