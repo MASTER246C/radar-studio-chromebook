@@ -244,9 +244,8 @@
     },
     {
       "path": "index.html",
-      "size_bytes": 28135,
-      "sha256": "9af171d63b2cf221689121c07119608ce03e20f28a91ec162eb6fd8ca6645ac3",
-      "bytes": 28287
+      "size_bytes": 28287,
+      "sha256": "9af171d63b2cf221689121c07119608ce03e20f28a91ec162eb6fd8ca6645ac3"
     },
     {
       "path": "legacy_panels.js",
