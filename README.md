@@ -1,8 +1,8 @@
 > Current source: [continuous monitoring and optional camera recording/review](CAMERA_WORKFLOW.md). Any browser-supported camera can be selected; Logitech C920e is the test device. Camera access and recording require explicit user actions.
 
-> v0.9.0-preview.4 adds run-until-stopped support for exact firmware 0.3.2-rc1 / 87589b2c32638ae119334c72, retaining timed 0.3.1 tests. New firmware physical acceptance remains pending. See [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
+> v0.9.0-preview.5 adds run-until-stopped support for exact firmware 0.3.2-rc1 / 87589b2c32638ae119334c72, retaining timed 0.3.1 tests. New firmware physical acceptance remains pending. See [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
 
-The current repository source contains the v0.9.0-preview.4 continuous and camera candidate. Use the complete source folder or the [hosted viewer](https://radar-studio.master246c.chatgpt.site) and verify its version heading. Existing tagged release ZIPs remain unchanged historical archives; see [current release notes](RELEASE_NOTES_v0.9.0-preview.4.md).
+The current repository source contains the v0.9.0-preview.5 continuous and camera candidate. Use the complete source folder or the [hosted viewer](https://radar-studio.master246c.chatgpt.site) and verify its version heading. Existing tagged release ZIPs remain unchanged historical archives; see [current release notes](RELEASE_NOTES_v0.9.0-preview.5.md).
 
 # Radar Studio Chromebook
 

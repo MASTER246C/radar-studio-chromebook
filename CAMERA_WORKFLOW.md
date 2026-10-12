@@ -1,6 +1,6 @@
 # Camera recording and reviewed radar labels
 
-Radar Studio 0.9.0-preview.4 supports camera selection through the browser. Built-in, USB and virtual cameras work only when the browser exposes and permits them. Logitech C920e is the project test device, not a required model. Resolution and frame rate are requested as preferences; the preview reports actual settings. Audio is disabled. A network/RTSP camera needs a separate browser-compatible input; entering a camera URL is not supported.
+Radar Studio 0.9.0-preview.5 supports camera selection through the browser. Built-in, USB and virtual cameras work only when the browser exposes and permits them. Logitech C920e is the project test device, not a required model. Resolution and frame rate are requested as preferences; the preview reports actual settings. Audio is disabled. A network/RTSP camera needs a separate browser-compatible input; entering a camera URL is not supported.
 
 ## Record locally
 
@@ -8,7 +8,7 @@ Use a secure desktop Chrome or Edge page with camera permission and local folder
 
 1. Choose Original radar, enter a session name and participant alias, and select **Find cameras**. Choose your camera and open its preview.
 2. Choose a local folder, then **Start local recording** before configuring and pairing radar. This preserves the data-port probe and running control status needed by the importer.
-3. Configure the required run mode, verify port pairing and press the separate radar Start button. Continuous mode requires firmware 0.3.2-rc1, build `87589b2c32638ae119334c72`. Older 0.3.1 firmware retains timed tests.
+3. Configure the required run mode, verify port pairing, then save and review the initial no-RF receipts. Only after that checkpoint, use the separate manual radar Start for the planned sensing check. Continuous mode requires firmware 0.3.2-rc1, build `87589b2c32638ae119334c72`. Older 0.3.1 firmware retains timed tests.
 4. Keep the recording tab active and the PC awake. **Stop recording + radar** requests radar Stop and finalizes files. A confirmed radar Stop also finalizes recording. Check the displayed result; do not assume idle after a connection fault.
 
 The folder contains a session-start receipt, video segments, raw control/data JSON Lines segments, timing records and a session-end receipt. Each completed file has a byte count and SHA-256 receipt. Video segments rotate at approximately 30 seconds or 16 MiB; restarting the encoder may introduce gaps, which are logged. Raw UART segmentation preserves every received byte, even when a JSON line crosses file boundaries. A bounded 48 MiB write queue fails explicitly if the disk cannot keep up. Recording does not have a total-duration cap, but disk capacity and browser/device availability still matter. A crash may lose the open file; only completed files have final receipts.
@@ -37,6 +37,8 @@ python radar_ml.py prepare new-dataset.json --out new-features.json
 The importer refuses existing output files and verifies the selected video and all raw radar segments against their receipts. It requires a completed recording, participant alias, matching accepted running status, preceding data-port proof and human-matched timing. File hashes verify bytes, not authenticity or consent. It preserves raw measurements and the existing acquisition, coverage, spatial and timing exclusions; reviewed video labels cannot repair faulty radar data. Truncated frames and multiple detections still fail the current single-detection training gate.
 
 Keep all segments from one recording together, and split training/evaluation by participant as required by the existing trainer. Separate held-out observations are required before reporting accuracy. No trained radar model or accuracy is supplied by this update. The camera model supports annotation; the radar model is trained separately from eligible radar measurements.
+
+Import and prepare do not fit a model. Follow the [Python trainer instructions](https://github.com/MASTER246C/iwr6843aop-activity-recorder/tree/main/original_training) to run `radar_ml.py train` with whole-session, participant-disjoint train/heldout splits, then `radar_ml.py evaluate`. The baseline algorithm is `session-balanced-centroid-v1`; no pretrained radar weights are supplied. The website's earlier TI-format browser trainer cannot import these recording folders or camera review files.
 
 ## Model provenance and privacy
 

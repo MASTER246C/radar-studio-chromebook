@@ -1,4 +1,4 @@
-# v0.9.0-preview.3: original dual-UART bring-up
+# v0.9.0-preview.5: original dual-UART bring-up and camera recording
 
 ## Hosted option
 
@@ -6,8 +6,8 @@
 
 ## First acceptance: save no-RF receipts and stop for review
 
-1. Set the board's flashing switch to **I** and reset. Flash the exact 0.3.1-rc1 image with your supported flashing tool. Then set it to **O** and reset to run. Flashing is separate from the viewer; do not send viewer commands while in flashing mode.
-2. Open v0.9.0-preview.3. Choose **Enhanced control 115200**, then **Standard data 921600**. Click **Query control status** and verify exact build abb27b48c1bdb956c0de704b, self-test version 2 passing and zero faults.
+1. Set the board's flashing switch to **I** and reset. For continuous-mode acceptance, flash the distinct 0.3.2-rc1 candidate (build 87589b2c32638ae119334c72) with your supported flashing tool. Preserve the 0.3.1-rc1 image for rollback; it remains supported for timed tests. Then set it to **O** and reset to run. Flashing is separate from the viewer; do not send viewer commands while in flashing mode.
+2. Open v0.9.0-preview.5. Choose **Enhanced control 115200**, then **Standard data 921600**. Click **Query control status** and verify the exact flashed build: 87589b2c32638ae119334c72 for 0.3.2-rc1 or abb27b48c1bdb956c0de704b for 0.3.1-rc1, self-test version 2 passing and zero faults.
 3. Check height **1219 mm**, tilt **0 degrees** and unknown/blank antenna offset against the actual mounting. Other users must replace these editable starting values with their own measurements. Tick the measurement confirmation only after checking.
 4. Click **Configure only**, then **Verify port pairing · no RF**. Both must succeed; neither starts RF.
 5. Save the capture JSON, control JSONL bytes and data JSONL bytes from these no-RF checks. Require fresh matching status confirming **idle**, paired and zero faults. If status times out, save first and reconnect the control port; board reset alone does not clear browser desynchronization.
@@ -21,7 +21,7 @@ Only after the initial no-RF receipts have been reviewed should a separately aut
 
 ## Original firmware path
 
-Use only **original-radar-v2 / 0.3.1-rc1 / build abb27b48c1bdb956c0de704b** with this preview. Flashing is separate. Older one-port original firmware is incompatible and blocked; do not send TI configuration commands to it.
+This preview accepts **original-radar-v2 / 0.3.1-rc1 / build abb27b48c1bdb956c0de704b** for timed tests and **0.3.2-rc1 / build 87589b2c32638ae119334c72** for timed or continuous operation. New firmware physical acceptance remains pending. Flashing is separate. Older one-port original firmware is incompatible and blocked; do not send TI configuration commands to it.
 
 1. Select Original radar v2. Choose the Enhanced control interface at 115200, then the separate Standard data interface at 921600. The viewer never guesses COM numbers.
 2. Query control status. Require separate valid JSON status and ACK, the exact build, passing version-2 boot self-test and zero faults on both transports. Malformed output never counts as success.
@@ -32,9 +32,15 @@ Use only **original-radar-v2 / 0.3.1-rc1 / build abb27b48c1bdb956c0de704b** with
 
 The first physical acceptance step is status/ACK framing, configuration and no-RF pairing, followed by saved-receipt review. Candidate tracks are exploratory radar-peak associations; up to three peaks per frame are emitted. They are not people counts or trained sitting/standing predictions. See [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
 
+## Continuous recording and camera review
+
+After no-RF receipt review and initial timed checks, select **Continuous until stopped** with firmware 0.3.2-rc1. Configure and verify pairing again, then use the separate manual Start. The viewer renews an exact-session lease every second; firmware stops on a five-second lease expiry. Keep the tab active and the PC awake. Stop remains manual, faults do not restart automatically, and duration is otherwise uncapped. Confirm idle after Stop. Physical endurance and disconnect behavior still need acceptance.
+
+To retain the full run, start local folder recording before configuration and pairing. Any browser-supported camera is selectable; C920e is our test device. Follow [CAMERA_WORKFLOW.md](CAMERA_WORKFLOW.md) for recording, reviewed camera labels, timing alignment and the Python radar trainer. The browser offline trainer is for earlier TI-format data. No trained radar model is supplied.
+
 ## Optional current local copy
 
-Use the complete current repository source folder (GitHub **Code → Download ZIP**) for v0.9.0-preview.3, separate from older releases and private recordings. Existing tagged ZIPs remain historical versions and do not contain these fixes. Run `sh start-local.sh` (or `python3 -m http.server 8000 --bind 127.0.0.1`) there and open `http://localhost:8000` in Chrome. No dependency installation is needed.
+Use the complete current repository source folder (GitHub **Code → Download ZIP**) for v0.9.0-preview.5, or the matching named release ZIP. Earlier tagged ZIPs retain their historical contents. Run `sh start-local.sh` (or `python3 -m http.server 8000 --bind 127.0.0.1`) there and open `http://localhost:8000` in Chrome. No dependency installation is needed.
 
 The older TI workflow instructions below remain applicable only to matching TI
 firmware. Never send TI configuration to the original JSON firmware.

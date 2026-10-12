@@ -1,14 +1,14 @@
 # Guided sessions, replay and reviewed datasets
 
-Radar Studio v0.9.0-preview.3 retains local recording guidance and an original-radar review workflow. It does not train or validate a person detector. Existing TI offline tools remain separate.
+Radar Studio v0.9.0-preview.5 supports timed captures and continuous local recording. This page describes the timed capture review workflow; see [Camera recording and review](CAMERA_WORKFLOW.md) for full continuous recording folders. It does not train or validate a person detector. Existing TI offline tools remain separate.
 
 ## Record a named session
 
 1. Prepare a short session name and an optional participant group alias. Use the same alias for the same person across takes if you will later evaluate models. Do not use a real name when an alias will do.
 2. Choose a walking, standing, sitting or transition practice prompt. Click **Prepare named session · no RF** before any frames arrive. A prompt records intent, never an observed label. Do only comfortable movements in a clear space.
-3. Follow the existing status, mounting confirmation, Configure and no-RF pairing sequence. Start remains a separate manual action, limited to 1–5 seconds. A guide never configures, opens ports or starts RF.
+3. Follow the existing status, mounting confirmation, Configure and no-RF pairing sequence. For this timed capture workflow, Start remains a separate manual action limited to 1–5 seconds. A guide never configures, opens ports or starts RF.
 4. Mark what you actually observe. Outside form fields, W marks walking, S standing, I sitting, [ starts the selected transition and ] ends it. U appends an exclusion correction for the latest human annotation; it does not erase the original annotation or change the transport's open-transition state. End a still-open transition explicitly. M records an unsynchronized marker.
-5. Confirm idle and save the capture JSON and both raw UART streams. Each new named session starts in a fresh viewer tab after confirming idle and disconnecting the old tab. Longer studies consist of separate bounded takes, not a longer RF run.
+5. Confirm idle and save the capture JSON and both raw UART streams. Each new named session starts in a fresh viewer tab after confirming idle and disconnecting the old tab. For continuous acquisition with firmware 0.3.2-rc1, use the separate local folder recording workflow; a saved diagnostic window does not contain a full continuous recording.
 
 Captured mounting declarations, configuration, firmware/build and raw bytes remain in the original capture. Names, prompts, aliases and corrections are separate guided-session metadata. Browser/host click timing is approximate and references the latest received sample. No camera synchronization is inferred.
 
@@ -43,4 +43,4 @@ Raw UART bytes and video are excluded from the derived export, but names, aliase
 
 The separate [original-radar training tools](https://github.com/MASTER246C/iwr6843aop-activity-recorder/tree/main/original_training) consume this versioned dataset. They require reviewed labels, sufficient clean temporal context and independent session/participant groups for held-out evaluation. Do not split adjacent frames from one take across train and test. Synthetic examples validate plumbing only, not recognition accuracy. Python is a training-tool dependency, never a viewer prerequisite.
 
-The camera remains undecided. This release provides marker groundwork only: no media permission prompt, video recording/import, upload or device-compatibility claim. Sensor and future camera clocks require measured alignment and uncertainty before combined training. Private video must be retained separately and never silently added to a public dataset.
+Any browser-supported camera may be selected through the optional camera panel. Logitech C920e is the project test device; physical acceptance remains pending. [Camera label review](camera-review.html) uses Google MediaPipe Pose Landmarker Lite and separate unvalidated activity rules to propose labels. Human review and measured camera/radar timing with uncertainty are required before the Python importer admits labels. This timed-capture review page does not import a continuous recording folder or camera review JSON. Video stays local and is never silently added to a public dataset.

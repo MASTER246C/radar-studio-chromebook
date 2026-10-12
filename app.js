@@ -84,7 +84,7 @@
     state.dataTask=null;state.dataBusy=false;refresh();
     if(state.source==='live'){state.source='offline';if(motion)motion.reset('offline',state.profile);refresh();}
   }
-  function stopPlayback(){state.generation++;if(state.playback)clearInterval(state.playback);state.playback=null;if(['demo','replay'].includes(state.source)){state.source='offline';if(motion)motion.reset('offline',state.profile);refresh();}}
+  function stopPlayback(){state.generation++;if(state.playback)clearInterval(state.playback);state.playback=null;if(['demo','replay'].includes(state.source))reset('offline');}
   async function startListening() {
     if(state.dataBusy)return;if(state.listening)return stopListening();
     if(!profileAllowed()){log('This demo profile has no compatible decoder.');return;}if(!state.data||state.closing||state.profileChanging)return;

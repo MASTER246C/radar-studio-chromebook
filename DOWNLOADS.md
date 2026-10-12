@@ -4,7 +4,7 @@ For **Texas Instruments IWR6843AOPEVM (IWR6843AOP)**; the project's user-reporte
 
 ## Continuous and camera releases
 
-Current viewer: [v0.9.0-preview.4](https://github.com/MASTER246C/radar-studio-chromebook/releases/tag/v0.9.0-preview.4). Optional Python trainer: [v0.1.0-preview.3](https://github.com/MASTER246C/iwr6843aop-activity-recorder/releases/tag/original-training-v0.1.0-preview.3). Separate firmware: [0.3.2-rc1](https://github.com/MASTER246C/iwr6843aop-activity-recorder/releases/tag/sensing-v0.3.2-rc1). Verify release checksum companions and extract complete folders. Earlier named ZIPs retain their historical contents.
+Current viewer: [v0.9.0-preview.5](https://github.com/MASTER246C/radar-studio-chromebook/releases/tag/v0.9.0-preview.5). Optional Python trainer: [v0.1.0-preview.3](https://github.com/MASTER246C/iwr6843aop-activity-recorder/releases/tag/original-training-v0.1.0-preview.3). Separate firmware: [0.3.2-rc1](https://github.com/MASTER246C/iwr6843aop-activity-recorder/releases/tag/sensing-v0.3.2-rc1). Verify release checksum companions and extract complete folders. Earlier named ZIPs retain their historical contents.
 
 Continuous monitoring requires original-radar-v2 firmware 0.3.2-rc1 / build 87589b2c32638ae119334c72 and its exact-session heartbeat. The new BIN is 346436 bytes, SHA-256 162db11aa7472d939b1039557bcad95253752c6562261d5ed851d6216c574fb9. The previous 0.3.1-rc1 build remains eligible for bounded tests only. Enhanced control is 115200; Standard data is 921600. Complete and review no-RF status/configuration/pairing before manual sensing. Physical acceptance remains pending.
 
