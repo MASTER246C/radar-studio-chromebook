@@ -2,13 +2,13 @@
 
 For **Texas Instruments IWR6843AOPEVM (IWR6843AOP)**; the project's user-reported setup is **Rev G**. Links and package paths checked 2026-10-10. Other TI board families and demos are not automatically compatible.
 
-## Original dual-UART preview
+## Continuous and camera releases
 
-The corrected v0.9.0-preview.3 is in the current repository source folder (GitHub **Code → Download ZIP**) and the hosted edition. Existing release ZIPs retain their named historical versions and do not contain this patch. Keep the whole folder together and check the displayed version.
+Current viewer: [v0.9.0-preview.4](https://github.com/MASTER246C/radar-studio-chromebook/releases/tag/v0.9.0-preview.4). Optional Python trainer: [v0.1.0-preview.3](https://github.com/MASTER246C/iwr6843aop-activity-recorder/releases/tag/original-training-v0.1.0-preview.3). Separate firmware: [0.3.2-rc1](https://github.com/MASTER246C/iwr6843aop-activity-recorder/releases/tag/sensing-v0.3.2-rc1). Verify release checksum companions and extract complete folders. Earlier named ZIPs retain their historical contents.
 
-Viewer v0.9.0-preview.3 matches original-radar-v2 firmware **0.3.1-rc1 / build abb27b48c1bdb956c0de704b**. The separately supplied firmware BIN is 344836 bytes, SHA-256 `668476d4130f659cef4c1fea3b8eb436d5025f20853dc30ca83380f9bd38a6bf`. Do not use old one-port firmware with this workflow. Enhanced control is 115200; Standard data is 921600. First verify control status/ACK and no-RF nonce pairing. Read [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md) before any separately authorized 1–5 second bring-up.
+Continuous monitoring requires original-radar-v2 firmware 0.3.2-rc1 / build 87589b2c32638ae119334c72 and its exact-session heartbeat. The new BIN is 346436 bytes, SHA-256 162db11aa7472d939b1039557bcad95253752c6562261d5ed851d6216c574fb9. The previous 0.3.1-rc1 build remains eligible for bounded tests only. Enhanced control is 115200; Standard data is 921600. Complete and review no-RF status/configuration/pairing before manual sensing. Physical acceptance remains pending.
 
-The original tracker is independent experimental host code. It does not copy or fall back to a TI demo tracker. The TI workflows below remain separate options for matching TI firmware only.
+Any browser-supported camera can be selected; C920e is our test device. The viewer includes a pinned third-party pose model for reviewed proposals; no participant recordings or trained radar model are included. Read [CAMERA_WORKFLOW.md](CAMERA_WORKFLOW.md) for local recording, timing alignment and review limits.
 
 ## Choose what you are trying to do
 
