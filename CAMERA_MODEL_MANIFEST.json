@@ -1,0 +1,81 @@
+{
+  "schema": "radar-camera-model-assets",
+  "version": 1,
+  "runtime": {
+    "name": "@mediapipe/tasks-vision",
+    "version": "1.1.0",
+    "license": "Apache-2.0",
+    "source": "https://registry.npmjs.org/@mediapipe/tasks-vision/-/tasks-vision-1.1.0.tgz",
+    "integrity": "sha512-ZJqh0wMKOINorfSffvDAxzyO1//c+FiG3IkzOdNDnLqvBB3DbMfj0bB/tys2SNf9S914sgoIbIpF4HTOi336cg=="
+  },
+  "model": {
+    "name": "Pose Landmarker Lite",
+    "source": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task",
+    "identity": "Pinned file hash; latest URL is acquisition provenance, never fetched at runtime"
+  },
+  "privacy": "Self-hosted assets; blob worker inherits same-origin CSP to block external vendor telemetry",
+  "activity_model": false,
+  "activity_rules_validated": false,
+  "files": [
+    {
+      "path": "vendor/mediapipe/LICENSE",
+      "bytes": 12331,
+      "sha256": "8707eef0533987efc5b155d64761eeb6e20793f50b9bd1a68dad1cf4719d0ed8"
+    },
+    {
+      "path": "vendor/mediapipe/package.json",
+      "bytes": 1192,
+      "sha256": "1b6bd640d09f7233cb8b9f8c5381ed706743ce97eb970db267db975089ab7663"
+    },
+    {
+      "path": "vendor/mediapipe/README.md",
+      "bytes": 9259,
+      "sha256": "8326ed0beb1983b69cccb190937c2e368388969cb3ade06010fe51e0d5339308"
+    },
+    {
+      "path": "vendor/mediapipe/vision_bundle.mjs",
+      "bytes": 156135,
+      "sha256": "9d5fc9ef74b22329cf9aa88dc543956d192b8c254210b187271614713eb5b10c"
+    },
+    {
+      "path": "vendor/mediapipe/wasm/vision_wasm_internal.js",
+      "bytes": 335393,
+      "sha256": "7c652617b5bef832f42878ce8c5f752b0724bca6054e4bc1013a37d4b1949723"
+    },
+    {
+      "path": "vendor/mediapipe/wasm/vision_wasm_internal.wasm",
+      "bytes": 12997248,
+      "sha256": "782eda3ec1f414fdb4f1d66a8b59093eb4d5ab437e06117796abf05962d68eef"
+    },
+    {
+      "path": "vendor/mediapipe/wasm/vision_wasm_module_internal.js",
+      "bytes": 335431,
+      "sha256": "70eff3956521b7de058d7173a4935c95e4a223c26ea624b9f5a936d3a043dcb0"
+    },
+    {
+      "path": "vendor/mediapipe/wasm/vision_wasm_module_internal.wasm",
+      "bytes": 12997272,
+      "sha256": "ee03b14a878e6c3c053a1bfa62e166dc45244be54dc0bbe61c578f710b771f6a"
+    },
+    {
+      "path": "vendor/mediapipe/wasm/vision_wasm_nosimd_internal.js",
+      "bytes": 335196,
+      "sha256": "510fc70a170eb8b46767a7abab2af89a7a8341fa5b3ebfb8a5de41a79b7fa9df"
+    },
+    {
+      "path": "vendor/mediapipe/wasm/vision_wasm_nosimd_internal.wasm",
+      "bytes": 12168316,
+      "sha256": "b802041d105876865d6a0806f2ff7c4419a7f1b80bc01340fe36e759c2030011"
+    },
+    {
+      "path": "models/BLAZEPOSE_MODEL_CARD.pdf",
+      "bytes": 1398977,
+      "sha256": "e982460cedece5ad9a46aa8f13523328e9ab95d7d5b2b8c99b33f13f6a79ca86"
+    },
+    {
+      "path": "models/pose_landmarker_lite.task",
+      "bytes": 5777746,
+      "sha256": "59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a"
+    }
+  ]
+}

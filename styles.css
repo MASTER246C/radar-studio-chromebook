@@ -58,3 +58,8 @@ main.session-review{display:block;width:100%;max-width:1200px;margin:0 auto;padd
 .original-panel .guided-session h3{margin-top:0}
 .guided-session .row>a{color:var(--cyan);padding:10px 0;overflow-wrap:anywhere}
 @media(max-width:600px){main.session-review{padding:12px}.session-page header{padding:16px;min-height:0}.session-page h1{font-size:19px}.session-review .row>label,.guided-session .row>label{flex-basis:100%}.session-review .row>button,.guided-session .row>button{flex:1 1 150px}.guided-session{padding:12px}.session-review input[type=file]{font-size:11px}}
+
+/* Hosted edition: added guidance only; runtime UI and safety controls unchanged. */
+.hosted-notice{margin:16px 24px;padding:16px;max-width:100%;box-sizing:border-box}.hosted-notice p{margin:8px 0}.hosted-help{display:block;max-width:1050px;margin:24px auto;padding:0 20px}.hosted-help section{margin:24px 0}.hosted-help li{margin:8px 0}
+
+.camera-panel video,.camera-review video{display:block;width:100%;max-width:720px;max-height:440px;background:#050b12;border-radius:8px;margin:14px 0}.camera-review textarea{width:100%;min-height:90px}.camera-review .review-item{padding:12px 0;border-bottom:1px solid var(--line)}.camera-review .review-item label{display:inline-flex;margin-right:12px}.camera-review label{max-width:100%}

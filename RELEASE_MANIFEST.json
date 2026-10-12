@@ -1,620 +1,705 @@
 {
-  "release": "v0.9.0-preview.3",
-  "date_utc": "2026-10-11",
-  "base_commit": "89caddab354e241f97ca2b926c15962f4f2eeecb",
-  "status": "Correctness patch: event ambiguity, no-RF receipt workflow, Windows tests and current metadata",
-  "target_board": "IWR6843AOPEVM / IWR6843AOP",
+  "release": "v0.9.0-preview.4",
+  "date_utc": "2026-10-12",
+  "base_commit": "a0ac8880ed806bc1ad29633597cb0e0dcf8ba28b",
+  "status": "Software-tested continuous and camera candidate; physical acceptance pending",
   "firmware_protocol": "original-radar-v2",
-  "rf_start_policy": "Exact reviewed firmware and self-test only; save and review initial no-RF status/pairing receipts before a later separately authorized manual 1–5 second Start",
-  "accepted_firmware": {
-    "version": "0.3.1-rc1",
-    "build_id": "abb27b48c1bdb956c0de704b",
-    "selftest_version": 2,
-    "polarity_selftest_failure_bit": 256,
-    "max_session_seconds": 5,
-    "control_baud": 115200,
-    "data_baud": 921600,
-    "separate_binary_sha256": "668476d4130f659cef4c1fea3b8eb436d5025f20853dc30ca83380f9bd38a6bf",
-    "separate_binary_size_bytes": 344836
-  },
-  "legacy_v020_rf_start_enabled": false,
-  "longer_runs_enabled": false,
-  "vendor_binary_or_config_contents_included": false,
-  "user_capture_contents_included": false,
-  "private_research_contents_included": false,
-  "current_main_mounting_material_preserved": true,
-  "license": "Unchanged source-available LICENSE; no-resale and third-party restrictions preserved",
-  "deterministic_test_suites": 27,
-  "original_controller_tests": 69,
-  "original_mock_ui_tests": 44,
-  "accepted_firmware_gate_tests": 153,
-  "javascript_syntax_files": 60,
-  "independent_review": "Independent read-only synthetic behavioral and instruction review passed 28 behavioral cases plus 5 instruction assertions; local full regression and hosted verification have separate receipts.",
-  "rendered_browser_verified": false,
-  "rendered_browser_limitation": "This source manifest covers deterministic local software checks; hosted browser verification is recorded separately.",
-  "hardware_or_rf_verification": false,
-  "onboard_selftest_receipt_observed": false,
-  "dataset_license_status": "Capture rights not granted by source license",
-  "manifest_excludes_itself": true,
+  "accepted_firmware": [
+    {
+      "version": "0.3.1-rc1",
+      "build_id": "abb27b48c1bdb956c0de704b",
+      "mode": "bounded"
+    },
+    {
+      "version": "0.3.2-rc1",
+      "build_id": "87589b2c32638ae119334c72",
+      "mode": "bounded or continuous, 5000ms exact-session lease"
+    }
+  ],
+  "camera_scope": "Any browser-supported camera; C920e test device",
+  "contains_private_data": false,
+  "contains_third_party_pose_model": true,
+  "contains_trained_radar_model": false,
   "files": [
     {
+      "path": ".gitattributes",
+      "bytes": 78,
+      "sha256": "3df6947bba919230667524549841334b516dd7b483b7bf48f294dd4b136293a5"
+    },
+    {
       "path": ".gitignore",
-      "size_bytes": 101,
+      "bytes": 101,
       "sha256": "e428fcc8c201b5806eb8edff0e6071bdedaf6ddafbe0dcc0f4560deb28ef4dec"
     },
     {
-      "path": "CHANGELOG.md",
-      "size_bytes": 17549,
-      "sha256": "3805623b840682724275b84e3eaf78a97b768ad0b834a4f3c41d9aa0bce78bf5"
-    },
-    {
-      "path": "CHANGELOG.txt",
-      "size_bytes": 5150,
-      "sha256": "4081ba4bf2be405a59751f779f443f9e0a6995dd97f965a295c6c30f743c5d64"
-    },
-    {
-      "path": "CONFIG_GUIDE.txt",
-      "size_bytes": 959,
-      "sha256": "91f0c548de3b972c3b12c0658242a60e3c39d34f80471ded9119e2e2ad101fd8"
-    },
-    {
-      "path": "DEMO_CATALOG.md",
-      "size_bytes": 21222,
-      "sha256": "c11abaa1bab6f7f305be7c6bbbf5fc489b9f3c0fce947a7f1380350ee9b2871a"
-    },
-    {
-      "path": "DEVELOPING.md",
-      "size_bytes": 20621,
-      "sha256": "61cc6bb2df98575b651a8ca4e0f40fd3536e122d3632a3543ef5d9a1a2d2e191"
-    },
-    {
-      "path": "DOWNLOADS.md",
-      "size_bytes": 8792,
-      "sha256": "dde1d45a0ea15e2b4ec7b48eda02e4055d5d542c69ed34cbf4347ac7f89f5dde"
-    },
-    {
-      "path": "LEGACY_PROTOCOL_EVIDENCE.md",
-      "size_bytes": 9453,
-      "sha256": "946b6e1d51b42774f077be4f5b526835e87231b01618accd5a07cc33417e70c2"
-    },
-    {
-      "path": "LICENSE",
-      "size_bytes": 3323,
-      "sha256": "ebae98f852385d5d25a61632bc6ec475d5972711cca9d5f510917a5f5d8e634c"
-    },
-    {
-      "path": "LICENSE_COVERAGE.md",
-      "size_bytes": 1761,
-      "sha256": "498a3f6d763a3482706d754671ad2536d888380c2201b6060a147f9fa467bd80"
-    },
-    {
-      "path": "LOCAL_IMPORT.md",
-      "size_bytes": 4508,
-      "sha256": "4f48125986d3f039a6725688ec87df00d6b3259b7f087a40a0a2d2b8d10f9e9c"
-    },
-    {
-      "path": "MOTION_LAB.md",
-      "size_bytes": 41690,
-      "sha256": "a15c9a73cb471ac7ba6b1083ffb44473dff19206a7a40eeb8ea578c3fb15f3ce"
-    },
-    {
-      "path": "OFFLINE_ML.md",
-      "size_bytes": 30411,
-      "sha256": "3f64d19c8854caa1123a8d959cbd50b28f54b23af3dd07d0e785d0161577b353"
-    },
-    {
-      "path": "ORIGINAL_RADAR.md",
-      "size_bytes": 11086,
-      "sha256": "80eff0828bcdb9e5f1e392f59b48ccfed4c372ab16d94f8074a60835b8611820"
-    },
-    {
-      "path": "PROTOCOL_EVIDENCE.md",
-      "size_bytes": 5790,
-      "sha256": "5a1c14f37c5a19bcce052ad051adbc6be160a2270f22c199537abebeb575d5e6"
-    },
-    {
-      "path": "PROVENANCE.txt",
-      "size_bytes": 4623,
-      "sha256": "6e052d14346e4cbc790f72877f535ca151a0bd6cd7b8525017f1eb106a5d6397"
-    },
-    {
-      "path": "QUICKSTART.md",
-      "size_bytes": 17810,
-      "sha256": "20cbea1d574fa3a92a82b42a4f5fd78b48e37e56dd18bb8031509deae54866a8"
-    },
-    {
-      "path": "README.md",
-      "size_bytes": 21244,
-      "sha256": "576d0db0776bf25251f69c5b3c275007207ef5592a71024b4fee1a6f8d1b302a"
-    },
-    {
-      "path": "RECORDER_API.md",
-      "size_bytes": 6660,
-      "sha256": "47f4f00c2ae131f9444a3683860c0dc60b28973ef835c412fdc3898da58b0144"
-    },
-    {
-      "path": "RELEASE_NOTES_v0.7.0-preview.1.md",
-      "size_bytes": 2994,
-      "sha256": "12c586cb66d4ca0135a1287ddaa92d2771e5b5771585e010a4accb05863fd304"
-    },
-    {
-      "path": "RELEASE_NOTES_v0.7.0-preview.2.md",
-      "size_bytes": 1657,
-      "sha256": "770b28fbe48972c5260e80753accf367b446b5acac733de78594d250e46f203b"
-    },
-    {
-      "path": "RELEASE_NOTES_v0.8.0-preview.1.md",
-      "size_bytes": 1579,
-      "sha256": "00838d669628dec03136ae5309b32099109d04ccc03ae3ed5356bcfae2a8c74a"
-    },
-    {
-      "path": "RELEASE_NOTES_v0.8.0-preview.2.md",
-      "size_bytes": 1877,
-      "sha256": "276aaaf56ff4d7991525150ff03710ab20d88694dd8e25413ef06de6d137ac0f"
-    },
-    {
-      "path": "RELEASE_NOTES_v0.9.0-preview.1.md",
-      "size_bytes": 1072,
-      "sha256": "8fa012967dd6fb9309824875ecc6e596547ace42bb78c266cedf13b1721658ab"
-    },
-    {
-      "path": "RELEASE_NOTES_v0.9.0-preview.2.md",
-      "size_bytes": 726,
-      "sha256": "dae73510cd0fa9d726ba6e6b777ff673f4a5f49fa213240a1508c2c6c5255d67"
-    },
-    {
-      "path": "RELEASE_NOTES_v0.9.0-preview.3.md",
-      "size_bytes": 2195,
-      "sha256": "8b4ba4772f9cb05043ed6a09defb7ee5aa3e7a8b160015865703a54ad59a6e26"
-    },
-    {
-      "path": "SESSIONS.md",
-      "size_bytes": 6122,
-      "sha256": "bfebe0c4ad808ed9c8b4d31530a9ee449f87907535b59740158bec6a2940ea05"
-    },
-    {
-      "path": "SHARED_MODULES.json",
-      "size_bytes": 3750,
-      "sha256": "9e206b13bc48a43e4d869e5ed24d8d5d5d517aebdb87d8da3e9a4cd3ef0134c6"
-    },
-    {
-      "path": "TECHNICAL_NOTES.md",
-      "size_bytes": 8895,
-      "sha256": "aaece785e64c37930e3c5595efbde8345010f8b7fc7c1520fa445b185b7b320f"
-    },
-    {
-      "path": "TEST_PLAN.md",
-      "size_bytes": 8289,
-      "sha256": "7814f164de4c4e1fbd9602d4d93d63ac8732725de2857a9dce593da704d95f00"
-    },
-    {
-      "path": "TROUBLESHOOTING.md",
-      "size_bytes": 12343,
-      "sha256": "c15d10b7cd64eb9f3808dc89b79c3066ee09cd874d3f5e2b6f4878123c31074f"
-    },
-    {
-      "path": "UPGRADE.md",
-      "size_bytes": 3469,
-      "sha256": "80e423723607553dd1222b3078dc2ea141b7bc54aec274926914a512dbff1a91"
-    },
-    {
-      "path": "VERIFICATION.txt",
-      "size_bytes": 1675,
-      "sha256": "2fc6c7adce39ab32e9b9e1fa613abcf1b4931669e4b61c0210d7d61dcb818a11"
-    },
-    {
       "path": "app.js",
-      "size_bytes": 24552,
+      "bytes": 24552,
       "sha256": "8f893c8375e7e4fc9fe1800c31f218287c7d5ac155661fac063fd322cb3ae27c"
     },
     {
+      "path": "camera-review.html",
+      "bytes": 5090,
+      "sha256": "36bb825b4520b2eb90100d8a2f44dd1960f278900fc7b048ba0d9c8244870cc3"
+    },
+    {
+      "path": "camera_labels.js",
+      "bytes": 4793,
+      "sha256": "ec7b2af99d5f61f74450febaccd21d4880a92aa1986860b589a6a13ba9d39d4c"
+    },
+    {
+      "path": "CAMERA_MODEL_MANIFEST.json",
+      "bytes": 2992,
+      "sha256": "15e24102f65756acb4e32301c9cc1f5b35b41b8b8c4c3c33693aaa75ece2deb6"
+    },
+    {
+      "path": "camera_panel.js",
+      "bytes": 9425,
+      "sha256": "37c4aac28103def485ae887f0a296875d7946e190f4cc660344c3b6393f8c599"
+    },
+    {
+      "path": "camera_pose_worker.mjs",
+      "bytes": 1157,
+      "sha256": "f03df87e69d4fe84015381766b59c6d605507161983944a7a8aefdacbc3e78ef"
+    },
+    {
+      "path": "camera_review.js",
+      "bytes": 12708,
+      "sha256": "f2b3123b8fdf0baf081ca926e20f90cefb07517e5fd66be5a28d2dbaeb7c08a6"
+    },
+    {
+      "path": "CAMERA_WORKFLOW.md",
+      "bytes": 6732,
+      "sha256": "104e8b16569b06ba5f2f207515b86001d785d557872b713c80fb933676667692"
+    },
+    {
       "path": "capture_recorder.js",
-      "size_bytes": 14625,
+      "bytes": 14625,
       "sha256": "dd069d43e2d17947fb32202c72779b33d14890d90914771cd59012bc9a3af74e"
     },
     {
       "path": "catalog_ui.js",
-      "size_bytes": 6651,
+      "bytes": 6651,
       "sha256": "30b5cd82810785d38fa8e274e2f512eebd67b29be8d3ce54deb9fe2769f7deec"
     },
     {
+      "path": "CHANGELOG.md",
+      "bytes": 17549,
+      "sha256": "3805623b840682724275b84e3eaf78a97b768ad0b834a4f3c41d9aa0bce78bf5"
+    },
+    {
+      "path": "CHANGELOG.txt",
+      "bytes": 5150,
+      "sha256": "4081ba4bf2be405a59751f779f443f9e0a6995dd97f965a295c6c30f743c5d64"
+    },
+    {
+      "path": "CONFIG_GUIDE.txt",
+      "bytes": 959,
+      "sha256": "91f0c548de3b972c3b12c0658242a60e3c39d34f80471ded9119e2e2ad101fd8"
+    },
+    {
       "path": "cpd_protocol.js",
-      "size_bytes": 5256,
+      "bytes": 5256,
       "sha256": "1057b69a3fba3376b867bfe591aeb0a136ea13cb30ef9b4a97af469520c02f6b"
     },
     {
       "path": "demo-catalog.json",
-      "size_bytes": 28171,
+      "bytes": 28171,
       "sha256": "457e85afea8ac67b7acdc150ceff18527898db5d73e5bc9ab4b16b4e8c1f992d"
     },
     {
       "path": "demo_catalog.js",
-      "size_bytes": 30621,
+      "bytes": 30621,
       "sha256": "8ce66f9ea367f2a561550f3c6af80f345a8dda62308b3508019eff7afab82d5a"
     },
     {
+      "path": "DEMO_CATALOG.md",
+      "bytes": 21222,
+      "sha256": "c11abaa1bab6f7f305be7c6bbbf5fc489b9f3c0fce947a7f1380350ee9b2871a"
+    },
+    {
+      "path": "DEVELOPING.md",
+      "bytes": 20621,
+      "sha256": "61cc6bb2df98575b651a8ca4e0f40fd3536e122d3632a3543ef5d9a1a2d2e191"
+    },
+    {
+      "path": "DOWNLOADS.md",
+      "bytes": 8792,
+      "sha256": "dde1d45a0ea15e2b4ec7b48eda02e4055d5d542c69ed34cbf4347ac7f89f5dde"
+    },
+    {
       "path": "favicon.ico",
-      "size_bytes": 300,
+      "bytes": 300,
       "sha256": "a3e85d892c0dba6695f4b40a1a45bc70d97ac5b6b24ea57f071a33ae1c522061"
     },
     {
       "path": "favicon.svg",
-      "size_bytes": 376,
+      "bytes": 376,
       "sha256": "42bed3ba84a5dfe746c664e795335ff6f9992e9d5abc481cdc6360e19501090b"
     },
     {
       "path": "index.html",
-      "size_bytes": 28287,
-      "sha256": "9af171d63b2cf221689121c07119608ce03e20f28a91ec162eb6fd8ca6645ac3"
+      "bytes": 31055,
+      "sha256": "83d2767c52978f85bcdeede508e393edadd2f72374aa94dbc054da56ff19f8fd"
     },
     {
       "path": "legacy_panels.js",
-      "size_bytes": 11172,
+      "bytes": 11172,
       "sha256": "6617b41450943d9918c70faa271e895ba6db90497006930617be38c48d28e4e5"
     },
     {
+      "path": "LEGACY_PROTOCOL_EVIDENCE.md",
+      "bytes": 9453,
+      "sha256": "946b6e1d51b42774f077be4f5b526835e87231b01618accd5a07cc33417e70c2"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 3323,
+      "sha256": "ebae98f852385d5d25a61632bc6ec475d5972711cca9d5f510917a5f5d8e634c"
+    },
+    {
+      "path": "LICENSE_COVERAGE.md",
+      "bytes": 1761,
+      "sha256": "498a3f6d763a3482706d754671ad2536d888380c2201b6060a147f9fa467bd80"
+    },
+    {
+      "path": "local_capture.js",
+      "bytes": 6056,
+      "sha256": "9bf9cfb5c03efffffa80ebac4af37a4309dd1355cba75af399f7c5e8e47d8422"
+    },
+    {
+      "path": "LOCAL_IMPORT.md",
+      "bytes": 4508,
+      "sha256": "4f48125986d3f039a6725688ec87df00d6b3259b7f087a40a0a2d2b8d10f9e9c"
+    },
+    {
+      "path": "models/BLAZEPOSE_MODEL_CARD.pdf",
+      "bytes": 1398977,
+      "sha256": "e982460cedece5ad9a46aa8f13523328e9ab95d7d5b2b8c99b33f13f6a79ca86"
+    },
+    {
+      "path": "models/pose_landmarker_lite.task",
+      "bytes": 5777746,
+      "sha256": "59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a"
+    },
+    {
       "path": "motion_core.js",
-      "size_bytes": 32608,
+      "bytes": 32608,
       "sha256": "7d072f95297df2da165584d3eb795631c1810f55d78ea4c004d9be877be9a406"
     },
     {
+      "path": "MOTION_LAB.md",
+      "bytes": 41690,
+      "sha256": "a15c9a73cb471ac7ba6b1083ffb44473dff19206a7a40eeb8ea578c3fb15f3ce"
+    },
+    {
       "path": "motion_panel.js",
-      "size_bytes": 17380,
+      "bytes": 17380,
       "sha256": "2be87c971f1c727bc534c7f4f93c16b9ff27b8db8112a749525e003fe09c3f5e"
     },
     {
       "path": "offline.html",
-      "size_bytes": 4884,
+      "bytes": 4884,
       "sha256": "a117a553a97e28de0b90e1c9e77c7a97a16af44bdb0f0e4e5d8d8dea820232a2"
     },
     {
       "path": "offline_features.js",
-      "size_bytes": 16539,
+      "bytes": 16539,
       "sha256": "349d9cf4ba932b646a7968c348072eda0a7a3fbd405545240a13be48071aa6c0"
     },
     {
+      "path": "OFFLINE_ML.md",
+      "bytes": 30411,
+      "sha256": "3f64d19c8854caa1123a8d959cbd50b28f54b23af3dd07d0e785d0161577b353"
+    },
+    {
       "path": "offline_model.js",
-      "size_bytes": 25386,
+      "bytes": 25386,
       "sha256": "9bf2a399fb9c485c73a50a69675ee67d6e09ab85de58ed55e210ca458e698797"
     },
     {
       "path": "offline_review.js",
-      "size_bytes": 5448,
+      "bytes": 5448,
       "sha256": "e9e975dd929a40876fd24455ed1f5ebeae82251ab4b746a6f9fffa4329c515b3"
     },
     {
       "path": "offline_ui.js",
-      "size_bytes": 10486,
+      "bytes": 10486,
       "sha256": "84feb45f3b6737b65def3477e62d039cce5b1764d59ce5cbbca2d7949fc5e0ec"
     },
     {
       "path": "original_acceptance.js",
-      "size_bytes": 502,
+      "bytes": 502,
       "sha256": "33fc756a37b0643b6cd7140576f761ca8a22b88854d7190bb285792fad324221"
     },
     {
       "path": "original_dual.js",
-      "size_bytes": 36290,
-      "sha256": "4558ca896898409239eb7ab7313285bac27da015541d78ba7a68ac8e9d5c549d"
+      "bytes": 43554,
+      "sha256": "d983c4c4e6da14bfffedd3e20d96b33573695d19f806e2b866122e779bf80c90"
     },
     {
       "path": "original_dual_acceptance.js",
-      "size_bytes": 561,
-      "sha256": "a6a75d5690b7db428eaca5763765a98b983a2ab50b967465c1bf07771bc6c308"
+      "bytes": 734,
+      "sha256": "212cc83173919e60d5bd477950e52400fb3c8560248467bb2bae5c82175fba84"
     },
     {
       "path": "original_dual_panel.js",
-      "size_bytes": 15858,
-      "sha256": "96157b3ea59ea0489d39379f0b1d6a55b71848e5aa8e0f7e1fd773c54bca7713"
+      "bytes": 17397,
+      "sha256": "f775f26d3b5c35b45ff7899e0f477304f7b97168f20b461aff036953f313a8b9"
     },
     {
       "path": "original_oneport.html",
-      "size_bytes": 20958,
+      "bytes": 20958,
       "sha256": "b39e956d314d66e45b324ef3758d21535c7270d36ba0498537daa9e53ad7fd31"
     },
     {
       "path": "original_panel.js",
-      "size_bytes": 10773,
+      "bytes": 10773,
       "sha256": "fd5b620c006472bc439eb9f8a828dbd9b5f7299f4997923df1af25895048212b"
     },
     {
       "path": "original_radar.js",
-      "size_bytes": 21245,
+      "bytes": 21245,
       "sha256": "5773c7252c4624741937b71449483ad751b7feb6b187836b2397bc10471a7248"
     },
     {
+      "path": "ORIGINAL_RADAR.md",
+      "bytes": 12593,
+      "sha256": "54f4c72900993a9b33d1d58f48f1cf8550b2b508ce93cd5b7f64b08a9e6610a2"
+    },
+    {
       "path": "original_sessions.js",
-      "size_bytes": 19024,
+      "bytes": 19024,
       "sha256": "d6907a5fde81cfb2fc9c48e3d6b11a9b00cf2978a581a53880b5312a38a66a17"
     },
     {
       "path": "original_tracker.js",
-      "size_bytes": 5906,
+      "bytes": 5906,
       "sha256": "a744602a20e00fa6c558451e9f949eddeaac23166a995adcbc973163b104098b"
     },
     {
+      "path": "PROTOCOL_EVIDENCE.md",
+      "bytes": 5790,
+      "sha256": "5a1c14f37c5a19bcce052ad051adbc6be160a2270f22c199537abebeb575d5e6"
+    },
+    {
+      "path": "PROVENANCE.txt",
+      "bytes": 5390,
+      "sha256": "fc1a09cbbd218d79a54a7e23e364454872f547f1231648b1e425d26683c893ac"
+    },
+    {
+      "path": "QUICKSTART.md",
+      "bytes": 17810,
+      "sha256": "20cbea1d574fa3a92a82b42a4f5fd78b48e37e56dd18bb8031509deae54866a8"
+    },
+    {
       "path": "radar_protocol.js",
-      "size_bytes": 17836,
+      "bytes": 17836,
       "sha256": "f1e6a76d2396709002e815813ca8f827e8d7b0cd01265f7a47a09e7dde3ba365"
     },
     {
       "path": "radar_scene.js",
-      "size_bytes": 8154,
+      "bytes": 8154,
       "sha256": "d3587f805d5df3e4d5637ca3b8a33dd555d52ee12e5f993927c4c4641d4115f5"
     },
     {
+      "path": "README.md",
+      "bytes": 21155,
+      "sha256": "f328f2ef3813ebf6b0e86589d14b6fc27a763fe419ac771c59006d8cb80c713f"
+    },
+    {
+      "path": "RECORDER_API.md",
+      "bytes": 6660,
+      "sha256": "47f4f00c2ae131f9444a3683860c0dc60b28973ef835c412fdc3898da58b0144"
+    },
+    {
+      "path": "RELEASE_NOTES_v0.7.0-preview.1.md",
+      "bytes": 2994,
+      "sha256": "12c586cb66d4ca0135a1287ddaa92d2771e5b5771585e010a4accb05863fd304"
+    },
+    {
+      "path": "RELEASE_NOTES_v0.7.0-preview.2.md",
+      "bytes": 1657,
+      "sha256": "770b28fbe48972c5260e80753accf367b446b5acac733de78594d250e46f203b"
+    },
+    {
+      "path": "RELEASE_NOTES_v0.8.0-preview.1.md",
+      "bytes": 1579,
+      "sha256": "00838d669628dec03136ae5309b32099109d04ccc03ae3ed5356bcfae2a8c74a"
+    },
+    {
+      "path": "RELEASE_NOTES_v0.8.0-preview.2.md",
+      "bytes": 1877,
+      "sha256": "276aaaf56ff4d7991525150ff03710ab20d88694dd8e25413ef06de6d137ac0f"
+    },
+    {
+      "path": "RELEASE_NOTES_v0.9.0-preview.1.md",
+      "bytes": 1072,
+      "sha256": "8fa012967dd6fb9309824875ecc6e596547ace42bb78c266cedf13b1721658ab"
+    },
+    {
+      "path": "RELEASE_NOTES_v0.9.0-preview.2.md",
+      "bytes": 726,
+      "sha256": "dae73510cd0fa9d726ba6e6b777ff673f4a5f49fa213240a1508c2c6c5255d67"
+    },
+    {
+      "path": "RELEASE_NOTES_v0.9.0-preview.3.md",
+      "bytes": 2195,
+      "sha256": "8b4ba4772f9cb05043ed6a09defb7ee5aa3e7a8b160015865703a54ad59a6e26"
+    },
+    {
+      "path": "RELEASE_NOTES_v0.9.0-preview.4.md",
+      "bytes": 874,
+      "sha256": "ca93d7b9aedaa0951fe772fbbedf482912a5fb1ba809f425b7bd0f899568c68a"
+    },
+    {
       "path": "session_guide.js",
-      "size_bytes": 3324,
+      "bytes": 3324,
       "sha256": "14a3f14b37558160d95c37fcc2b927419ba1e9d677601d5d35e54fc94fa6d3db"
     },
     {
       "path": "session_replay.js",
-      "size_bytes": 6453,
+      "bytes": 6453,
       "sha256": "7948c0a7d343c883ab08eb65ca850ab63f28166aa419b18f43b47290b6f5d413"
     },
     {
       "path": "sessions.html",
-      "size_bytes": 3673,
+      "bytes": 3673,
       "sha256": "e7096f8ad23f83a40870f8a6936f41cccfaef7cbdd5f54100655b9f7e1116a26"
     },
     {
+      "path": "SESSIONS.md",
+      "bytes": 6122,
+      "sha256": "bfebe0c4ad808ed9c8b4d31530a9ee449f87907535b59740158bec6a2940ea05"
+    },
+    {
+      "path": "SHARED_MODULES.json",
+      "bytes": 3750,
+      "sha256": "9e206b13bc48a43e4d869e5ed24d8d5d5d517aebdb87d8da3e9a4cd3ef0134c6"
+    },
+    {
       "path": "start-local.sh",
-      "size_bytes": 265,
+      "bytes": 265,
       "sha256": "9b5d7eef5f5cc9d1713dd4d85f99c781f392aa333c8ba2f0f74a2c9282eacdf2"
     },
     {
       "path": "styles.css",
-      "size_bytes": 12953,
-      "sha256": "5125e5fc4c9a6712741a6c28b6d441fc69eec5b374e329b170d2f262e7f2d89c"
+      "bytes": 13682,
+      "sha256": "7fe26cd88306ed10bf3fadaf4dec7a3fcfb7b6aaef491caaf50699010f7c20d1"
+    },
+    {
+      "path": "TECHNICAL_NOTES.md",
+      "bytes": 8895,
+      "sha256": "aaece785e64c37930e3c5595efbde8345010f8b7fc7c1520fa445b185b7b320f"
     },
     {
       "path": "telemetry_panels.js",
-      "size_bytes": 9915,
+      "bytes": 9915,
       "sha256": "a934e4bfc6830e351d25d910796acfa291dc35093da9d49c6e9cb2bd64aaac0e"
     },
     {
+      "path": "TEST_PLAN.md",
+      "bytes": 8289,
+      "sha256": "7814f164de4c4e1fbd9602d4d93d63ac8732725de2857a9dce593da704d95f00"
+    },
+    {
       "path": "tests/browser.optional.test.js",
-      "size_bytes": 5247,
+      "bytes": 5247,
       "sha256": "41c58c5877841cfa4c981d6134c0925b1096c93132187ccce5edc6b7e3cf63ea"
     },
     {
       "path": "tests/build_cpd_fixtures.py",
-      "size_bytes": 2705,
+      "bytes": 2705,
       "sha256": "477201ee8ea4995520c3c55e2679362125802c5029780692745bf241df954f89"
     },
     {
       "path": "tests/build_expansion_fixtures.py",
-      "size_bytes": 1054,
+      "bytes": 1054,
       "sha256": "0ca517ce12072ac548681422172ddb01a8704f63b3ba4a6985d510a6c0ee9a94"
     },
     {
       "path": "tests/build_fixtures.py",
-      "size_bytes": 1189,
+      "bytes": 1189,
       "sha256": "3c1e0b2c3df4a6e0376298f85a9370de88509a6210cdc57961ef068bda10c03a"
     },
     {
       "path": "tests/build_legacy_fixtures.py",
-      "size_bytes": 6121,
+      "bytes": 6121,
       "sha256": "dfd7cf47024c90cc7f6f952c227dd5b88e395f63f840a7924bb02829f0a4a327"
     },
     {
+      "path": "tests/camera-labels.test.mjs",
+      "bytes": 2249,
+      "sha256": "afb193d8f7e455a8021bc56b0055e0260f378adaadb126c79bea2965961091aa"
+    },
+    {
+      "path": "tests/camera-panel.test.mjs",
+      "bytes": 2660,
+      "sha256": "9a279e01973b60828f32014c29f8c8308771f5f8bd92bca9c9845d6be79e2219"
+    },
+    {
       "path": "tests/capture.test.js",
-      "size_bytes": 16064,
+      "bytes": 16064,
       "sha256": "f0195a8b2c57e4b737205611f6eabdb6f72ea86f712efd9943389b0f53249d34"
     },
     {
       "path": "tests/catalog.test.js",
-      "size_bytes": 5167,
+      "bytes": 5167,
       "sha256": "70101b9e2ae6b40ed9a816a34bb00e4e76221d7fa12536f6a92983dd9693677e"
     },
     {
+      "path": "tests/continuous-viewer.test.mjs",
+      "bytes": 7607,
+      "sha256": "615cf4f448d347839e22f2c82b0ff6c0523ff63e14727dc8a7a97158d924e202"
+    },
+    {
       "path": "tests/cpd-fixtures.json",
-      "size_bytes": 32761,
+      "bytes": 32761,
       "sha256": "95ef2ebe46723498f75dc9a8747ecef0b36df47ed20a0c595f53e23491e56ce9"
     },
     {
       "path": "tests/cpd.test.js",
-      "size_bytes": 5153,
+      "bytes": 5153,
       "sha256": "5159698ec7a16a8f5247e8fa7ff78095d3eda276e3943ef2d83a198b1f842755"
     },
     {
       "path": "tests/expansion-fixtures.json",
-      "size_bytes": 1903,
+      "bytes": 1903,
       "sha256": "c07636c98f7ee6822c36d8db0a9c558a88000de60842b784e342bb543efcc800"
     },
     {
       "path": "tests/expansion.test.js",
-      "size_bytes": 2787,
+      "bytes": 2787,
       "sha256": "5e2db3134a6c4c023900db6f18eed4052b9ba26e48e41564f30201e32d883660"
     },
     {
       "path": "tests/fixtures.json",
-      "size_bytes": 2886,
+      "bytes": 2886,
       "sha256": "35a0b586dbaab44466ea370fd441a2f8d56713de6ba5ad8d8f4caa39a5b5db01"
     },
     {
       "path": "tests/legacy-fixtures.json",
-      "size_bytes": 43268,
+      "bytes": 43268,
       "sha256": "76d5caa1ca53874c1541d9d05ca84666ae136d48c76a2544e0385383b911a720"
     },
     {
       "path": "tests/legacy.test.js",
-      "size_bytes": 11138,
+      "bytes": 11138,
       "sha256": "850e850779b1e091349f24de39fd71a4d2aa8dfe93c4821dfc38d235592a6751"
     },
     {
       "path": "tests/legacy_panels.test.js",
-      "size_bytes": 14149,
+      "bytes": 14149,
       "sha256": "1d38e52ae2bb0ffdd34dcd342c661ac33341b45dc17d314c8970aa38eda0bd44"
     },
     {
+      "path": "tests/local-capture.test.mjs",
+      "bytes": 4424,
+      "sha256": "a6a6389dc99a26cba8b0a94c6e3da315e450b5fc93a7cd5dc111806d0780b7ab"
+    },
+    {
       "path": "tests/motion.test.js",
-      "size_bytes": 14768,
+      "bytes": 14768,
       "sha256": "70be51dc12f4583fd6a155ed9c4d4236517fca190d55df28dc372b0fc3ad65d2"
     },
     {
       "path": "tests/motion_panel.test.js",
-      "size_bytes": 5857,
+      "bytes": 5857,
       "sha256": "06428f581f3a7f4815fc13231b7b4a7f61c5232513f2641903ee6f4991a22f4a"
     },
     {
       "path": "tests/offline_browser.optional.test.js",
-      "size_bytes": 3131,
+      "bytes": 3131,
       "sha256": "44c85344ff22a32671963f36f8e4496234b935b678ef6ac5774758e345fe503d"
     },
     {
       "path": "tests/offline_cli.test.js",
-      "size_bytes": 3222,
+      "bytes": 3222,
       "sha256": "2be8a89e10386154541ae1a82b62f765ee088cb38497eefdd63ac08347f08735"
     },
     {
       "path": "tests/offline_features.test.js",
-      "size_bytes": 11506,
+      "bytes": 11506,
       "sha256": "711fd3554a7da5f31829a0c3282d2194115f1e1cb8bd2de309be5a8cf47c4954"
     },
     {
       "path": "tests/offline_fixture.js",
-      "size_bytes": 1394,
+      "bytes": 1394,
       "sha256": "a7636a66edf89242d2d6c8ea95639b36e5d79b3cd056dce282f1dd51f023a6f0"
     },
     {
       "path": "tests/offline_model.test.js",
-      "size_bytes": 20603,
+      "bytes": 20603,
       "sha256": "29fe7d36d5469c7ac20fc31e7ceb54cceb299effb940fe5783d8d9bd4e2697d8"
     },
     {
       "path": "tests/offline_review.test.js",
-      "size_bytes": 3482,
+      "bytes": 3482,
       "sha256": "6798a526cdd9114f18c2c755558526829558a5069c065e33b56ba7aa187138b3"
     },
     {
       "path": "tests/offline_ui.test.js",
-      "size_bytes": 3030,
+      "bytes": 3030,
       "sha256": "faa32b96f14982b91e4fda2b5cc74f04f7dd83c5c32013110180a38b30f4eaf2"
     },
     {
       "path": "tests/original_dual.test.js",
-      "size_bytes": 15367,
+      "bytes": 15367,
       "sha256": "a11c2cb67c42bb5741cfd90032ef9298615a93980c4d9ba3ae0c159cae86a3d6"
     },
     {
       "path": "tests/original_dual_panel.test.js",
-      "size_bytes": 23147,
+      "bytes": 23147,
       "sha256": "2d4aed4315ec7411678961112a5a07403bb16747eef68e4e14c90b6731c2caf4"
     },
     {
       "path": "tests/original_gate.test.js",
-      "size_bytes": 25444,
+      "bytes": 25444,
       "sha256": "1905ad498a9b6a612689ca4e7b7dbbe14abb12b400bbd41bb5441d6a170744bf"
     },
     {
       "path": "tests/original_panel.test.js",
-      "size_bytes": 43974,
+      "bytes": 43974,
       "sha256": "f50c42ffaf31ffa37ab7b15693c2078c1deb9c17bf7985ac065720d2bc9791d9"
     },
     {
       "path": "tests/original_radar.test.js",
-      "size_bytes": 40042,
+      "bytes": 40042,
       "sha256": "801257867c7340e07b5365fb64290dd75aed8b36a82d55033e6f1be1365bc4aa"
     },
     {
       "path": "tests/original_sessions.test.js",
-      "size_bytes": 8618,
+      "bytes": 8618,
       "sha256": "dddef77ee69c84903af4040cf7870858dfa13befb9d767ee91f350d48c00a42a"
     },
     {
       "path": "tests/original_tracker.test.js",
-      "size_bytes": 5905,
+      "bytes": 5905,
       "sha256": "586dd7b3c739e20040183ced79ccb63a8ee82547fe194766c72bc50372dfe4af"
     },
     {
       "path": "tests/original_tracking_browser.optional.test.js",
-      "size_bytes": 3409,
+      "bytes": 3409,
       "sha256": "af5735c9af86461538ce7297a87ac2dcd3a2c2d86c2bab5a80028f87c94c9636"
     },
     {
       "path": "tests/protocol.test.js",
-      "size_bytes": 3448,
+      "bytes": 3448,
       "sha256": "e04054a47024f300ae157cb7b6e8939bbd51c86f0b59caee76f6d799a1a05bf6"
     },
     {
       "path": "tests/run-all.js",
-      "size_bytes": 788,
+      "bytes": 788,
       "sha256": "1121641cf612e15538fd700ba350420a9bfc79cf59c7b9e01b3c7d5cd81f2bc2"
     },
     {
       "path": "tests/scene.test.js",
-      "size_bytes": 5304,
+      "bytes": 5304,
       "sha256": "28cf3d77cfe0e49fef3e9d98d30006d7d952c6e75a4f217919e845b8b01b9872"
     },
     {
       "path": "tests/session_ui.test.js",
-      "size_bytes": 6000,
+      "bytes": 6000,
       "sha256": "243189474e7da808cf63797653e2b5a12c0e352d03c23391ea95aae5779eda65"
     },
     {
       "path": "tests/telemetry.test.js",
-      "size_bytes": 5835,
+      "bytes": 5835,
       "sha256": "2259d4ae2bb2f4cc91c1491a8cd6f1247ad97ac560bd67426e161fd7aca5b4f6"
     },
     {
       "path": "tests/trails.test.js",
-      "size_bytes": 1607,
+      "bytes": 1607,
       "sha256": "2bf1ae50e3fc6605163d1b9f52b2e60a0a3cc6b07ddb6a55f44dfe17affe63ec"
     },
     {
       "path": "tests/ui.test.js",
-      "size_bytes": 12165,
+      "bytes": 12165,
       "sha256": "71356dca0d038c5aead14b36a1d1937a505c13fbfb1b4a523a45fe18ee25a753"
     },
     {
       "path": "tests/vitals.test.js",
-      "size_bytes": 2299,
+      "bytes": 2299,
       "sha256": "4c851c1feffd2e607908f4f749d8d5d3192f7c6f1224db9bdc0e56474250010c"
     },
     {
       "path": "tools/offline-ml.js",
-      "size_bytes": 5432,
+      "bytes": 5432,
       "sha256": "f8144a22238234e31ef655b46193dfb483417070ab68707b8ec9005eedeeacf8"
     },
     {
       "path": "trail_store.js",
-      "size_bytes": 2115,
+      "bytes": 2115,
       "sha256": "0105da8dd2276ecf36f5c97393def19d5e21cb8ce8878b3522d982527345133f"
     },
     {
+      "path": "TROUBLESHOOTING.md",
+      "bytes": 12343,
+      "sha256": "c15d10b7cd64eb9f3808dc89b79c3066ee09cd874d3f5e2b6f4878123c31074f"
+    },
+    {
+      "path": "UPGRADE.md",
+      "bytes": 3469,
+      "sha256": "80e423723607553dd1222b3078dc2ea141b7bc54aec274926914a512dbff1a91"
+    },
+    {
+      "path": "vendor/mediapipe/LICENSE",
+      "bytes": 12331,
+      "sha256": "8707eef0533987efc5b155d64761eeb6e20793f50b9bd1a68dad1cf4719d0ed8"
+    },
+    {
+      "path": "vendor/mediapipe/package.json",
+      "bytes": 1192,
+      "sha256": "1b6bd640d09f7233cb8b9f8c5381ed706743ce97eb970db267db975089ab7663"
+    },
+    {
+      "path": "vendor/mediapipe/README.md",
+      "bytes": 9259,
+      "sha256": "8326ed0beb1983b69cccb190937c2e368388969cb3ade06010fe51e0d5339308"
+    },
+    {
+      "path": "vendor/mediapipe/vision_bundle.mjs",
+      "bytes": 156135,
+      "sha256": "9d5fc9ef74b22329cf9aa88dc543956d192b8c254210b187271614713eb5b10c"
+    },
+    {
+      "path": "vendor/mediapipe/wasm/vision_wasm_internal.js",
+      "bytes": 335393,
+      "sha256": "7c652617b5bef832f42878ce8c5f752b0724bca6054e4bc1013a37d4b1949723"
+    },
+    {
+      "path": "vendor/mediapipe/wasm/vision_wasm_internal.wasm",
+      "bytes": 12997248,
+      "sha256": "782eda3ec1f414fdb4f1d66a8b59093eb4d5ab437e06117796abf05962d68eef"
+    },
+    {
+      "path": "vendor/mediapipe/wasm/vision_wasm_module_internal.js",
+      "bytes": 335431,
+      "sha256": "70eff3956521b7de058d7173a4935c95e4a223c26ea624b9f5a936d3a043dcb0"
+    },
+    {
+      "path": "vendor/mediapipe/wasm/vision_wasm_module_internal.wasm",
+      "bytes": 12997272,
+      "sha256": "ee03b14a878e6c3c053a1bfa62e166dc45244be54dc0bbe61c578f710b771f6a"
+    },
+    {
+      "path": "vendor/mediapipe/wasm/vision_wasm_nosimd_internal.js",
+      "bytes": 335196,
+      "sha256": "510fc70a170eb8b46767a7abab2af89a7a8341fa5b3ebfb8a5de41a79b7fa9df"
+    },
+    {
+      "path": "vendor/mediapipe/wasm/vision_wasm_nosimd_internal.wasm",
+      "bytes": 12168316,
+      "sha256": "b802041d105876865d6a0806f2ff7c4419a7f1b80bc01340fe36e759c2030011"
+    },
+    {
+      "path": "VERIFICATION.txt",
+      "bytes": 1675,
+      "sha256": "2fc6c7adce39ab32e9b9e1fa613abcf1b4931669e4b61c0210d7d61dcb818a11"
+    },
+    {
       "path": "vitals_store.js",
-      "size_bytes": 1306,
+      "bytes": 1306,
       "sha256": "638bcddf56eed6d3e3963d6bd5cb8a595343837a3e452742abcad3205cf8dafe"
     }
-  ],
-  "experimental_candidate_tracking": true,
-  "physical_tracking_validation": false,
-  "original_tracker_tests": 19,
-  "rf_policy_approved": true,
-  "dual_controller_tests": 37,
-  "dual_panel_tests": 19,
-  "hosted_current_main_docs_preserved": true,
-  "contribution_uploads_enabled": false,
-  "base_release": "v0.9.0-preview.1",
-  "display_range_default_m": 20,
-  "display_range_options_m": [
-    2,
-    5,
-    10,
-    20
-  ],
-  "rf_profile_unchanged": true,
-  "profile_search_window_m_approx": [
-    0.8,
-    5.9
-  ],
-  "original_session_tests": 18,
-  "session_ui_tests": 8,
-  "dataset_schema": "original-radar-dataset",
-  "dataset_schema_version": 1,
-  "camera_access_enabled": false,
-  "camera_compatibility_validated": false,
-  "python_training_bundled": false,
-  "layout_only_patch": true
+  ]
 }

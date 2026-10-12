@@ -70,3 +70,9 @@ user-approved labels; no TI classifier, third-party model weights, neural-networ
 service or copied activity-detection implementation is included. This software
 release retains the existing TI-derived protocol interface, distinct from future
 original sensing firmware. No captured user data or trained model is bundled.
+
+V0.9.0-preview.4 camera assistance
+
+The optional camera workflow includes the third-party Apache-2.0 MediaPipe Tasks Vision 1.1.0 runtime and Pose Landmarker Lite weights. This supersedes earlier version-specific statements that no third-party models are bundled. Exact sources, hashes, bundled license and model card are recorded in CAMERA_MODEL_MANIFEST.json. The original project license does not replace the vendor license.
+
+local_capture.js, camera_panel.js, camera_labels.js, camera_review.js and camera_pose_worker.mjs are original project integration code. The pose-to-activity proposal rules are unvalidated and require separate human review. No trained radar activity model or private recordings are included. Firmware remains a separate project/artifact.
