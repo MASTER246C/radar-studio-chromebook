@@ -48,4 +48,4 @@ The vendor runtime includes telemetry code. The review page therefore uses a sam
 
 ## Verification limits
 
-Software fixtures and a synthetic browser clip verify processing, file handling and review behavior. They do not establish camera compatibility, pose/activity accuracy, timing accuracy or physical RF endurance. C920e and the new firmware need the owner's physical acceptance run. Other cameras require their own checks. Preserve the previous 0.3.1 BIN for rollback.
+Software fixtures and a synthetic browser clip verify processing, file handling and review behavior. They do not establish camera compatibility, pose/activity accuracy, timing accuracy or physical RF endurance. The [first combined physical run](https://github.com/MASTER246C/iwr6843aop-activity-recorder/blob/main/docs/FIRST_COMBINED_RUN_2026-10-12.md) verified brief C920e/radar acquisition, recording-file integrity and manual Stop. Full physical acceptance remains incomplete: keepalive-loss/disconnect stop, endurance, calibration, timing alignment and activity accuracy remain unverified. Other cameras require their own checks. Preserve the previous 0.3.1 BIN for rollback.
