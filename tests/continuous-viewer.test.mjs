@@ -70,3 +70,9 @@ test('long runs keep setup events and the most recent events, counting the gap',
  assert.deepEqual(plain(snap.events.slice(0,5)),setup);assert(snap.events.some(e=>e.type==='stopped_confirmed'));
  const times=plain(snap.events.map(e=>e.host_utc_ms));assert.deepEqual(times,[...times].sort((a,b)=>a-b));
 });
+test('a rejected continuous configuration does not lock out timed tests',async()=>{
+ const m=await mock(),write=m.s.write;
+ m.s.write=async bytes=>{if(new TextDecoder().decode(bytes).trim()==='commit'){m.s.ingest(encoded(m.ack('commit',{code:-7})));return;}return write(bytes);};
+ await assert.rejects(m.s.configure(0,mount));assert.equal(m.s.monitoring,false);
+ m.s.write=write;await m.s.status();await m.s.configure(5,mount);assert.equal(m.s.seconds,5);assert.equal(m.s.monitoring,false);
+});
