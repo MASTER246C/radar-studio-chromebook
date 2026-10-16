@@ -1,56 +1,685 @@
 /* Independent adversarial regression cases, retained in release. Synthetic transport only. */
 'use strict';
-const A=require('assert/strict'),{Session,validate}=require('../original_dual.js');
-const policy={approved:true,firmwareVersion:'0.3.1-rc1',buildId:'mock-exact',selftestVersion:2,maxSeconds:5},nonce='a'.repeat(32);
-const control={protocol:'original-radar-v2',channel:'control',dual_uart:true,control_baud:115200,data_baud:921600};
-const status=(extra={})=>({...control,type:'status',state:'idle',configured:true,fault:0,frames:0,firmware_version:policy.firmwareVersion,build_id:policy.buildId,selftest_version:2,selftest_ok:true,selftest_mask:0,capture_fault:0,rf_fault:0,rf_error:0,deadline_misses:0,control_tx_fault:false,data_tx_fault:false,paired:false,pair_nonce:null,config_generation:1,session_id:1,...extra});
-const ack=(command,extra={})=>({...control,type:'ack',command,code:0,state:'idle',configured:true,...extra});
-const probe=()=>({protocol:'original-radar-v2',channel:'data',type:'data_probe',firmware_version:policy.firmwareVersion,build_id:policy.buildId,pair_nonce:nonce,config_generation:1,session_id:1});
-const frame=()=>({protocol:'original-radar-v2',channel:'data',type:'frame',pair_nonce:nonce,config_generation:1,session_id:1,sequence:1,timestamp_us:100000,complete:true,capture_fault:0,missed_frames:0,deadline_misses:0,quality:44,count:0,detected_count:0,truncated:false,detections:[],profile_energy:[1,1,1],mount:{bracket_top_m:1.219,down_tilt_deg:0,antenna_offset_m:null,antenna_height_m:null,world_height_valid:false},frame_events:1,processing_us:1,previous_tx_us:1,range_bin_m:.195,velocity_bin_mps:.3});
-const bytes=o=>Buffer.from(JSON.stringify(o)+'\n');
-async function setup(hook=()=>{},rejectStart=false){const writes=[];let paired=false,running=false;const s=new Session({rfEnabled:true,rfPolicy:policy,timeoutMs:50});s.attach(async b=>{const text=Buffer.from(b).toString().trim(),cmd=text.split(' ')[0];writes.push(text);if(cmd==='pair'){s.ingestData(bytes(probe()));await hook(s,cmd);s.ingest(bytes(ack(cmd)));}else if(cmd==='pairConfirm'){paired=true;s.ingest(bytes(ack(cmd)));}else if(cmd==='status'){s.ingest(bytes(status({...paired?{paired:true,pair_nonce:nonce}:{},state:running?'running':'idle'})));s.ingest(bytes(ack(cmd,{state:running?'running':'idle'})));}else if(cmd==='start'){running=!rejectStart;s.ingest(bytes(ack(cmd,{code:rejectStart?-1:0,state:running?'running':'idle'})));}else{s.ingest(bytes(ack(cmd)));}});s.attachData();await s.status();await s.configure(1,{bracket_top_mm:2000,down_tilt_mdeg:0,antenna_offset_mm:null,confirmed:true});return {s,writes};}
-(async()=>{let failed=0;const cases=[
- ['parsed reply display cache is bounded and cannot rewrite trusted state/raw bytes',async()=>{const {s}=await setup();for(let i=0;i<40;i++)await s.status();A.equal(s.controlReplies.length,16);A.ok(s.controlReplies.every(r=>r.channel==='control'));const raw=Buffer.from(s.rawBytes());s.controlReplies.at(-1).state='fault';A.equal(s.state,'idle');A.equal(s.lastControlStatus.state,'idle');A.deepEqual(Buffer.from(s.rawBytes()),raw);}],
- ['matched data display copy is separate from active proof and frame export',async()=>{const {s}=await setup();await s.pair(nonce);A.equal(s.lastDataReply.type,'data_probe');s.lastDataReply.pair_nonce='display-only-change';A.equal(s.pairing.pair_nonce,nonce);await s.start();s.ingestData(bytes(frame()));const raw=Buffer.from(s.dataRawBytes());s.lastDataReply.sequence=999;A.equal(s.lastFrame.sequence,1);A.equal(s.snapshot().accepted_data_frames[0].frame.sequence,1);A.deepEqual(Buffer.from(s.dataRawBytes()),raw);}],
- ['superseded identity/selftest and new polarity failure bit cannot arm candidate',async()=>{for(const extra of [{firmware_version:'0.3.0-rc1'},{build_id:'e0ce9b95204dee4ecbf0b9e0'},{selftest_version:1},{selftest_mask:256,selftest_ok:false},{selftest_mask:256,selftest_ok:true}]){const {s}=await setup();s.write=async b=>{const command=Buffer.from(b).toString().trim();if(command==='status'){s.ingest(bytes(status(extra)));s.ingest(bytes(ack('status')));}};await s.status();A.equal(s.selftestReceipt,null);A.ok(s.startBlockReason());A.ok(s.configureBlockReason());A.equal(s.matchesAcceptedSelftest(status(extra)),false);}}],
- ['an old-version approved policy cannot accept an old selftest',async()=>{const s=new Session({rfEnabled:true,rfPolicy:{...policy,firmwareVersion:'0.3.0-rc1',selftestVersion:1}});A.equal(s.matchesAcceptedSelftest(status({firmware_version:'0.3.0-rc1',selftest_version:1})),false);}],
- ['timeout exports recovery diagnostics and reset cannot clear desynchronization',async()=>{const {s}=await setup();const original=s.write;s.write=async()=>{};await A.rejects(s.status(),/Save capture first.*disconnect and reconnect the control port.*board reset alone/i);A.equal(s.desynced,true);s.ingest(bytes({...control,type:'identity',version:policy.firmwareVersion,build_id:policy.buildId,baud:115200,classifier:false}));s.write=original;await A.rejects(s.status(),/desynchronized/);A.equal(s.desynced,true);A.equal(s.selftestReceipt,null);A.ok(s.startBlockReason());const saved=s.snapshot();A.equal(saved.events.filter(x=>x.type==='command_timeout'&&x.command==='status').length,1);A.ok(saved.events.some(x=>x.type==='command_complete'&&x.command==='status'&&x.success===false));s.detach();s.attach(original);await s.status();A.equal(s.desynced,false);A.equal(s.state,'idle');}],
- ['command completion is exported without altering raw control bytes',async()=>{const {s}=await setup();const before=Buffer.from(s.rawBytes());const events=s.snapshot().events;A.ok(events.some(x=>x.type==='command_complete'&&x.command==='commit'&&x.success===true));A.deepEqual(Buffer.from(s.rawBytes()),before);A.equal(s.snapshot().version,2);}],
- ['production acceptance is exact and bounded',async()=>{const p=require('../original_dual_acceptance.js');A.equal(p.approved,true);A.equal(p.firmwareVersion,'0.3.1-rc1');A.equal(p.buildId,'abb27b48c1bdb956c0de704b');A.equal(p.selftestVersion,2);A.equal(p.maxSeconds,5);A.ok(Object.isFrozen(p));}],
- ['baseline pair arms mock session',async()=>{const {s}=await setup();await s.pair(nonce);A.equal(s.startBlockReason(),'');}],
- ['post-probe malformed data invalidates pairing',async()=>{const {s,writes}=await setup((s)=>s.ingestData(Buffer.from('{broken\n')));let rejected=false;try{await s.pair(nonce);}catch(e){rejected=true;}A.ok(rejected,'pair unexpectedly succeeded after data error');A.equal(s.pairing,null);A.ok(!writes.some(x=>x.startsWith('pairConfirm')));}],
- ['wrong-lane record revokes already established pair',async()=>{const {s}=await setup();await s.pair(nonce);s.ingest(bytes(probe()));A.equal(s.pairing,null);}],
- ['rejected start revokes active data stream',async()=>{const {s}=await setup(()=>{},true);await s.pair(nonce);await A.rejects(s.start());s.ingestData(bytes(frame()));A.equal(s.frames,0);A.equal(s.activeStream,null);}],
- ['control fault cannot be overwritten by later data',async()=>{const {s}=await setup();await s.pair(nonce);await s.start();s.ingest(bytes(status({state:'fault',fault:1,paired:true,pair_nonce:nonce})));s.ingestData(bytes(frame()));A.equal(s.state,'fault');A.equal(s.frames,0);A.equal(s.activeStream,null);}],
+const A = require('assert/strict'),
+  { Session, validate } = require('../original_dual.js');
+const policy = {
+    approved: true,
+    firmwareVersion: '0.3.1-rc1',
+    buildId: 'mock-exact',
+    selftestVersion: 2,
+    maxSeconds: 5,
+  },
+  nonce = 'a'.repeat(32);
+const control = {
+  protocol: 'original-radar-v2',
+  channel: 'control',
+  dual_uart: true,
+  control_baud: 115200,
+  data_baud: 921600,
+};
+const status = (extra = {}) => ({
+  ...control,
+  type: 'status',
+  state: 'idle',
+  configured: true,
+  fault: 0,
+  frames: 0,
+  firmware_version: policy.firmwareVersion,
+  build_id: policy.buildId,
+  selftest_version: 2,
+  selftest_ok: true,
+  selftest_mask: 0,
+  capture_fault: 0,
+  rf_fault: 0,
+  rf_error: 0,
+  deadline_misses: 0,
+  control_tx_fault: false,
+  data_tx_fault: false,
+  paired: false,
+  pair_nonce: null,
+  config_generation: 1,
+  session_id: 1,
+  ...extra,
+});
+const ack = (command, extra = {}) => ({
+  ...control,
+  type: 'ack',
+  command,
+  code: 0,
+  state: 'idle',
+  configured: true,
+  ...extra,
+});
+const probe = () => ({
+  protocol: 'original-radar-v2',
+  channel: 'data',
+  type: 'data_probe',
+  firmware_version: policy.firmwareVersion,
+  build_id: policy.buildId,
+  pair_nonce: nonce,
+  config_generation: 1,
+  session_id: 1,
+});
+const frame = () => ({
+  protocol: 'original-radar-v2',
+  channel: 'data',
+  type: 'frame',
+  pair_nonce: nonce,
+  config_generation: 1,
+  session_id: 1,
+  sequence: 1,
+  timestamp_us: 100000,
+  complete: true,
+  capture_fault: 0,
+  missed_frames: 0,
+  deadline_misses: 0,
+  quality: 44,
+  count: 0,
+  detected_count: 0,
+  truncated: false,
+  detections: [],
+  profile_energy: [1, 1, 1],
+  mount: {
+    bracket_top_m: 1.219,
+    down_tilt_deg: 0,
+    antenna_offset_m: null,
+    antenna_height_m: null,
+    world_height_valid: false,
+  },
+  frame_events: 1,
+  processing_us: 1,
+  previous_tx_us: 1,
+  range_bin_m: 0.195,
+  velocity_bin_mps: 0.3,
+});
+const bytes = o => Buffer.from(JSON.stringify(o) + '\n');
+async function setup(hook = () => {}, rejectStart = false) {
+  const writes = [];
+  let paired = false,
+    running = false;
+  const s = new Session({ rfEnabled: true, rfPolicy: policy, timeoutMs: 50 });
+  s.attach(async b => {
+    const text = Buffer.from(b).toString().trim(),
+      cmd = text.split(' ')[0];
+    writes.push(text);
+    if (cmd === 'pair') {
+      s.ingestData(bytes(probe()));
+      await hook(s, cmd);
+      s.ingest(bytes(ack(cmd)));
+    } else if (cmd === 'pairConfirm') {
+      paired = true;
+      s.ingest(bytes(ack(cmd)));
+    } else if (cmd === 'status') {
+      s.ingest(
+        bytes(status({ ...(paired ? { paired: true, pair_nonce: nonce } : {}), state: running ? 'running' : 'idle' })),
+      );
+      s.ingest(bytes(ack(cmd, { state: running ? 'running' : 'idle' })));
+    } else if (cmd === 'start') {
+      running = !rejectStart;
+      s.ingest(bytes(ack(cmd, { code: rejectStart ? -1 : 0, state: running ? 'running' : 'idle' })));
+    } else {
+      s.ingest(bytes(ack(cmd)));
+    }
+  });
+  s.attachData();
+  await s.status();
+  await s.configure(1, { bracket_top_mm: 2000, down_tilt_mdeg: 0, antenna_offset_mm: null, confirmed: true });
+  return { s, writes };
+}
+(async () => {
+  let failed = 0;
+  const cases = [
+    [
+      'parsed reply display cache is bounded and cannot rewrite trusted state/raw bytes',
+      async () => {
+        const { s } = await setup();
+        for (let i = 0; i < 40; i++) await s.status();
+        A.equal(s.controlReplies.length, 16);
+        A.ok(s.controlReplies.every(r => r.channel === 'control'));
+        const raw = Buffer.from(s.rawBytes());
+        s.controlReplies.at(-1).state = 'fault';
+        A.equal(s.state, 'idle');
+        A.equal(s.lastControlStatus.state, 'idle');
+        A.deepEqual(Buffer.from(s.rawBytes()), raw);
+      },
+    ],
+    [
+      'matched data display copy is separate from active proof and frame export',
+      async () => {
+        const { s } = await setup();
+        await s.pair(nonce);
+        A.equal(s.lastDataReply.type, 'data_probe');
+        s.lastDataReply.pair_nonce = 'display-only-change';
+        A.equal(s.pairing.pair_nonce, nonce);
+        await s.start();
+        s.ingestData(bytes(frame()));
+        const raw = Buffer.from(s.dataRawBytes());
+        s.lastDataReply.sequence = 999;
+        A.equal(s.lastFrame.sequence, 1);
+        A.equal(s.snapshot().accepted_data_frames[0].frame.sequence, 1);
+        A.deepEqual(Buffer.from(s.dataRawBytes()), raw);
+      },
+    ],
+    [
+      'superseded identity/selftest and new polarity failure bit cannot arm candidate',
+      async () => {
+        for (const extra of [
+          { firmware_version: '0.3.0-rc1' },
+          { build_id: 'e0ce9b95204dee4ecbf0b9e0' },
+          { selftest_version: 1 },
+          { selftest_mask: 256, selftest_ok: false },
+          { selftest_mask: 256, selftest_ok: true },
+        ]) {
+          const { s } = await setup();
+          s.write = async b => {
+            const command = Buffer.from(b).toString().trim();
+            if (command === 'status') {
+              s.ingest(bytes(status(extra)));
+              s.ingest(bytes(ack('status')));
+            }
+          };
+          await s.status();
+          A.equal(s.selftestReceipt, null);
+          A.ok(s.startBlockReason());
+          A.ok(s.configureBlockReason());
+          A.equal(s.matchesAcceptedSelftest(status(extra)), false);
+        }
+      },
+    ],
+    [
+      'an old-version approved policy cannot accept an old selftest',
+      async () => {
+        const s = new Session({
+          rfEnabled: true,
+          rfPolicy: { ...policy, firmwareVersion: '0.3.0-rc1', selftestVersion: 1 },
+        });
+        A.equal(s.matchesAcceptedSelftest(status({ firmware_version: '0.3.0-rc1', selftest_version: 1 })), false);
+      },
+    ],
+    [
+      'timeout exports recovery diagnostics and reset cannot clear desynchronization',
+      async () => {
+        const { s } = await setup();
+        const original = s.write;
+        s.write = async () => {};
+        await A.rejects(
+          s.status(),
+          /Save capture first.*disconnect and reconnect the control port.*board reset alone/i,
+        );
+        A.equal(s.desynced, true);
+        s.ingest(
+          bytes({
+            ...control,
+            type: 'identity',
+            version: policy.firmwareVersion,
+            build_id: policy.buildId,
+            baud: 115200,
+            classifier: false,
+          }),
+        );
+        s.write = original;
+        await A.rejects(s.status(), /desynchronized/);
+        A.equal(s.desynced, true);
+        A.equal(s.selftestReceipt, null);
+        A.ok(s.startBlockReason());
+        const saved = s.snapshot();
+        A.equal(saved.events.filter(x => x.type === 'command_timeout' && x.command === 'status').length, 1);
+        A.ok(saved.events.some(x => x.type === 'command_complete' && x.command === 'status' && x.success === false));
+        s.detach();
+        s.attach(original);
+        await s.status();
+        A.equal(s.desynced, false);
+        A.equal(s.state, 'idle');
+      },
+    ],
+    [
+      'command completion is exported without altering raw control bytes',
+      async () => {
+        const { s } = await setup();
+        const before = Buffer.from(s.rawBytes());
+        const events = s.snapshot().events;
+        A.ok(events.some(x => x.type === 'command_complete' && x.command === 'commit' && x.success === true));
+        A.deepEqual(Buffer.from(s.rawBytes()), before);
+        A.equal(s.snapshot().version, 2);
+      },
+    ],
+    [
+      'production acceptance is exact and bounded',
+      async () => {
+        const p = require('../original_dual_acceptance.js');
+        A.equal(p.approved, true);
+        A.equal(p.firmwareVersion, '0.3.1-rc1');
+        A.equal(p.buildId, 'abb27b48c1bdb956c0de704b');
+        A.equal(p.selftestVersion, 2);
+        A.equal(p.maxSeconds, 5);
+        A.ok(Object.isFrozen(p));
+      },
+    ],
+    [
+      'baseline pair arms mock session',
+      async () => {
+        const { s } = await setup();
+        await s.pair(nonce);
+        A.equal(s.startBlockReason(), '');
+      },
+    ],
+    [
+      'post-probe malformed data invalidates pairing',
+      async () => {
+        const { s, writes } = await setup(s => s.ingestData(Buffer.from('{broken\n')));
+        let rejected = false;
+        try {
+          await s.pair(nonce);
+        } catch (e) {
+          rejected = true;
+        }
+        A.ok(rejected, 'pair unexpectedly succeeded after data error');
+        A.equal(s.pairing, null);
+        A.ok(!writes.some(x => x.startsWith('pairConfirm')));
+      },
+    ],
+    [
+      'wrong-lane record revokes already established pair',
+      async () => {
+        const { s } = await setup();
+        await s.pair(nonce);
+        s.ingest(bytes(probe()));
+        A.equal(s.pairing, null);
+      },
+    ],
+    [
+      'rejected start revokes active data stream',
+      async () => {
+        const { s } = await setup(() => {}, true);
+        await s.pair(nonce);
+        await A.rejects(s.start());
+        s.ingestData(bytes(frame()));
+        A.equal(s.frames, 0);
+        A.equal(s.activeStream, null);
+      },
+    ],
+    [
+      'control fault cannot be overwritten by later data',
+      async () => {
+        const { s } = await setup();
+        await s.pair(nonce);
+        await s.start();
+        s.ingest(bytes(status({ state: 'fault', fault: 1, paired: true, pair_nonce: nonce })));
+        s.ingestData(bytes(frame()));
+        A.equal(s.state, 'fault');
+        A.equal(s.frames, 0);
+        A.equal(s.activeStream, null);
+      },
+    ],
 
- ['data status cannot satisfy control status request',async()=>{const {s}=await setup();s.write=async()=>{};const promise=s.status();await Promise.resolve();s.ingestData(bytes(status()));await A.rejects(promise);A.equal(s.selftestReceipt,null);}],
- ['data ACK cannot satisfy control command',async()=>{const {s}=await setup();s.write=async()=>{};const promise=s.command('status');await Promise.resolve();s.ingestData(bytes(ack('status')));await A.rejects(promise);}],
- ['data loss invalidates pair and remains stop-unconfirmed',async()=>{const {s}=await setup();await s.pair(nonce);await s.start();s.detachData();A.equal(s.activeStream,null);A.equal(s.pairing,null);A.equal(s.unconfirmed,true);A.ok(s.startBlockReason());}],
- ['data reconnect cannot replay previous stream',async()=>{const {s}=await setup();await s.pair(nonce);await s.start();s.detachData();s.attachData();s.ingestData(bytes(frame()));A.equal(s.frames,0);A.equal(s.activeStream,null);}],
- ['control reconnect cannot replay previous stream',async()=>{const {s}=await setup();await s.pair(nonce);await s.start();const write=s.write;s.detach();s.attach(write);s.ingestData(bytes(frame()));A.equal(s.frames,0);A.equal(s.activeStream,null);}],
- ['used nonce stays consumed across reconnect',async()=>{const {s}=await setup();await s.pair(nonce);s.detachData();s.attachData();await A.rejects(s.pair(nonce),/new nonce/);}],
- ['wrong nonce/config/session frame never reaches callback',async()=>{for(const extra of [{pair_nonce:'b'.repeat(32)},{config_generation:2},{session_id:2}]){const {s}=await setup();await s.pair(nonce);await s.start();s.ingestData(bytes({...frame(),...extra}));A.equal(s.frames,0);A.equal(s.activeStream,null);}}],
- ['session end prevents old frame revival',async()=>{const {s}=await setup();await s.pair(nonce);await s.start();s.ingest(bytes(status({paired:false,pair_nonce:null})));s.ingestData(bytes(frame()));A.equal(s.frames,0);A.equal(s.state,'idle');}],
- ['per-lane exports preserve malformed/incomplete bytes',async()=>{const s=new Session(),controlBytes=Buffer.from('broken control\npartial'),dataBytes=Buffer.from('broken data\npartial');for(const b of controlBytes)s.ingest(Uint8Array.of(b));for(const b of dataBytes)s.ingestData(Uint8Array.of(b));const x=s.snapshot();A.deepEqual(Buffer.from(x.raw_streams.control.raw_jsonl_bytes,'base64'),controlBytes);A.deepEqual(Buffer.from(x.raw_streams.data.raw_jsonl_bytes,'base64'),dataBytes);A.equal(x.raw_streams.control.raw_byte_count,controlBytes.length);A.equal(x.raw_streams.data.raw_byte_count,dataBytes.length);}],
- ['data callback cannot mutate raw or lastFrame',async()=>{const {s}=await setup();await s.pair(nonce);await s.start();s.onFrame=f=>{f.sequence=999;};const raw=bytes(frame());s.ingestData(raw);A.equal(s.lastFrame.sequence,1);A.ok(Buffer.from(s.dataRawBytes()).subarray(-raw.length).equals(raw));}],
- ['combined capture cap is enforced for both lanes',async()=>{const s=new Session({maxBytes:10});s.ingest(Buffer.from('12345'));s.ingestData(Buffer.from('67890'));s.ingestData(Buffer.from('x'));s.ingest(Buffer.from('z'));A.equal(s.bytes+s.dataBytes,10);A.equal(s.overflow,true);A.equal(s.unsavedBytes,1);A.equal(s.dataUnsavedBytes,1);A.ok(s.startBlockReason());}],
+    [
+      'data status cannot satisfy control status request',
+      async () => {
+        const { s } = await setup();
+        s.write = async () => {};
+        const promise = s.status();
+        await Promise.resolve();
+        s.ingestData(bytes(status()));
+        await A.rejects(promise);
+        A.equal(s.selftestReceipt, null);
+      },
+    ],
+    [
+      'data ACK cannot satisfy control command',
+      async () => {
+        const { s } = await setup();
+        s.write = async () => {};
+        const promise = s.command('status');
+        await Promise.resolve();
+        s.ingestData(bytes(ack('status')));
+        await A.rejects(promise);
+      },
+    ],
+    [
+      'data loss invalidates pair and remains stop-unconfirmed',
+      async () => {
+        const { s } = await setup();
+        await s.pair(nonce);
+        await s.start();
+        s.detachData();
+        A.equal(s.activeStream, null);
+        A.equal(s.pairing, null);
+        A.equal(s.unconfirmed, true);
+        A.ok(s.startBlockReason());
+      },
+    ],
+    [
+      'data reconnect cannot replay previous stream',
+      async () => {
+        const { s } = await setup();
+        await s.pair(nonce);
+        await s.start();
+        s.detachData();
+        s.attachData();
+        s.ingestData(bytes(frame()));
+        A.equal(s.frames, 0);
+        A.equal(s.activeStream, null);
+      },
+    ],
+    [
+      'control reconnect cannot replay previous stream',
+      async () => {
+        const { s } = await setup();
+        await s.pair(nonce);
+        await s.start();
+        const write = s.write;
+        s.detach();
+        s.attach(write);
+        s.ingestData(bytes(frame()));
+        A.equal(s.frames, 0);
+        A.equal(s.activeStream, null);
+      },
+    ],
+    [
+      'used nonce stays consumed across reconnect',
+      async () => {
+        const { s } = await setup();
+        await s.pair(nonce);
+        s.detachData();
+        s.attachData();
+        await A.rejects(s.pair(nonce), /new nonce/);
+      },
+    ],
+    [
+      'wrong nonce/config/session frame never reaches callback',
+      async () => {
+        for (const extra of [{ pair_nonce: 'b'.repeat(32) }, { config_generation: 2 }, { session_id: 2 }]) {
+          const { s } = await setup();
+          await s.pair(nonce);
+          await s.start();
+          s.ingestData(bytes({ ...frame(), ...extra }));
+          A.equal(s.frames, 0);
+          A.equal(s.activeStream, null);
+        }
+      },
+    ],
+    [
+      'session end prevents old frame revival',
+      async () => {
+        const { s } = await setup();
+        await s.pair(nonce);
+        await s.start();
+        s.ingest(bytes(status({ paired: false, pair_nonce: null })));
+        s.ingestData(bytes(frame()));
+        A.equal(s.frames, 0);
+        A.equal(s.state, 'idle');
+      },
+    ],
+    [
+      'per-lane exports preserve malformed/incomplete bytes',
+      async () => {
+        const s = new Session(),
+          controlBytes = Buffer.from('broken control\npartial'),
+          dataBytes = Buffer.from('broken data\npartial');
+        for (const b of controlBytes) s.ingest(Uint8Array.of(b));
+        for (const b of dataBytes) s.ingestData(Uint8Array.of(b));
+        const x = s.snapshot();
+        A.deepEqual(Buffer.from(x.raw_streams.control.raw_jsonl_bytes, 'base64'), controlBytes);
+        A.deepEqual(Buffer.from(x.raw_streams.data.raw_jsonl_bytes, 'base64'), dataBytes);
+        A.equal(x.raw_streams.control.raw_byte_count, controlBytes.length);
+        A.equal(x.raw_streams.data.raw_byte_count, dataBytes.length);
+      },
+    ],
+    [
+      'data callback cannot mutate raw or lastFrame',
+      async () => {
+        const { s } = await setup();
+        await s.pair(nonce);
+        await s.start();
+        s.onFrame = f => {
+          f.sequence = 999;
+        };
+        const raw = bytes(frame());
+        s.ingestData(raw);
+        A.equal(s.lastFrame.sequence, 1);
+        A.ok(Buffer.from(s.dataRawBytes()).subarray(-raw.length).equals(raw));
+      },
+    ],
+    [
+      'combined capture cap is enforced for both lanes',
+      async () => {
+        const s = new Session({ maxBytes: 10 });
+        s.ingest(Buffer.from('12345'));
+        s.ingestData(Buffer.from('67890'));
+        s.ingestData(Buffer.from('x'));
+        s.ingest(Buffer.from('z'));
+        A.equal(s.bytes + s.dataBytes, 10);
+        A.equal(s.overflow, true);
+        A.equal(s.unsavedBytes, 1);
+        A.equal(s.dataUnsavedBytes, 1);
+        A.ok(s.startBlockReason());
+      },
+    ],
 
- ['running confirmation must retain exact pairing correlation',async()=>{for(const extra of [{paired:false,pair_nonce:null},{pair_nonce:'b'.repeat(32)},{session_id:2},{config_generation:2}]){const {s}=await setup();await s.pair(nonce);const original=s.write;s.write=async b=>{if(Buffer.from(b).toString().trim()==='status'){s.ingest(bytes(status({state:'running',paired:true,pair_nonce:nonce,...extra})));s.ingest(bytes(ack('status',{state:'running'})));}else await original(b);};await A.rejects(s.start());A.equal(s.activeStream,null);A.equal(s.transportFault,true);}}],
+    [
+      'running confirmation must retain exact pairing correlation',
+      async () => {
+        for (const extra of [
+          { paired: false, pair_nonce: null },
+          { pair_nonce: 'b'.repeat(32) },
+          { session_id: 2 },
+          { config_generation: 2 },
+        ]) {
+          const { s } = await setup();
+          await s.pair(nonce);
+          const original = s.write;
+          s.write = async b => {
+            if (Buffer.from(b).toString().trim() === 'status') {
+              s.ingest(bytes(status({ state: 'running', paired: true, pair_nonce: nonce, ...extra })));
+              s.ingest(bytes(ack('status', { state: 'running' })));
+            } else await original(b);
+          };
+          await A.rejects(s.start());
+          A.equal(s.activeStream, null);
+          A.equal(s.transportFault, true);
+        }
+      },
+    ],
 
- ['real firmware boot status empty nonce remains readable',async()=>{A.doesNotThrow(()=>validate(status({paired:false,pair_nonce:'',config_generation:0,session_id:0})));}],
- ['paired status cannot have empty nonce',async()=>{A.throws(()=>validate(status({paired:true,pair_nonce:''})));}],
- ['active run rejects any explicit safety failure',async()=>{for(const extra of [{capture_fault:1},{rf_fault:1},{rf_error:-1},{deadline_misses:1},{selftest_ok:false}]){const {s}=await setup();await s.pair(nonce);await s.start();s.ingest(bytes(status({state:'running',paired:true,pair_nonce:nonce,...extra})));A.equal(s.activeStream,null);A.equal(s.transportFault,true);}}],
+    [
+      'real firmware boot status empty nonce remains readable',
+      async () => {
+        A.doesNotThrow(() => validate(status({ paired: false, pair_nonce: '', config_generation: 0, session_id: 0 })));
+      },
+    ],
+    [
+      'paired status cannot have empty nonce',
+      async () => {
+        A.throws(() => validate(status({ paired: true, pair_nonce: '' })));
+      },
+    ],
+    [
+      'active run rejects any explicit safety failure',
+      async () => {
+        for (const extra of [
+          { capture_fault: 1 },
+          { rf_fault: 1 },
+          { rf_error: -1 },
+          { deadline_misses: 1 },
+          { selftest_ok: false },
+        ]) {
+          const { s } = await setup();
+          await s.pair(nonce);
+          await s.start();
+          s.ingest(bytes(status({ state: 'running', paired: true, pair_nonce: nonce, ...extra })));
+          A.equal(s.activeStream, null);
+          A.equal(s.transportFault, true);
+        }
+      },
+    ],
 
- ['newer unpaired status invalidates final pair receipt',async()=>{const {s}=await setup();const original=s.write;s.write=async b=>{if(Buffer.from(b).toString().trim()==='status'){s.ingest(Buffer.concat([bytes(status({paired:true,pair_nonce:nonce})),bytes(ack('status')),bytes(status())]));}else await original(b);};await A.rejects(s.pair(nonce));A.equal(s.pairing,null);}],
+    [
+      'newer unpaired status invalidates final pair receipt',
+      async () => {
+        const { s } = await setup();
+        const original = s.write;
+        s.write = async b => {
+          if (Buffer.from(b).toString().trim() === 'status') {
+            s.ingest(
+              Buffer.concat([
+                bytes(status({ paired: true, pair_nonce: nonce })),
+                bytes(ack('status')),
+                bytes(status()),
+              ]),
+            );
+          } else await original(b);
+        };
+        await A.rejects(s.pair(nonce));
+        A.equal(s.pairing, null);
+      },
+    ],
 
- ['no freshness watchdog before RF dispatch',async()=>{const {s}=await setup();await s.pair(nonce);s.checkDataFreshness(Infinity);A.ok(s.pairing);A.equal(s.transportFault,false);}],
- ['no first frame after confirmed running invalidates stream',async()=>{const {s}=await setup();await s.pair(nonce);s.monotonic=()=>1000;await s.start();s.checkDataFreshness(2001);A.equal(s.activeStream,null);A.equal(s.transportFault,true);A.equal(s.unconfirmed,true);}],
- ['later silence invalidates stream',async()=>{const {s}=await setup();await s.pair(nonce);s.monotonic=()=>1000;await s.start();s.monotonic=()=>1500;s.ingestData(bytes(frame()));s.checkDataFreshness(2501);A.equal(s.activeStream,null);}],
- ['clock rollback after a good frame invalidates stream',async()=>{const {s}=await setup();await s.pair(nonce);s.monotonic=()=>1000;await s.start();s.monotonic=()=>1500;s.ingestData(bytes(frame()));s.checkDataFreshness(1200);A.equal(s.activeStream,null);}],
- ['duplicate or backward data cannot refresh freshness',async()=>{for(const extra of [{},{sequence:0},{sequence:2,timestamp_us:99999}]){const {s}=await setup();await s.pair(nonce);s.monotonic=()=>1000;await s.start();s.ingestData(bytes(frame()));s.monotonic=()=>1500;s.ingestData(bytes({...frame(),...extra}));A.equal(s.activeStream,null);A.equal(s.frames,1);}}],
- ['matched queued data does not cancel manual Stop',async()=>{const {s}=await setup();await s.pair(nonce);await s.start();s.write=async b=>{const cmd=Buffer.from(b).toString().trim();if(cmd==='stop'){s.ingestData(bytes(frame()));s.ingest(bytes(ack('stop')));}else if(cmd==='status'){s.ingestData(bytes(frame()));s.ingest(bytes(status()));s.ingest(bytes(ack('status')));}};await s.stop();A.equal(s.state,'idle');A.equal(s.unconfirmed,false);A.equal(s.desynced,false);A.equal(s.frames,0);}],
- ['accepted frame raw ranges exactly identify fragmented bytes',async()=>{const {s}=await setup();await s.pair(nonce);await s.start();const raw=bytes(frame());for(const b of raw)s.ingestData(Uint8Array.of(b));const saved=s.snapshot(),a=saved.accepted_data_frames[0],whole=Buffer.from(saved.raw_streams.data.raw_jsonl_bytes,'base64');A.deepEqual(whole.subarray(a.raw_byte_start,a.raw_byte_end),raw);A.equal(a.frame.sequence,1);}],
+    [
+      'no freshness watchdog before RF dispatch',
+      async () => {
+        const { s } = await setup();
+        await s.pair(nonce);
+        s.checkDataFreshness(Infinity);
+        A.ok(s.pairing);
+        A.equal(s.transportFault, false);
+      },
+    ],
+    [
+      'no first frame after confirmed running invalidates stream',
+      async () => {
+        const { s } = await setup();
+        await s.pair(nonce);
+        s.monotonic = () => 1000;
+        await s.start();
+        s.checkDataFreshness(2001);
+        A.equal(s.activeStream, null);
+        A.equal(s.transportFault, true);
+        A.equal(s.unconfirmed, true);
+      },
+    ],
+    [
+      'later silence invalidates stream',
+      async () => {
+        const { s } = await setup();
+        await s.pair(nonce);
+        s.monotonic = () => 1000;
+        await s.start();
+        s.monotonic = () => 1500;
+        s.ingestData(bytes(frame()));
+        s.checkDataFreshness(2501);
+        A.equal(s.activeStream, null);
+      },
+    ],
+    [
+      'clock rollback after a good frame invalidates stream',
+      async () => {
+        const { s } = await setup();
+        await s.pair(nonce);
+        s.monotonic = () => 1000;
+        await s.start();
+        s.monotonic = () => 1500;
+        s.ingestData(bytes(frame()));
+        s.checkDataFreshness(1200);
+        A.equal(s.activeStream, null);
+      },
+    ],
+    [
+      'duplicate or backward data cannot refresh freshness',
+      async () => {
+        for (const extra of [{}, { sequence: 0 }, { sequence: 2, timestamp_us: 99999 }]) {
+          const { s } = await setup();
+          await s.pair(nonce);
+          s.monotonic = () => 1000;
+          await s.start();
+          s.ingestData(bytes(frame()));
+          s.monotonic = () => 1500;
+          s.ingestData(bytes({ ...frame(), ...extra }));
+          A.equal(s.activeStream, null);
+          A.equal(s.frames, 1);
+        }
+      },
+    ],
+    [
+      'matched queued data does not cancel manual Stop',
+      async () => {
+        const { s } = await setup();
+        await s.pair(nonce);
+        await s.start();
+        s.write = async b => {
+          const cmd = Buffer.from(b).toString().trim();
+          if (cmd === 'stop') {
+            s.ingestData(bytes(frame()));
+            s.ingest(bytes(ack('stop')));
+          } else if (cmd === 'status') {
+            s.ingestData(bytes(frame()));
+            s.ingest(bytes(status()));
+            s.ingest(bytes(ack('status')));
+          }
+        };
+        await s.stop();
+        A.equal(s.state, 'idle');
+        A.equal(s.unconfirmed, false);
+        A.equal(s.desynced, false);
+        A.equal(s.frames, 0);
+      },
+    ],
+    [
+      'accepted frame raw ranges exactly identify fragmented bytes',
+      async () => {
+        const { s } = await setup();
+        await s.pair(nonce);
+        await s.start();
+        const raw = bytes(frame());
+        for (const b of raw) s.ingestData(Uint8Array.of(b));
+        const saved = s.snapshot(),
+          a = saved.accepted_data_frames[0],
+          whole = Buffer.from(saved.raw_streams.data.raw_jsonl_bytes, 'base64');
+        A.deepEqual(whole.subarray(a.raw_byte_start, a.raw_byte_end), raw);
+        A.equal(a.frame.sequence, 1);
+      },
+    ],
 
- ['missing/unconfirmed/out-of-range mount sends no configuration',async()=>{for(const mount of [undefined,{bracket_top_mm:2000,down_tilt_mdeg:0,antenna_offset_mm:null,confirmed:false},{bracket_top_mm:99,down_tilt_mdeg:0,antenna_offset_mm:null,confirmed:true},{bracket_top_mm:2000,down_tilt_mdeg:45001,antenna_offset_mm:null,confirmed:true},{bracket_top_mm:100,down_tilt_mdeg:0,antenna_offset_mm:-100,confirmed:true}]){const {s,writes}=await setup();const n=writes.length;await A.rejects(s.configure(1,mount));A.equal(writes.length,n);A.ok(s.startBlockReason());}}],
- ['accepted derived frame history stays bounded',async()=>{const {s}=await setup();await s.pair(nonce);await s.start();for(let i=1;i<=300;i++)s.ingestData(bytes({...frame(),sequence:i,timestamp_us:i*200000}));const x=s.snapshot();A.equal(x.accepted_data_frames.length,256);A.equal(x.dropped_accepted_data_frames,44);A.equal(x.accepted_data_frames[0].frame.sequence,45);A.equal(x.frames,300);}],
- ];for(const [n,f] of cases){try{await f();console.log('PASS '+n);}catch(e){failed++;console.log('FAIL '+n+'\n'+e.stack);}}process.exitCode=failed?1:0;})();
+    [
+      'missing/unconfirmed/out-of-range mount sends no configuration',
+      async () => {
+        for (const mount of [
+          undefined,
+          { bracket_top_mm: 2000, down_tilt_mdeg: 0, antenna_offset_mm: null, confirmed: false },
+          { bracket_top_mm: 99, down_tilt_mdeg: 0, antenna_offset_mm: null, confirmed: true },
+          { bracket_top_mm: 2000, down_tilt_mdeg: 45001, antenna_offset_mm: null, confirmed: true },
+          { bracket_top_mm: 100, down_tilt_mdeg: 0, antenna_offset_mm: -100, confirmed: true },
+        ]) {
+          const { s, writes } = await setup();
+          const n = writes.length;
+          await A.rejects(s.configure(1, mount));
+          A.equal(writes.length, n);
+          A.ok(s.startBlockReason());
+        }
+      },
+    ],
+    [
+      'accepted derived frame history stays bounded',
+      async () => {
+        const { s } = await setup();
+        await s.pair(nonce);
+        await s.start();
+        for (let i = 1; i <= 300; i++) s.ingestData(bytes({ ...frame(), sequence: i, timestamp_us: i * 200000 }));
+        const x = s.snapshot();
+        A.equal(x.accepted_data_frames.length, 256);
+        A.equal(x.dropped_accepted_data_frames, 44);
+        A.equal(x.accepted_data_frames[0].frame.sequence, 45);
+        A.equal(x.frames, 300);
+      },
+    ],
+  ];
+  for (const [n, f] of cases) {
+    try {
+      await f();
+      console.log('PASS ' + n);
+    } catch (e) {
+      failed++;
+      console.log('FAIL ' + n + '\n' + e.stack);
+    }
+  }
+  process.exitCode = failed ? 1 : 0;
+})();

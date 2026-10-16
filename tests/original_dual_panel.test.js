@@ -2,87 +2,966 @@
 /* Offline-only UI regression tests. All UART traffic is synthetic, all downloads
  * stay in memory, and every network entry point throws. No physical ports, RF,
  * browser storage, private captures, or external services are used. */
-const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
-const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
-const enc=new TextEncoder(),dec=new TextDecoder(),pause=ms=>new Promise(r=>setTimeout(r,ms));
-const plain=value=>JSON.parse(JSON.stringify(value));
-const protocol='original-radar-v2';
-const TEST_ACCEPTANCE=Object.freeze({approved:true,firmwareVersion:'0.3.1-rc1',buildId:'synthetic-panel-only-build',selftestVersion:2,maxSeconds:5});
-const repairedFields=(extra={})=>({firmware_version:TEST_ACCEPTANCE.firmwareVersion,build_id:TEST_ACCEPTANCE.buildId,selftest_version:2,selftest_ok:true,selftest_mask:0,capture_fault:0,rf_fault:0,rf_error:0,deadline_misses:0,control_tx_fault:false,data_tx_fault:false,...extra});
-const common={channel:'control',dual_uart:true,control_baud:115200,data_baud:921600};
-const jsonl=record=>enc.encode(JSON.stringify({protocol,...record})+'\n');
-const status=(state='idle',configured=false,fault=0)=>({...common,type:'status',state,configured,fault,frames:0,paired:false,pair_nonce:'',config_generation:0,session_id:0,...repairedFields()});
-const ack=(command,state='idle',configured=false,code=0)=>({...common,type:'ack',command,state,configured,code});
-function frame(sequence=1,overrides={}){return {type:'frame',channel:'data',sequence,timestamp_us:sequence*200000,complete:true,capture_fault:0,missed_frames:0,deadline_misses:0,quality:44,frame_events:1,processing_us:14000,previous_tx_us:85000,mount:{bracket_top_m:1.219,down_tilt_deg:0,antenna_offset_m:null,antenna_height_m:null,world_height_valid:false},range_bin_m:0.195,velocity_bin_mps:0.305,count:1,detected_count:1,truncated:false,profile_energy:[150,120,30],detections:[{range_m:2.34,velocity_mps:0,power:100,phasors:[[10,0],[10,0],[10,0],[10,0]],sensor_xyz_m:[0,2.34,0],world_xyz_m:null,spatial_flags:3,activity:null}],...overrides};}
-async function until(fn,label='UI state'){for(let i=0;i<200;i++){if(fn())return;await pause(2);}throw Error('Timed out: '+label);}
-function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};}
-function environment({serialAvailable=true,secure=true,storage=new Map(),storageFails=false,acceptancePolicy=TEST_ACCEPTANCE}={}){
- const elements={},windowListeners={},serialListeners={},intervals=new Map(),timeouts=new Set(),downloads=[],storageWrites=[],alerts=[],ports=[],requests=[],network=[];let nextChoice=null,clock=1900000000000,timer=0;
- let document;const board={state:'idle',configured:false,paired:false,pair_nonce:'',config_generation:0,session_id:0,dataPort:null};let nonceCounter=1;
- class Element{
-  constructor(tag='div'){this.tagName=tag.toUpperCase();this.textContent='';this.value='';this.disabled=false;this.checked=false;this.hidden=false;this.style={};this.files=[];this.children=[];this.className='';this.handlers={};this.ownerDocument=document;}
-  append(...children){this.children.push(...children);}appendChild(child){this.children.push(child);return child;}replaceChildren(...children){this.children=children;}remove(){}setAttribute(name,value){this[name]=String(value);}
-  addEventListener(type,fn){(this.handlers[type]??=[]).push(fn);}dispatchEvent(event){for(const fn of this.handlers[event.type]||[])fn(event);if(event.bubbles)dispatch(event);return !event.defaultPrevented;}
-  click(){if(this.disabled)return;if(this.tagName==='A'){downloads.push({filename:this.download,blob:blobs.get(this.href),href:this.href});return;}return this.onclick?.();}
-  setPointerCapture(){}releasePointerCapture(){}getBoundingClientRect(){return {width:500,height:310};}
-  getContext(){return new Proxy({},{get:(o,k)=>o[k]||(()=>{}),set:(o,k,v)=>(o[k]=v,true)});}
- }
- document={getElementById:id=>elements[id]||null,createElement:tag=>new Element(tag)};document.body=new Element('body');
- for(const match of html.matchAll(/<([\w-]+)\b([^>]*\bid="([^"]+)"[^>]*)>/g)){
-  const [,tag,attrs,id]=match;assert(!elements[id],'duplicate HTML id '+id);const el=elements[id]=new Element(tag);el.id=id;el.value=attrs.match(/\bvalue="([^"]*)"/)?.[1]||'';el.disabled=/\bdisabled(?:\s|=|$)/.test(attrs);el.checked=/\bchecked(?:\s|=|$)/.test(attrs);el.hidden=/\bhidden(?:\s|=|$)/.test(attrs);
-  if(tag==='select'){const body=html.slice(match.index+match[0].length).split('</select>')[0],opts=[...body.matchAll(/<option([^>]*)>([^<]*)<\/option>/g)];const selected=opts.find(o=>/\bselected\b/.test(o[1]))||opts[0];el.value=selected?.[1].match(/\bvalue="([^"]*)"/)?.[1]??selected?.[2]??'';}
- }
- class Event{constructor(type,options={}){this.type=type;Object.assign(this,options);this.defaultPrevented=false;}preventDefault(){this.defaultPrevented=true;}}
- function dispatch(event){for(const fn of windowListeners[event.type]||[])fn(event);return !event.defaultPrevented;}
- function makePort(){
-  let controller,ended=false;const p={writes:[],received:[],openOptions:[],closeCount:0,board,statusFields:repairedFields(),reply:true,rejectCommand:null,openError:null,writeError:null,onWrite:null,
-   async open(options){p.openOptions.push(plain(options));if(p.openError)throw p.openError;ended=false;if(options.baudRate===921600)board.dataPort=p;p.readable=new ReadableStream({start(c){controller=c;},cancel(){ended=true;}});p.writable=new WritableStream({async write(bytes){const text=dec.decode(bytes);p.writes.push(text);if(p.writeError)throw p.writeError;if(p.onWrite&&await p.onWrite(text,p))return;if(!p.reply)return;const [token,arg]=text.trim().split(' ');if(p.rejectCommand===token){p.emitRecord(ack(token,board.state,board.configured,-1));return;}
-    if(token==='orConfig'){board.configured=false;board.paired=false;}
-    if(token==='commit'){board.configured=true;board.config_generation++;}
-    if(token==='pair'){board.pair_nonce=arg;board.session_id++;board.paired=false;board.dataPort?.emitRecord({type:'data_probe',channel:'data',firmware_version:TEST_ACCEPTANCE.firmwareVersion,build_id:TEST_ACCEPTANCE.buildId,pair_nonce:arg,config_generation:board.config_generation,session_id:board.session_id});}
-    if(token==='pairConfirm')board.paired=true;if(token==='stop'){board.state='idle';board.paired=false;}if(token==='start')board.state='running';
-    if(token==='status')p.emitRecord({...status(board.state,board.configured),paired:board.paired,pair_nonce:board.pair_nonce,config_generation:board.config_generation,session_id:board.session_id,...p.statusFields});p.emitRecord(ack(token,board.state,board.configured));
-   }});},
-   async close(){p.closeCount++;assert(!p.readable?.locked);assert(!p.writable?.locked);},
-   emit(bytes){assert(!ended,'emit only while fake stream is open');const copy=Uint8Array.from(bytes);p.received.push(copy);controller.enqueue(copy);},failRead(name){const old=controller;p.readable=new ReadableStream({start(c){controller=c;},cancel(){ended=true;}});old.error(Object.assign(new Error(name+' on read'),{name}));},emitRecord(record){p.emit(jsonl(record));},end(){ended=true;controller.close();},fail(){ended=true;controller.error(Error('Mock read failure'));},
-  };ports.push(p);return p;
- }
- const serial={async requestPort(...args){requests.push(args);const choice=nextChoice;nextChoice=null;return choice?await choice:makePort();},addEventListener(type,fn){(serialListeners[type]??=[]).push(fn);}};
- const blobs=new Map(),url={createObjectURL(blob){const id='blob:offline-mock/'+blobs.size;blobs.set(id,blob);return id;},revokeObjectURL(id){blobs.delete(id);}};
- const blocked=(...args)=>{network.push(args);throw Error('Network forbidden in original-panel mock tests');};
- class MockDate extends Date{constructor(...args){super(...(args.length?args:[clock]));}static now(){return clock;}}
- const context={crypto:{getRandomValues(bytes){for(let i=0;i<bytes.length;i++)bytes[i]=(nonceCounter+i)%256;nonceCounter++;return bytes;}},document,navigator:serialAvailable?{serial,sendBeacon:blocked}:{sendBeacon:blocked},isSecureContext:secure,TextEncoder,TextDecoder,Uint8Array,ArrayBuffer,DataView,ReadableStream,WritableStream,Blob,URL:url,Date:MockDate,console,CustomEvent:Event,fetch:blocked,XMLHttpRequest:class{constructor(){blocked();}},WebSocket:class{constructor(){blocked();}},alert:text=>alerts.push(text),confirm:()=>{throw Error('Unexpected confirmation');},btoa:text=>Buffer.from(text,'binary').toString('base64'),localStorage:{getItem(key){if(storageFails)throw Error('storage disabled');return storage.get(key)??null;},setItem(key,value){if(storageFails)throw Error('storage disabled');storageWrites.push([key,String(value)]);storage.set(key,String(value));}},setTimeout(fn,ms){const id=setTimeout(()=>{timeouts.delete(id);fn();},ms===5000?100:ms);timeouts.add(id);return id;},clearTimeout(id){clearTimeout(id);timeouts.delete(id);},setInterval(fn){intervals.set(++timer,fn);return timer;},clearInterval(id){intervals.delete(id);}};
- context.window=context;context.devicePixelRatio=1;context.addEventListener=(type,fn)=>(windowListeners[type]??=[]).push(fn);context.dispatchEvent=dispatch;vm.createContext(context);
- const scripts=[...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m=>m[1]);assert(scripts.includes('original_dual_panel.js'));
- for(const script of scripts){assert(!/:|^\/\//.test(script),'page scripts must stay local');vm.runInContext(fs.readFileSync(path.join(__dirname,'..',script),'utf8'),context,{filename:script});if(script==='original_dual_acceptance.js'&&acceptancePolicy!==null)context.OriginalDualAcceptance=Object.freeze({...acceptancePolicy});}
- const env={board,frame(n=1,extra={}){return frame(n,{pair_nonce:board.pair_nonce,config_generation:board.config_generation,session_id:board.session_id,...extra});},mount(){elements.originalHeight.value='2000';elements.originalTilt.value='0';elements.originalOffset.value='';elements.originalMountConfirm.checked=true;},async connectBoth(){const p=await env.connect();await elements.originalDataConnect.onclick();return [p,ports.at(-1)];},async ready(){const ports=await env.connectBoth();env.mount();await elements.originalStatus.onclick();await elements.originalConfigure.onclick();await elements.originalPair.onclick();assert(!elements.originalStart.disabled,elements.originalMessage.textContent+' '+elements.originalSelftest.textContent);return ports;},ui:elements,ports,requests,downloads,storage,storageWrites,alerts,network,intervals,makePort,choose:p=>nextChoice=p,now:()=>clock,advance:ms=>clock+=ms,select(value){elements.transportProtocol.value=value;elements.transportProtocol.onchange();},unplug(p){for(const fn of serialListeners.disconnect||[])fn({target:p});},beforeUnload(){const event=new Event('beforeunload');dispatch(event);return event;},dispose(){for(const id of timeouts)clearTimeout(id);intervals.clear();},async connect(){env.select('original');await elements.originalConnect.onclick();return ports.at(-1);},async capture(){elements.originalSave.onclick();return JSON.parse(await downloads.at(-1).blob.text());}};
- return env;
+const assert = require('node:assert/strict'),
+  fs = require('node:fs'),
+  vm = require('node:vm'),
+  path = require('node:path');
+const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
+const enc = new TextEncoder(),
+  dec = new TextDecoder(),
+  pause = ms => new Promise(r => setTimeout(r, ms));
+const plain = value => JSON.parse(JSON.stringify(value));
+const protocol = 'original-radar-v2';
+const TEST_ACCEPTANCE = Object.freeze({
+  approved: true,
+  firmwareVersion: '0.3.1-rc1',
+  buildId: 'synthetic-panel-only-build',
+  selftestVersion: 2,
+  maxSeconds: 5,
+});
+const repairedFields = (extra = {}) => ({
+  firmware_version: TEST_ACCEPTANCE.firmwareVersion,
+  build_id: TEST_ACCEPTANCE.buildId,
+  selftest_version: 2,
+  selftest_ok: true,
+  selftest_mask: 0,
+  capture_fault: 0,
+  rf_fault: 0,
+  rf_error: 0,
+  deadline_misses: 0,
+  control_tx_fault: false,
+  data_tx_fault: false,
+  ...extra,
+});
+const common = { channel: 'control', dual_uart: true, control_baud: 115200, data_baud: 921600 };
+const jsonl = record => enc.encode(JSON.stringify({ protocol, ...record }) + '\n');
+const status = (state = 'idle', configured = false, fault = 0) => ({
+  ...common,
+  type: 'status',
+  state,
+  configured,
+  fault,
+  frames: 0,
+  paired: false,
+  pair_nonce: '',
+  config_generation: 0,
+  session_id: 0,
+  ...repairedFields(),
+});
+const ack = (command, state = 'idle', configured = false, code = 0) => ({
+  ...common,
+  type: 'ack',
+  command,
+  state,
+  configured,
+  code,
+});
+function frame(sequence = 1, overrides = {}) {
+  return {
+    type: 'frame',
+    channel: 'data',
+    sequence,
+    timestamp_us: sequence * 200000,
+    complete: true,
+    capture_fault: 0,
+    missed_frames: 0,
+    deadline_misses: 0,
+    quality: 44,
+    frame_events: 1,
+    processing_us: 14000,
+    previous_tx_us: 85000,
+    mount: {
+      bracket_top_m: 1.219,
+      down_tilt_deg: 0,
+      antenna_offset_m: null,
+      antenna_height_m: null,
+      world_height_valid: false,
+    },
+    range_bin_m: 0.195,
+    velocity_bin_mps: 0.305,
+    count: 1,
+    detected_count: 1,
+    truncated: false,
+    profile_energy: [150, 120, 30],
+    detections: [
+      {
+        range_m: 2.34,
+        velocity_mps: 0,
+        power: 100,
+        phasors: [
+          [10, 0],
+          [10, 0],
+          [10, 0],
+          [10, 0],
+        ],
+        sensor_xyz_m: [0, 2.34, 0],
+        world_xyz_m: null,
+        spatial_flags: 3,
+        activity: null,
+      },
+    ],
+    ...overrides,
+  };
 }
-const cases=[];function test(name,fn){cases.push([name,fn]);}
-function received(p){return Buffer.concat(p.received.map(b=>Buffer.from(b)));}
-function safe(e){assert.equal(e.network.length,0);for(const [k]of e.storageWrites)assert.equal(k,'original-radar-stop-unconfirmed');}
+async function until(fn, label = 'UI state') {
+  for (let i = 0; i < 200; i++) {
+    if (fn()) return;
+    await pause(2);
+  }
+  throw Error('Timed out: ' + label);
+}
+function deferred() {
+  let resolve, reject;
+  const promise = new Promise((a, b) => {
+    resolve = a;
+    reject = b;
+  });
+  return { promise, resolve, reject };
+}
+function environment({
+  serialAvailable = true,
+  secure = true,
+  storage = new Map(),
+  storageFails = false,
+  acceptancePolicy = TEST_ACCEPTANCE,
+} = {}) {
+  const elements = {},
+    windowListeners = {},
+    serialListeners = {},
+    intervals = new Map(),
+    timeouts = new Set(),
+    downloads = [],
+    storageWrites = [],
+    alerts = [],
+    ports = [],
+    requests = [],
+    network = [];
+  let nextChoice = null,
+    clock = 1900000000000,
+    timer = 0;
+  let document;
+  const board = {
+    state: 'idle',
+    configured: false,
+    paired: false,
+    pair_nonce: '',
+    config_generation: 0,
+    session_id: 0,
+    dataPort: null,
+  };
+  let nonceCounter = 1;
+  class Element {
+    constructor(tag = 'div') {
+      this.tagName = tag.toUpperCase();
+      this.textContent = '';
+      this.value = '';
+      this.disabled = false;
+      this.checked = false;
+      this.hidden = false;
+      this.style = {};
+      this.files = [];
+      this.children = [];
+      this.className = '';
+      this.handlers = {};
+      this.ownerDocument = document;
+    }
+    append(...children) {
+      this.children.push(...children);
+    }
+    appendChild(child) {
+      this.children.push(child);
+      return child;
+    }
+    replaceChildren(...children) {
+      this.children = children;
+    }
+    remove() {}
+    setAttribute(name, value) {
+      this[name] = String(value);
+    }
+    addEventListener(type, fn) {
+      (this.handlers[type] ??= []).push(fn);
+    }
+    dispatchEvent(event) {
+      for (const fn of this.handlers[event.type] || []) fn(event);
+      if (event.bubbles) dispatch(event);
+      return !event.defaultPrevented;
+    }
+    click() {
+      if (this.disabled) return;
+      if (this.tagName === 'A') {
+        downloads.push({ filename: this.download, blob: blobs.get(this.href), href: this.href });
+        return;
+      }
+      return this.onclick?.();
+    }
+    setPointerCapture() {}
+    releasePointerCapture() {}
+    getBoundingClientRect() {
+      return { width: 500, height: 310 };
+    }
+    getContext() {
+      return new Proxy({}, { get: (o, k) => o[k] || (() => {}), set: (o, k, v) => ((o[k] = v), true) });
+    }
+  }
+  document = { getElementById: id => elements[id] || null, createElement: tag => new Element(tag) };
+  document.body = new Element('body');
+  for (const match of html.matchAll(/<([\w-]+)\b([^>]*\bid="([^"]+)"[^>]*)>/g)) {
+    const [, tag, attrs, id] = match;
+    assert(!elements[id], 'duplicate HTML id ' + id);
+    const el = (elements[id] = new Element(tag));
+    el.id = id;
+    el.value = attrs.match(/\bvalue="([^"]*)"/)?.[1] || '';
+    el.disabled = /\bdisabled(?:\s|=|$)/.test(attrs);
+    el.checked = /\bchecked(?:\s|=|$)/.test(attrs);
+    el.hidden = /\bhidden(?:\s|=|$)/.test(attrs);
+    if (tag === 'select') {
+      const body = html.slice(match.index + match[0].length).split('</select>')[0],
+        opts = [...body.matchAll(/<option([^>]*)>([^<]*)<\/option>/g)];
+      const selected = opts.find(o => /\bselected\b/.test(o[1])) || opts[0];
+      el.value = selected?.[1].match(/\bvalue="([^"]*)"/)?.[1] ?? selected?.[2] ?? '';
+    }
+  }
+  class Event {
+    constructor(type, options = {}) {
+      this.type = type;
+      Object.assign(this, options);
+      this.defaultPrevented = false;
+    }
+    preventDefault() {
+      this.defaultPrevented = true;
+    }
+  }
+  function dispatch(event) {
+    for (const fn of windowListeners[event.type] || []) fn(event);
+    return !event.defaultPrevented;
+  }
+  function makePort() {
+    let controller,
+      ended = false;
+    const p = {
+      writes: [],
+      received: [],
+      openOptions: [],
+      closeCount: 0,
+      board,
+      statusFields: repairedFields(),
+      reply: true,
+      rejectCommand: null,
+      openError: null,
+      writeError: null,
+      onWrite: null,
+      async open(options) {
+        p.openOptions.push(plain(options));
+        if (p.openError) throw p.openError;
+        ended = false;
+        if (options.baudRate === 921600) board.dataPort = p;
+        p.readable = new ReadableStream({
+          start(c) {
+            controller = c;
+          },
+          cancel() {
+            ended = true;
+          },
+        });
+        p.writable = new WritableStream({
+          async write(bytes) {
+            const text = dec.decode(bytes);
+            p.writes.push(text);
+            if (p.writeError) throw p.writeError;
+            if (p.onWrite && (await p.onWrite(text, p))) return;
+            if (!p.reply) return;
+            const [token, arg] = text.trim().split(' ');
+            if (p.rejectCommand === token) {
+              p.emitRecord(ack(token, board.state, board.configured, -1));
+              return;
+            }
+            if (token === 'orConfig') {
+              board.configured = false;
+              board.paired = false;
+            }
+            if (token === 'commit') {
+              board.configured = true;
+              board.config_generation++;
+            }
+            if (token === 'pair') {
+              board.pair_nonce = arg;
+              board.session_id++;
+              board.paired = false;
+              board.dataPort?.emitRecord({
+                type: 'data_probe',
+                channel: 'data',
+                firmware_version: TEST_ACCEPTANCE.firmwareVersion,
+                build_id: TEST_ACCEPTANCE.buildId,
+                pair_nonce: arg,
+                config_generation: board.config_generation,
+                session_id: board.session_id,
+              });
+            }
+            if (token === 'pairConfirm') board.paired = true;
+            if (token === 'stop') {
+              board.state = 'idle';
+              board.paired = false;
+            }
+            if (token === 'start') board.state = 'running';
+            if (token === 'status')
+              p.emitRecord({
+                ...status(board.state, board.configured),
+                paired: board.paired,
+                pair_nonce: board.pair_nonce,
+                config_generation: board.config_generation,
+                session_id: board.session_id,
+                ...p.statusFields,
+              });
+            p.emitRecord(ack(token, board.state, board.configured));
+          },
+        });
+      },
+      async close() {
+        p.closeCount++;
+        assert(!p.readable?.locked);
+        assert(!p.writable?.locked);
+      },
+      emit(bytes) {
+        assert(!ended, 'emit only while fake stream is open');
+        const copy = Uint8Array.from(bytes);
+        p.received.push(copy);
+        controller.enqueue(copy);
+      },
+      failRead(name) {
+        const old = controller;
+        p.readable = new ReadableStream({
+          start(c) {
+            controller = c;
+          },
+          cancel() {
+            ended = true;
+          },
+        });
+        old.error(Object.assign(new Error(name + ' on read'), { name }));
+      },
+      emitRecord(record) {
+        p.emit(jsonl(record));
+      },
+      end() {
+        ended = true;
+        controller.close();
+      },
+      fail() {
+        ended = true;
+        controller.error(Error('Mock read failure'));
+      },
+    };
+    ports.push(p);
+    return p;
+  }
+  const serial = {
+    async requestPort(...args) {
+      requests.push(args);
+      const choice = nextChoice;
+      nextChoice = null;
+      return choice ? await choice : makePort();
+    },
+    addEventListener(type, fn) {
+      (serialListeners[type] ??= []).push(fn);
+    },
+  };
+  const blobs = new Map(),
+    url = {
+      createObjectURL(blob) {
+        const id = 'blob:offline-mock/' + blobs.size;
+        blobs.set(id, blob);
+        return id;
+      },
+      revokeObjectURL(id) {
+        blobs.delete(id);
+      },
+    };
+  const blocked = (...args) => {
+    network.push(args);
+    throw Error('Network forbidden in original-panel mock tests');
+  };
+  class MockDate extends Date {
+    constructor(...args) {
+      super(...(args.length ? args : [clock]));
+    }
+    static now() {
+      return clock;
+    }
+  }
+  const context = {
+    crypto: {
+      getRandomValues(bytes) {
+        for (let i = 0; i < bytes.length; i++) bytes[i] = (nonceCounter + i) % 256;
+        nonceCounter++;
+        return bytes;
+      },
+    },
+    document,
+    navigator: serialAvailable ? { serial, sendBeacon: blocked } : { sendBeacon: blocked },
+    isSecureContext: secure,
+    TextEncoder,
+    TextDecoder,
+    Uint8Array,
+    ArrayBuffer,
+    DataView,
+    ReadableStream,
+    WritableStream,
+    Blob,
+    URL: url,
+    Date: MockDate,
+    console,
+    CustomEvent: Event,
+    fetch: blocked,
+    XMLHttpRequest: class {
+      constructor() {
+        blocked();
+      }
+    },
+    WebSocket: class {
+      constructor() {
+        blocked();
+      }
+    },
+    alert: text => alerts.push(text),
+    confirm: () => {
+      throw Error('Unexpected confirmation');
+    },
+    btoa: text => Buffer.from(text, 'binary').toString('base64'),
+    localStorage: {
+      getItem(key) {
+        if (storageFails) throw Error('storage disabled');
+        return storage.get(key) ?? null;
+      },
+      setItem(key, value) {
+        if (storageFails) throw Error('storage disabled');
+        storageWrites.push([key, String(value)]);
+        storage.set(key, String(value));
+      },
+    },
+    setTimeout(fn, ms) {
+      const id = setTimeout(
+        () => {
+          timeouts.delete(id);
+          fn();
+        },
+        ms === 5000 ? 100 : ms,
+      );
+      timeouts.add(id);
+      return id;
+    },
+    clearTimeout(id) {
+      clearTimeout(id);
+      timeouts.delete(id);
+    },
+    setInterval(fn) {
+      intervals.set(++timer, fn);
+      return timer;
+    },
+    clearInterval(id) {
+      intervals.delete(id);
+    },
+  };
+  context.window = context;
+  context.devicePixelRatio = 1;
+  context.addEventListener = (type, fn) => (windowListeners[type] ??= []).push(fn);
+  context.dispatchEvent = dispatch;
+  vm.createContext(context);
+  const scripts = [...html.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
+  assert(scripts.includes('original_dual_panel.js'));
+  for (const script of scripts) {
+    assert(!/:|^\/\//.test(script), 'page scripts must stay local');
+    vm.runInContext(fs.readFileSync(path.join(__dirname, '..', script), 'utf8'), context, { filename: script });
+    if (script === 'original_dual_acceptance.js' && acceptancePolicy !== null)
+      context.OriginalDualAcceptance = Object.freeze({ ...acceptancePolicy });
+  }
+  const env = {
+    board,
+    frame(n = 1, extra = {}) {
+      return frame(n, {
+        pair_nonce: board.pair_nonce,
+        config_generation: board.config_generation,
+        session_id: board.session_id,
+        ...extra,
+      });
+    },
+    mount() {
+      elements.originalHeight.value = '2000';
+      elements.originalTilt.value = '0';
+      elements.originalOffset.value = '';
+      elements.originalMountConfirm.checked = true;
+    },
+    async connectBoth() {
+      const p = await env.connect();
+      await elements.originalDataConnect.onclick();
+      return [p, ports.at(-1)];
+    },
+    async ready() {
+      const ports = await env.connectBoth();
+      env.mount();
+      await elements.originalStatus.onclick();
+      await elements.originalConfigure.onclick();
+      await elements.originalPair.onclick();
+      assert(
+        !elements.originalStart.disabled,
+        elements.originalMessage.textContent + ' ' + elements.originalSelftest.textContent,
+      );
+      return ports;
+    },
+    ui: elements,
+    ports,
+    requests,
+    downloads,
+    storage,
+    storageWrites,
+    alerts,
+    network,
+    intervals,
+    makePort,
+    choose: p => (nextChoice = p),
+    now: () => clock,
+    advance: ms => (clock += ms),
+    select(value) {
+      elements.transportProtocol.value = value;
+      elements.transportProtocol.onchange();
+    },
+    unplug(p) {
+      for (const fn of serialListeners.disconnect || []) fn({ target: p });
+    },
+    beforeUnload() {
+      const event = new Event('beforeunload');
+      dispatch(event);
+      return event;
+    },
+    dispose() {
+      for (const id of timeouts) clearTimeout(id);
+      intervals.clear();
+    },
+    async connect() {
+      env.select('original');
+      await elements.originalConnect.onclick();
+      return ports.at(-1);
+    },
+    async capture() {
+      elements.originalSave.onclick();
+      return JSON.parse(await downloads.at(-1).blob.text());
+    },
+  };
+  return env;
+}
+const cases = [];
+function test(name, fn) {
+  cases.push([name, fn]);
+}
+function received(p) {
+  return Buffer.concat(p.received.map(b => Buffer.from(b)));
+}
+function safe(e) {
+  assert.equal(e.network.length, 0);
+  for (const [k] of e.storageWrites) assert.equal(k, 'original-radar-stop-unconfirmed');
+}
 
-test('both port choosers are explicit, separate, and send no commands',async()=>{const e=environment();try{const [p,q]=await e.connectBoth();assert.equal(p.openOptions[0].baudRate,115200);assert.equal(q.openOptions[0].baudRate,921600);assert.deepEqual(p.writes,[]);assert.deepEqual(q.writes,[]);assert(e.ui.originalStart.disabled);e.select('ti');assert.equal(e.ui.transportProtocol.value,'original');safe(e);}finally{e.dispose();}});
-test('recoverable read errors keep both ports usable and invalidate pairing',async()=>{const e=environment();try{const [p,q]=await e.connectBoth(),settle=async()=>{for(let i=0;i<5;i++)await new Promise(r=>setTimeout(r,0));};
- q.failRead('BufferOverrunError');await settle();assert.match(e.ui.originalState.textContent,/Control: connected · Data: connected/);
- p.failRead('FramingError');await settle();assert.match(e.ui.originalState.textContent,/Control: connected · Data: connected/);assert.match(e.ui.originalMessage.textContent,/FramingError: bytes were lost/);
- const sent=p.writes.length;await e.ui.originalStatus.onclick();assert.deepEqual(p.writes.slice(sent),['status\n']);safe(e);}finally{e.dispose();}});
-test('same port object cannot be opened for both lanes',async()=>{const e=environment();try{const p=await e.connect();e.choose(Promise.resolve(p));await e.ui.originalDataConnect.onclick();assert.equal(p.openOptions.length,1);assert.match(e.ui.originalMessage.textContent,/separate Standard/);assert(e.ui.originalStart.disabled);safe(e);}finally{e.dispose();}});
-test('cancelled data chooser leaves control usable',async()=>{const e=environment();try{const p=await e.connect(),d=deferred();e.choose(d.promise);const action=e.ui.originalDataConnect.onclick();d.reject(Error('Cancelled chooser'));await action;assert(!e.ui.originalStatus.disabled);await e.ui.originalStatus.onclick();assert.deepEqual(p.writes,['status\n']);safe(e);}finally{e.dispose();}});
-test('mount values and confirmation are required before any config writes',async()=>{const e=environment();try{const [p]=await e.connectBoth();await e.ui.originalStatus.onclick();assert(e.ui.originalConfigure.disabled);await e.ui.originalConfigure.onclick();assert.deepEqual(p.writes,['status\n']);e.mount();await e.ui.originalStatus.onclick();await e.ui.originalConfigure.onclick();assert(p.writes.includes('mount 2000 0 unknown\n'));assert(!p.writes.includes('start\n'));assert(e.ui.originalStart.disabled);safe(e);}finally{e.dispose();}});
-test('data proof and final control status are both required before Start',async()=>{const e=environment();try{const [p,q]=await e.ready();const commands=p.writes.map(x=>x.trim().split(' ')[0]);assert(commands.includes('pair'));assert(commands.includes('pairConfirm'));assert.equal(commands.at(-1),'status');assert.equal(q.writes.length,0);assert(!commands.includes('start'));safe(e);}finally{e.dispose();}});
-test('correlated frames render candidates and export separate exact raw lanes',async()=>{const e=environment();try{const [p,q]=await e.ready();await e.ui.originalStart.onclick();for(let n=1;n<=3;n++)q.emitRecord(e.frame(n));await until(()=>/persistent candidate/.test(e.ui.originalTracks.textContent));const x=await e.capture();assert.equal(x.version,2);assert.deepEqual(Buffer.from(x.raw_streams.control.raw_jsonl_bytes,'base64'),received(p));assert.deepEqual(Buffer.from(x.raw_streams.data.raw_jsonl_bytes,'base64'),received(q));assert.equal(x.accepted_data_frames.length,3);for(const entry of x.accepted_data_frames){assert.equal(entry.admission,'matched-active-pair');assert.equal(JSON.parse(received(q).subarray(entry.raw_byte_start,entry.raw_byte_end).toString()).sequence,entry.frame.sequence);}assert.equal(x.derived_candidate_tracking.frames.length,3);safe(e);}finally{e.dispose();}});
-test('data loss during run stops through control and clears candidates',async()=>{const e=environment();try{const [p,q]=await e.ready();await e.ui.originalStart.onclick();q.emitRecord(e.frame());await until(()=>/tentative candidate/.test(e.ui.originalTracks.textContent));await e.ui.originalDataDisconnect.onclick();await until(()=>p.writes.includes('stop\n')&&/idle/.test(e.ui.originalState.textContent));assert(e.ui.originalStart.disabled);assert(!e.ui.originalStatus.disabled);assert.match(e.ui.originalTracks.textContent,/No candidate tracks/);assert.equal(e.ui.originalWarning.textContent,'');safe(e);}finally{e.dispose();}});
-test('silent open stream invokes bounded control Stop without data disconnect',async()=>{const e=environment();try{const [p]=await e.ready();await e.ui.originalStart.onclick();e.advance(1100);for(const fn of e.intervals.values())fn();await until(()=>p.writes.includes('stop\n')&&/idle/.test(e.ui.originalState.textContent));assert(e.ui.originalStart.disabled);safe(e);}finally{e.dispose();}});
-test('queued valid tail during manual Stop does not cancel recovery',async()=>{const e=environment();try{const [p,q]=await e.ready();await e.ui.originalStart.onclick();p.onWrite=async text=>{if(text==='stop\n')q.emitRecord(e.frame());return false;};await e.ui.originalStop.onclick();assert.equal(p.writes.filter(x=>x==='stop\n').length,1);assert.equal(e.ui.originalWarning.textContent,'');assert.match(e.ui.originalState.textContent,/idle/);assert(!/Cancelled|desynchron/.test(e.ui.originalMessage.textContent));safe(e);}finally{e.dispose();}});
-test('mount edit without input event prevents previously armed Start',async()=>{const e=environment();try{const [p]=await e.ready();e.ui.originalTilt.value='2';await e.ui.originalStart.onclick();assert(!p.writes.includes('start\n'));assert(e.ui.originalStart.disabled);safe(e);}finally{e.dispose();}});
-test('control loss leaves RF warning and cannot trust data receipts',async()=>{const e=environment();try{const [p,q]=await e.ready();await e.ui.originalStart.onclick();p.fail();await until(()=>/disconnected/.test(e.ui.originalState.textContent));q.emitRecord({...status(),paired:true,pair_nonce:e.board.pair_nonce});await pause(10);assert(e.ui.originalStart.disabled);assert.match(e.ui.originalWarning.textContent,/STOP UNCONFIRMED/);safe(e);}finally{e.dispose();}});
-test('unapproved policy never configures or starts',async()=>{const e=environment({acceptancePolicy:{...TEST_ACCEPTANCE,approved:false}});try{const [p]=await e.connectBoth();e.mount();await e.ui.originalStatus.onclick();await e.ui.originalConfigure.onclick();await e.ui.originalStart.onclick();assert.deepEqual(p.writes,['status\n']);assert(e.ui.originalStart.disabled);safe(e);}finally{e.dispose();}});
-test('status timeout visibly requires save and control reconnect; reset alone stays locked',async()=>{const e=environment();try{const [p]=await e.connectBoth();p.reply=false;await e.ui.originalStatus.onclick();assert.match(e.ui.originalMessage.textContent,/Save capture first/);assert.match(e.ui.originalRecovery.textContent,/disconnect and reconnect the control port/);p.emitRecord({...common,type:'identity',version:TEST_ACCEPTANCE.firmwareVersion,build_id:TEST_ACCEPTANCE.buildId,baud:115200,classifier:false});await pause(5);assert.match(e.ui.originalRecovery.textContent,/board reset alone/i);p.reply=true;await e.ui.originalStatus.onclick();assert(e.ui.originalStart.disabled);assert(e.ui.originalConfigure.disabled);assert.match(e.ui.originalMessage.textContent,/desynchronized/);const x=await e.capture();assert(x.events.some(x=>x.type==='command_timeout'));safe(e);}finally{e.dispose();}});
-test('20m default and nearer/zoom display controls send no serial commands',async()=>{const e=environment();try{const [p,q]=await e.connectBoth();assert.equal(e.ui.originalRange.value,'20');assert.equal(e.ui.range.value,'20');assert.match(e.ui.originalViewRangeInfo.textContent,/Y 0–20 m/);e.ui.originalRange.value='2';e.ui.originalRange.onchange();assert.match(e.ui.originalViewRangeInfo.textContent,/Y 0–2 m/);e.ui.originalZoomIn.onclick();e.ui.originalZoomOut.onclick();e.ui.originalViewReset.onclick();e.ui.originalRange.value='20';e.ui.originalRange.onchange();assert.deepEqual(p.writes,[]);assert.deepEqual(q.writes,[]);assert(e.ui.originalStart.disabled);assert.match(html,/does not establish 20 m detection or human-tracking range/);assert.match(html,/Pairing is unavailable until Configure succeeds/);safe(e);}finally{e.dispose();}});
-test('superseded firmware and version1 selftest leave Configure and Start locked',async()=>{for(const fields of [{firmware_version:'0.3.0-rc1'},{selftest_version:1},{selftest_mask:256,selftest_ok:false}]){const e=environment();try{const [p]=await e.connectBoth();e.mount();p.statusFields=repairedFields(fields);await e.ui.originalStatus.onclick();assert(e.ui.originalConfigure.disabled);assert(e.ui.originalStart.disabled);assert.deepEqual(p.writes,['status\n']);safe(e);}finally{e.dispose();}}});
-test('requested mount defaults stay unconfirmed and cannot configure until explicitly confirmed',async()=>{const e=environment();try{assert.equal(e.ui.originalHeight.value,'1219');assert.equal(e.ui.originalTilt.value,'0');assert.equal(e.ui.originalOffset.value,'');assert.equal(e.ui.originalMountConfirm.checked,false);const [p]=await e.connectBoth();await e.ui.originalStatus.onclick();assert(e.ui.originalConfigure.disabled);await e.ui.originalConfigure.onclick();assert.deepEqual(p.writes,['status\n']);e.ui.originalMountConfirm.checked=true;e.ui.originalMountConfirm.oninput();assert(!e.ui.originalConfigure.disabled);await e.ui.originalConfigure.onclick();assert(p.writes.includes('mount 1219 0 unknown\n'));assert.equal(p.writes.filter(x=>x==='status\n').length,2);assert(!p.writes.includes('start\n'));assert.match(html,/Other users must enter their actual measured height and tilt/);safe(e);}finally{e.dispose();}});
-test('terminal panels show actual parsed Control/Data records separately from browser actions',async()=>{const e=environment();try{const [p,q]=await e.ready();const expected=received(p).toString().trim().split('\n').map(JSON.parse).slice(-16).map(r=>JSON.stringify(r,null,2)).join('\n\n');assert.equal(e.ui.originalControlTerminal.textContent,expected);assert.equal(JSON.parse(e.ui.originalTelemetry.textContent).type,'data_probe');assert.equal(JSON.parse(e.ui.originalTelemetry.textContent).channel,'data');assert(!e.ui.originalControlTerminal.textContent.includes('Action completed'));assert.match(e.ui.originalMessage.textContent,/Action completed/);assert.match(e.ui.originalSelftest.textContent,/Browser summary/);await e.ui.originalStart.onclick();q.emitRecord(e.frame());await until(()=>e.ui.originalTelemetry.textContent.includes('"type": "frame"'));assert.deepEqual(JSON.parse(e.ui.originalTelemetry.textContent),{protocol,...e.frame()});const saved=await e.capture();assert.deepEqual(Buffer.from(saved.raw_streams.control.raw_jsonl_bytes,'base64'),received(p));assert.deepEqual(Buffer.from(saved.raw_streams.data.raw_jsonl_bytes,'base64'),received(q));assert.match(html,/Control · parsed device replies/);assert.match(html,/Data · latest matched device JSON/);assert.equal(e.ui.originalControlTerminal.className||e.ui.originalControlTerminal.tagName,'PRE');safe(e);}finally{e.dispose();}});
-test('post-configuration mounting edits still invalidate readiness',async()=>{const e=environment();try{const [p]=await e.ready();const count=p.writes.length;e.ui.originalTilt.value='1';e.ui.originalTilt.oninput();assert(e.ui.originalStart.disabled);assert(e.ui.originalConfigure.disabled);assert.equal(p.writes.length,count);safe(e);}finally{e.dispose();}});
-test('official dashboard prerequisites are linked without becoming viewer dependencies',async()=>{for(const url of ['https://www.ti.com/tool/IWR6843AOPEVM','https://www.ti.com/lit/pdf/SWRU546','https://www.ti.com/tool/download/UNIFLASH','https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers','https://www.ti.com/tool/download/RADAR-TOOLBOX','https://www.ti.com/tool/download/MMWAVE-SDK'])assert(html.includes('href="'+url+'"'));assert.match(html,/No SDK or compiler is required for viewing/);assert.match(html,/Windows only if needed/);assert.match(html,/does not redistribute TI firmware/);const css=fs.readFileSync(path.join(__dirname,'../styles.css'),'utf8');assert.match(css,/pre\.device-terminal/);assert.match(css,/max-width:760px/);assert.match(css,/white-space:pre-wrap/);});
-(async()=>{let failures=0;for(const[name,fn]of cases){try{await fn();console.log('PASS dual panel '+name);}catch(e){failures++;console.error('FAIL dual panel '+name+'\n'+e.stack);}}console.log((cases.length-failures)+'/'+cases.length+' dual-panel synthetic tests passed');process.exitCode=failures?1:0;})();
+test('both port choosers are explicit, separate, and send no commands', async () => {
+  const e = environment();
+  try {
+    const [p, q] = await e.connectBoth();
+    assert.equal(p.openOptions[0].baudRate, 115200);
+    assert.equal(q.openOptions[0].baudRate, 921600);
+    assert.deepEqual(p.writes, []);
+    assert.deepEqual(q.writes, []);
+    assert(e.ui.originalStart.disabled);
+    e.select('ti');
+    assert.equal(e.ui.transportProtocol.value, 'original');
+    safe(e);
+  } finally {
+    e.dispose();
+  }
+});
+test('recoverable read errors keep both ports usable and invalidate pairing', async () => {
+  const e = environment();
+  try {
+    const [p, q] = await e.connectBoth(),
+      settle = async () => {
+        for (let i = 0; i < 5; i++) await new Promise(r => setTimeout(r, 0));
+      };
+    q.failRead('BufferOverrunError');
+    await settle();
+    assert.match(e.ui.originalState.textContent, /Control: connected · Data: connected/);
+    p.failRead('FramingError');
+    await settle();
+    assert.match(e.ui.originalState.textContent, /Control: connected · Data: connected/);
+    assert.match(e.ui.originalMessage.textContent, /FramingError: bytes were lost/);
+    const sent = p.writes.length;
+    await e.ui.originalStatus.onclick();
+    assert.deepEqual(p.writes.slice(sent), ['status\n']);
+    safe(e);
+  } finally {
+    e.dispose();
+  }
+});
+test('same port object cannot be opened for both lanes', async () => {
+  const e = environment();
+  try {
+    const p = await e.connect();
+    e.choose(Promise.resolve(p));
+    await e.ui.originalDataConnect.onclick();
+    assert.equal(p.openOptions.length, 1);
+    assert.match(e.ui.originalMessage.textContent, /separate Standard/);
+    assert(e.ui.originalStart.disabled);
+    safe(e);
+  } finally {
+    e.dispose();
+  }
+});
+test('cancelled data chooser leaves control usable', async () => {
+  const e = environment();
+  try {
+    const p = await e.connect(),
+      d = deferred();
+    e.choose(d.promise);
+    const action = e.ui.originalDataConnect.onclick();
+    d.reject(Error('Cancelled chooser'));
+    await action;
+    assert(!e.ui.originalStatus.disabled);
+    await e.ui.originalStatus.onclick();
+    assert.deepEqual(p.writes, ['status\n']);
+    safe(e);
+  } finally {
+    e.dispose();
+  }
+});
+test('mount values and confirmation are required before any config writes', async () => {
+  const e = environment();
+  try {
+    const [p] = await e.connectBoth();
+    await e.ui.originalStatus.onclick();
+    assert(e.ui.originalConfigure.disabled);
+    await e.ui.originalConfigure.onclick();
+    assert.deepEqual(p.writes, ['status\n']);
+    e.mount();
+    await e.ui.originalStatus.onclick();
+    await e.ui.originalConfigure.onclick();
+    assert(p.writes.includes('mount 2000 0 unknown\n'));
+    assert(!p.writes.includes('start\n'));
+    assert(e.ui.originalStart.disabled);
+    safe(e);
+  } finally {
+    e.dispose();
+  }
+});
+test('data proof and final control status are both required before Start', async () => {
+  const e = environment();
+  try {
+    const [p, q] = await e.ready();
+    const commands = p.writes.map(x => x.trim().split(' ')[0]);
+    assert(commands.includes('pair'));
+    assert(commands.includes('pairConfirm'));
+    assert.equal(commands.at(-1), 'status');
+    assert.equal(q.writes.length, 0);
+    assert(!commands.includes('start'));
+    safe(e);
+  } finally {
+    e.dispose();
+  }
+});
+test('correlated frames render candidates and export separate exact raw lanes', async () => {
+  const e = environment();
+  try {
+    const [p, q] = await e.ready();
+    await e.ui.originalStart.onclick();
+    for (let n = 1; n <= 3; n++) q.emitRecord(e.frame(n));
+    await until(() => /persistent candidate/.test(e.ui.originalTracks.textContent));
+    const x = await e.capture();
+    assert.equal(x.version, 2);
+    assert.deepEqual(Buffer.from(x.raw_streams.control.raw_jsonl_bytes, 'base64'), received(p));
+    assert.deepEqual(Buffer.from(x.raw_streams.data.raw_jsonl_bytes, 'base64'), received(q));
+    assert.equal(x.accepted_data_frames.length, 3);
+    for (const entry of x.accepted_data_frames) {
+      assert.equal(entry.admission, 'matched-active-pair');
+      assert.equal(
+        JSON.parse(received(q).subarray(entry.raw_byte_start, entry.raw_byte_end).toString()).sequence,
+        entry.frame.sequence,
+      );
+    }
+    assert.equal(x.derived_candidate_tracking.frames.length, 3);
+    safe(e);
+  } finally {
+    e.dispose();
+  }
+});
+test('data loss during run stops through control and clears candidates', async () => {
+  const e = environment();
+  try {
+    const [p, q] = await e.ready();
+    await e.ui.originalStart.onclick();
+    q.emitRecord(e.frame());
+    await until(() => /tentative candidate/.test(e.ui.originalTracks.textContent));
+    await e.ui.originalDataDisconnect.onclick();
+    await until(() => p.writes.includes('stop\n') && /idle/.test(e.ui.originalState.textContent));
+    assert(e.ui.originalStart.disabled);
+    assert(!e.ui.originalStatus.disabled);
+    assert.match(e.ui.originalTracks.textContent, /No candidate tracks/);
+    assert.equal(e.ui.originalWarning.textContent, '');
+    safe(e);
+  } finally {
+    e.dispose();
+  }
+});
+test('silent open stream invokes bounded control Stop without data disconnect', async () => {
+  const e = environment();
+  try {
+    const [p] = await e.ready();
+    await e.ui.originalStart.onclick();
+    e.advance(1100);
+    for (const fn of e.intervals.values()) fn();
+    await until(() => p.writes.includes('stop\n') && /idle/.test(e.ui.originalState.textContent));
+    assert(e.ui.originalStart.disabled);
+    safe(e);
+  } finally {
+    e.dispose();
+  }
+});
+test('queued valid tail during manual Stop does not cancel recovery', async () => {
+  const e = environment();
+  try {
+    const [p, q] = await e.ready();
+    await e.ui.originalStart.onclick();
+    p.onWrite = async text => {
+      if (text === 'stop\n') q.emitRecord(e.frame());
+      return false;
+    };
+    await e.ui.originalStop.onclick();
+    assert.equal(p.writes.filter(x => x === 'stop\n').length, 1);
+    assert.equal(e.ui.originalWarning.textContent, '');
+    assert.match(e.ui.originalState.textContent, /idle/);
+    assert(!/Cancelled|desynchron/.test(e.ui.originalMessage.textContent));
+    safe(e);
+  } finally {
+    e.dispose();
+  }
+});
+test('mount edit without input event prevents previously armed Start', async () => {
+  const e = environment();
+  try {
+    const [p] = await e.ready();
+    e.ui.originalTilt.value = '2';
+    await e.ui.originalStart.onclick();
+    assert(!p.writes.includes('start\n'));
+    assert(e.ui.originalStart.disabled);
+    safe(e);
+  } finally {
+    e.dispose();
+  }
+});
+test('control loss leaves RF warning and cannot trust data receipts', async () => {
+  const e = environment();
+  try {
+    const [p, q] = await e.ready();
+    await e.ui.originalStart.onclick();
+    p.fail();
+    await until(() => /disconnected/.test(e.ui.originalState.textContent));
+    q.emitRecord({ ...status(), paired: true, pair_nonce: e.board.pair_nonce });
+    await pause(10);
+    assert(e.ui.originalStart.disabled);
+    assert.match(e.ui.originalWarning.textContent, /STOP UNCONFIRMED/);
+    safe(e);
+  } finally {
+    e.dispose();
+  }
+});
+test('unapproved policy never configures or starts', async () => {
+  const e = environment({ acceptancePolicy: { ...TEST_ACCEPTANCE, approved: false } });
+  try {
+    const [p] = await e.connectBoth();
+    e.mount();
+    await e.ui.originalStatus.onclick();
+    await e.ui.originalConfigure.onclick();
+    await e.ui.originalStart.onclick();
+    assert.deepEqual(p.writes, ['status\n']);
+    assert(e.ui.originalStart.disabled);
+    safe(e);
+  } finally {
+    e.dispose();
+  }
+});
+test('status timeout visibly requires save and control reconnect; reset alone stays locked', async () => {
+  const e = environment();
+  try {
+    const [p] = await e.connectBoth();
+    p.reply = false;
+    await e.ui.originalStatus.onclick();
+    assert.match(e.ui.originalMessage.textContent, /Save capture first/);
+    assert.match(e.ui.originalRecovery.textContent, /disconnect and reconnect the control port/);
+    p.emitRecord({
+      ...common,
+      type: 'identity',
+      version: TEST_ACCEPTANCE.firmwareVersion,
+      build_id: TEST_ACCEPTANCE.buildId,
+      baud: 115200,
+      classifier: false,
+    });
+    await pause(5);
+    assert.match(e.ui.originalRecovery.textContent, /board reset alone/i);
+    p.reply = true;
+    await e.ui.originalStatus.onclick();
+    assert(e.ui.originalStart.disabled);
+    assert(e.ui.originalConfigure.disabled);
+    assert.match(e.ui.originalMessage.textContent, /desynchronized/);
+    const x = await e.capture();
+    assert(x.events.some(x => x.type === 'command_timeout'));
+    safe(e);
+  } finally {
+    e.dispose();
+  }
+});
+test('20m default and nearer/zoom display controls send no serial commands', async () => {
+  const e = environment();
+  try {
+    const [p, q] = await e.connectBoth();
+    assert.equal(e.ui.originalRange.value, '20');
+    assert.equal(e.ui.range.value, '20');
+    assert.match(e.ui.originalViewRangeInfo.textContent, /Y 0–20 m/);
+    e.ui.originalRange.value = '2';
+    e.ui.originalRange.onchange();
+    assert.match(e.ui.originalViewRangeInfo.textContent, /Y 0–2 m/);
+    e.ui.originalZoomIn.onclick();
+    e.ui.originalZoomOut.onclick();
+    e.ui.originalViewReset.onclick();
+    e.ui.originalRange.value = '20';
+    e.ui.originalRange.onchange();
+    assert.deepEqual(p.writes, []);
+    assert.deepEqual(q.writes, []);
+    assert(e.ui.originalStart.disabled);
+    assert.match(html, /does not establish 20 m detection or human-tracking range/);
+    assert.match(html, /Pairing is unavailable until Configure succeeds/);
+    safe(e);
+  } finally {
+    e.dispose();
+  }
+});
+test('superseded firmware and version1 selftest leave Configure and Start locked', async () => {
+  for (const fields of [
+    { firmware_version: '0.3.0-rc1' },
+    { selftest_version: 1 },
+    { selftest_mask: 256, selftest_ok: false },
+  ]) {
+    const e = environment();
+    try {
+      const [p] = await e.connectBoth();
+      e.mount();
+      p.statusFields = repairedFields(fields);
+      await e.ui.originalStatus.onclick();
+      assert(e.ui.originalConfigure.disabled);
+      assert(e.ui.originalStart.disabled);
+      assert.deepEqual(p.writes, ['status\n']);
+      safe(e);
+    } finally {
+      e.dispose();
+    }
+  }
+});
+test('requested mount defaults stay unconfirmed and cannot configure until explicitly confirmed', async () => {
+  const e = environment();
+  try {
+    assert.equal(e.ui.originalHeight.value, '1219');
+    assert.equal(e.ui.originalTilt.value, '0');
+    assert.equal(e.ui.originalOffset.value, '');
+    assert.equal(e.ui.originalMountConfirm.checked, false);
+    const [p] = await e.connectBoth();
+    await e.ui.originalStatus.onclick();
+    assert(e.ui.originalConfigure.disabled);
+    await e.ui.originalConfigure.onclick();
+    assert.deepEqual(p.writes, ['status\n']);
+    e.ui.originalMountConfirm.checked = true;
+    e.ui.originalMountConfirm.oninput();
+    assert(!e.ui.originalConfigure.disabled);
+    await e.ui.originalConfigure.onclick();
+    assert(p.writes.includes('mount 1219 0 unknown\n'));
+    assert.equal(p.writes.filter(x => x === 'status\n').length, 2);
+    assert(!p.writes.includes('start\n'));
+    assert.match(html, /Other users must enter their actual measured height and tilt/);
+    safe(e);
+  } finally {
+    e.dispose();
+  }
+});
+test('terminal panels show actual parsed Control/Data records separately from browser actions', async () => {
+  const e = environment();
+  try {
+    const [p, q] = await e.ready();
+    const expected = received(p)
+      .toString()
+      .trim()
+      .split('\n')
+      .map(JSON.parse)
+      .slice(-16)
+      .map(r => JSON.stringify(r, null, 2))
+      .join('\n\n');
+    assert.equal(e.ui.originalControlTerminal.textContent, expected);
+    assert.equal(JSON.parse(e.ui.originalTelemetry.textContent).type, 'data_probe');
+    assert.equal(JSON.parse(e.ui.originalTelemetry.textContent).channel, 'data');
+    assert(!e.ui.originalControlTerminal.textContent.includes('Action completed'));
+    assert.match(e.ui.originalMessage.textContent, /Action completed/);
+    assert.match(e.ui.originalSelftest.textContent, /Browser summary/);
+    await e.ui.originalStart.onclick();
+    q.emitRecord(e.frame());
+    await until(() => e.ui.originalTelemetry.textContent.includes('"type": "frame"'));
+    assert.deepEqual(JSON.parse(e.ui.originalTelemetry.textContent), { protocol, ...e.frame() });
+    const saved = await e.capture();
+    assert.deepEqual(Buffer.from(saved.raw_streams.control.raw_jsonl_bytes, 'base64'), received(p));
+    assert.deepEqual(Buffer.from(saved.raw_streams.data.raw_jsonl_bytes, 'base64'), received(q));
+    assert.match(html, /Control · parsed device replies/);
+    assert.match(html, /Data · latest matched device JSON/);
+    assert.equal(e.ui.originalControlTerminal.className || e.ui.originalControlTerminal.tagName, 'PRE');
+    safe(e);
+  } finally {
+    e.dispose();
+  }
+});
+test('post-configuration mounting edits still invalidate readiness', async () => {
+  const e = environment();
+  try {
+    const [p] = await e.ready();
+    const count = p.writes.length;
+    e.ui.originalTilt.value = '1';
+    e.ui.originalTilt.oninput();
+    assert(e.ui.originalStart.disabled);
+    assert(e.ui.originalConfigure.disabled);
+    assert.equal(p.writes.length, count);
+    safe(e);
+  } finally {
+    e.dispose();
+  }
+});
+test('official dashboard prerequisites are linked without becoming viewer dependencies', async () => {
+  for (const url of [
+    'https://www.ti.com/tool/IWR6843AOPEVM',
+    'https://www.ti.com/lit/pdf/SWRU546',
+    'https://www.ti.com/tool/download/UNIFLASH',
+    'https://www.silabs.com/software-and-tools/usb-to-uart-bridge-vcp-drivers',
+    'https://www.ti.com/tool/download/RADAR-TOOLBOX',
+    'https://www.ti.com/tool/download/MMWAVE-SDK',
+  ])
+    assert(html.includes('href="' + url + '"'));
+  assert.match(html, /No SDK or compiler is required for viewing/);
+  assert.match(html, /Windows only if needed/);
+  assert.match(html, /does not redistribute TI firmware/);
+  const css = fs.readFileSync(path.join(__dirname, '../styles.css'), 'utf8');
+  assert.match(css, /pre\.device-terminal/);
+  assert.match(css, /max-width:760px/);
+  assert.match(css, /white-space:pre-wrap/);
+});
+(async () => {
+  let failures = 0;
+  for (const [name, fn] of cases) {
+    try {
+      await fn();
+      console.log('PASS dual panel ' + name);
+    } catch (e) {
+      failures++;
+      console.error('FAIL dual panel ' + name + '\n' + e.stack);
+    }
+  }
+  console.log(cases.length - failures + '/' + cases.length + ' dual-panel synthetic tests passed');
+  process.exitCode = failures ? 1 : 0;
+})();

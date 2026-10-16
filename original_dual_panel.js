@@ -1,74 +1,591 @@
 /* Original dual-UART local workflow. No uploads. Original project LICENSE applies. */
-(function(){
-'use strict';
-const $=id=>document.getElementById(id),selector=$('transportProtocol');if(!selector)return;
-let controlPort=null,dataPort=null,writer=null,controlReader=null,dataReader=null,controlTask=null,dataTask=null,choosing=false,closingControl=false,closingData=false,selected='ti',message='',operation=null,emergencyStopping=false;
-let remembered=false;try{remembered=localStorage.getItem('original-radar-stop-unconfirmed')==='true';}catch(_){remembered=true;}
-const tracker=new OriginalTracker.Tracker(),scene=new RadarScene($('originalScene'));let trackingEpoch=null;const derivedFrames=[];let derivedDropped=0;scene.attachPointerControls();
-const session=new OriginalDual.Session({unconfirmed:remembered,rfEnabled:true,rfPolicy:OriginalDualAcceptance,onChange:refresh,setUnconfirmed:value=>{try{localStorage.setItem('original-radar-stop-unconfirmed',String(value));}catch(_){message='Safety storage unavailable: confirm idle before leaving.';}},onFrame:frame=>{globalThis.CameraCapture?.radarFrame(frame);if(tracker.nextId>999990)tracker.reset('Diagnostic candidate ID generation renewed');const result=tracker.update(frame,Date.now());if(derivedFrames.length===256){derivedFrames.shift();derivedDropped++;}derivedFrames.push({connection_epoch:session.connectionEpoch,data_generation:session.dataGeneration,session_epoch:session.epoch,pair_nonce:frame.pair_nonce,config_generation:frame.config_generation,session_id:frame.session_id,sequence:frame.sequence,sensor_timestamp_us:frame.timestamp_us,host_utc_ms:Date.now(),...result});}});
-function renderTracking(){const selected=Number($('originalRange').value),range=[2,5,10,20].includes(selected)?selected:20;scene.setRange(range);$('originalViewRangeInfo').textContent='Display: X ±'+range+' m, Y 0–'+range+' m, Z ±'+range+' m. Orthographic sensor coordinates.';const result=tracker.snapshot(),observed=result.tracks.filter(t=>t.observed);scene.setFrame(observed.length?{points:[],tracks:observed.map(t=>({id:t.id,x:t.xyz[0],y:t.xyz[1],z:t.xyz[2]}))}:null);scene.setTrails(observed.map(t=>({id:t.id,points:t.trail})));scene.render();$('originalTracks').textContent=result.reason+' · '+result.rejected+' unusable observations omitted.\n'+(result.tracks.map(t=>t.id+' · '+t.state+' · '+t.motion+' · confidence: '+t.confidence+' · '+t.uncertainty).join('\n')||'No candidate tracks.');}
-function durationInput(){return $('originalRunMode').value==='continuous'?0:Number($('originalSeconds').value);}
-function mountInput(){
- const height=$('originalHeight').value.trim(),tilt=$('originalTilt').value.trim(),offset=$('originalOffset').value.trim();
- if(!height||!tilt||!$('originalMountConfirm').checked)return null;
- const bracket_top_mm=Number(height),degrees=Number(tilt),down_tilt_mdeg=Math.round(degrees*1000),antenna_offset_mm=offset===''?null:Number(offset);
- if(!Number.isInteger(bracket_top_mm)||bracket_top_mm<100||bracket_top_mm>5000||!Number.isFinite(degrees)||Math.abs(degrees*1000-down_tilt_mdeg)>1e-7||down_tilt_mdeg< -45000||down_tilt_mdeg>45000||!(antenna_offset_mm===null||(Number.isInteger(antenna_offset_mm)&&antenna_offset_mm>=-1000&&antenna_offset_mm<=1000&&bracket_top_mm+antenna_offset_mm>0)))return null;
- return {bracket_top_mm,down_tilt_mdeg,antenna_offset_mm,confirmed:true};
-}
-function refresh(){
- const epoch=session.connectionEpoch+':'+session.dataGeneration+':'+session.bootGeneration+':'+session.epoch;
- if(epoch!==trackingEpoch||!session.connected||!session.dataConnected||session.transportFault){tracker.reset('Transport/session reset; no live candidates');trackingEpoch=epoch;}renderTracking();
- const active=!!controlPort,busy=session.busy||choosing||closingControl||closingData;
- $('originalConnect').disabled=active||busy||!('serial'in navigator)||!isSecureContext;
- $('originalDataConnect').disabled=!!dataPort||busy||!('serial'in navigator)||!isSecureContext;
- $('originalDataDisconnect').disabled=!dataPort||choosing||closingData;
- $('originalConfigure').disabled=!active||busy||!mountInput()||!!session.configureBlockReason();$('originalStatus').disabled=!active||busy||!!session.pending;
- $('originalPair').disabled=busy||!session.connected||!session.dataConnected||session.state!=='idle'||!session.configured||!Number.isInteger(session.seconds)||session.unconfirmed||session.rfPolicy.approved!==true;
- const reason=session.startBlockReason();$('originalStart').disabled=!!reason;$('originalStart').textContent=reason?'Start · dual-port gate locked':session.seconds===0?'Start · run until stopped':'Start '+session.seconds+'-second test';
- const report=session.lastSelftestReport;$('originalSelftest').textContent=(report?'Browser summary: firmware '+report.firmware_version+' · self-test v'+report.selftest_version+' '+(report.selftest_ok===true?'reported passing':'not passing'):'No current control-port self-test report')+' · '+(reason||(session.seconds===0?'Continuous mode ready. Stop ends the run; loss of heartbeat also stops firmware.':'Manual 1–5 second test ready. Physical sensing remains unvalidated.'));
- $('originalControlTerminal').textContent=session.controlReplies.length?session.controlReplies.map(r=>JSON.stringify(r,null,2)).join('\n\n'):'No parsed control reply received.';
- $('originalPairState').textContent=session.pairing?'Paired by data-only nonce proof · session '+session.pairing.session_id+' · configuration '+session.pairing.config_generation+' · correlation, not authentication.':'Ports are not paired. Open both ports, Configure, then Verify port pairing. No RF is started by pairing.';
- $('originalStop').disabled=!active||busy;$('originalCancel').disabled=!session.busy;$('originalDisconnect').disabled=!active||choosing||closingControl;$('originalRunMode').disabled=busy||session.state==='running'||!!session.activeStream;$('originalSeconds').disabled=busy||session.state==='running'||$('originalRunMode').value==='continuous';
- $('originalSave').textContent=session.monitoring?'Save diagnostic window':'Save capture + annotations';$('originalRetention').textContent=session.monitoring?'Live monitoring; diagnostic window only. Retained '+(session.controlWindow.length+session.dataWindow.length)+' bytes; evicted '+(session.controlWindow.start+session.dataWindow.start)+' bytes. This download is not a complete recording and cannot enter bounded replay/training.':'Timed mode retains the bounded capture and original UART bytes.';$('originalSave').disabled=!(session.bytes||session.dataBytes);$('originalSaveRaw').disabled=!session.bytes;$('originalSaveDataRaw').disabled=!session.dataBytes;
- const annotations=!active||session.state!=='running'||session.overflow||!session.activeStream;
- for(const id of ['originalActivity','originalTransitionStart','originalTransitionEnd'])$(id).disabled=annotations;
- $('originalState').textContent='Control: '+(session.connected?'connected':'disconnected')+' · Data: '+(session.dataConnected?'connected':'disconnected')+' · '+session.state+' · '+session.frames+' accepted frames · '+session.bytes+' control bytes / '+session.dataBytes+' data bytes';
- $('originalRecovery').textContent=session.desynced?OriginalDual.RECOVERY_CONTROL:'';
- $('originalWarning').textContent=session.unconfirmed?'STOP UNCONFIRMED: RF may still be running. Keep the control port open; use Stop and fresh status. Closing this page does not stop the board.':'';$('originalMessage').textContent=message;
- $('originalTelemetry').textContent=session.lastDataReply?JSON.stringify(session.lastDataReply,null,2):'No matched data probe or admitted frame received.';
- $('originalIssues').textContent=session.issues.slice(-8).map(i=>'CONTROL/SESSION: '+i.message).concat(session.dataIssues.slice(-8).map(i=>'DATA: '+i.message)).join('\n')||'No input issues reported.';
- $('originalAnnotations').textContent=session.annotations.slice(-12).map(a=>new Date(a.host_utc_ms).toISOString()+' · '+a.kind+' · '+a.label+(a.incomplete?' · INCOMPLETE':'')).join('\n')||'No annotations yet.';
- if(active&&session.unconfirmed&&(session.transportFault||session.overflow)&&!session.recoveringStop&&!emergencyStopping){emergencyStopping=true;setTimeout(async()=>{if(session.busy||operation)session.cancel();if(operation)await operation.catch(()=>{});try{await session.stop();message='Transport interrupted. Stop/status completed on the control port; pair again before another run.';}catch(e){message='Transport interrupted; stop is unconfirmed: '+e.message;}refresh();},0);}
-}
-async function run(fn){if(operation||closingControl||closingData){message='Finish or cancel the pending action first.';refresh();return;}const task=Promise.resolve().then(fn);operation=task;try{await task;message='Action completed; review the acknowledged state.';}catch(e){message=e.message;}finally{if(operation===task)operation=null;refresh();}}
-async function connectControl(){if(choosing||controlPort||closingControl)return;choosing=true;refresh();let candidate=null,opened=false;
- try{candidate=await navigator.serial.requestPort();if(candidate===dataPort)throw Error('Choose the separate Enhanced control interface, not the open data interface');await candidate.open({baudRate:115200,dataBits:8,stopBits:1,parity:'none',flowControl:'none'});opened=true;writer=candidate.writable.getWriter();controlPort=candidate;session.attach(bytes=>writer.write(bytes));
- controlTask=(async()=>{try{await SerialRead.pump({port:candidate,active:()=>controlPort===candidate,onData:value=>session.ingest(value),onReader:r=>{controlReader=r;},onRecoverable:e=>{if(session.connected)session.detach('Control bytes lost: '+e.name);session.attach(bytes=>writer.write(bytes));message='Control read '+e.name+': bytes were lost and reading resumed. Query status before continuing.';refresh();}});}catch(e){message='Control read: '+e.message;}finally{controlReader=null;if(session.connected)session.detach('Control read ended');refresh();}})();message='Control connected at 115200. No command sent. Choose Standard data port and query status.';
- }catch(e){if(opened&&!controlPort)await candidate.close().catch(()=>{});message='Control connection: '+e.message;}finally{choosing=false;refresh();}}
-async function connectData(){if(choosing||dataPort||closingData)return;choosing=true;refresh();let candidate=null,opened=false;
- try{candidate=await navigator.serial.requestPort();if(candidate===controlPort)throw Error('Choose the separate Standard data interface, not the open control interface');await candidate.open({baudRate:921600,dataBits:8,stopBits:1,parity:'none',flowControl:'none',bufferSize:1<<20});opened=true;dataPort=candidate;session.attachData();
- dataTask=(async()=>{try{await SerialRead.pump({port:candidate,active:()=>dataPort===candidate,onData:value=>session.ingestData(value),onReader:r=>{dataReader=r;},onRecoverable:e=>{if(session.dataConnected)session.detachData('Data bytes lost: '+e.name);session.attachData();message='Data read '+e.name+': bytes were lost and reading resumed; any active pairing was invalidated. Verify port pairing again.';refresh();}});}catch(e){message='Data read: '+e.message;}finally{dataReader=null;if(session.dataConnected)session.detachData('Data read ended');refresh();}})();message='Data connected at 921600. No command or RF start sent. Configure, then verify port pairing.';
- }catch(e){if(opened&&!dataPort)await candidate.close().catch(()=>{});message='Data connection: '+e.message;}finally{choosing=false;refresh();}}
-async function disconnectData(){if(!dataPort||closingData)return;closingData=true;const old=dataPort;dataPort=null;session.detachData('Data port disconnected');if(dataReader)await dataReader.cancel().catch(()=>{});if(dataTask)await dataTask;await old.close().catch(e=>{message='Data close: '+e.message;});closingData=false;refresh();}
-async function disconnectControl(){if(!controlPort||closingControl)return;closingControl=true;refresh();if(session.busy||operation){session.cancel();if(operation)await operation.catch(()=>{});}if(session.connected&&(session.unconfirmed||['running','starting','stopping'].includes(session.state))){try{await session.stop();}catch(e){message='Disconnect: '+e.message;session.uncertain(true);}}
- const old=controlPort;controlPort=null;if(controlReader)await controlReader.cancel().catch(()=>{});if(controlTask)await controlTask;if(writer){writer.releaseLock();writer=null;}await old.close().catch(e=>{message='Control close: '+e.message;});if(session.connected)session.detach('Control disconnected');closingControl=false;refresh();}
-function save(which){let data,type;if(which==='control'){data=session.rawBytes();type='application/x-ndjson';}else if(which==='data'){data=session.dataRawBytes();type='application/x-ndjson';}else{data=JSON.stringify({...session.snapshot(),guided_session:typeof SessionGuide==='undefined'?null:SessionGuide.snapshot(),derived_candidate_tracking:{schema:'original-candidate-tracks-v1',experimental:true,algorithm:'conservative-nearest-prediction-v1',stable_human_identity:false,people_count_inference:false,activity_inference:false,coordinate_space:'sensor-exploratory',frames:derivedFrames,dropped_derived_frames:derivedDropped}},null,2);type='application/json';}
- const blob=new Blob([data],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=(session.monitoring?'original-radar-monitor-window-':'original-radar-v2-')+new Date().toISOString().replace(/[:.]/g,'-')+(which?'.'+which+'.jsonl':'.capture.json');a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);message=session.monitoring?'Diagnostic-window download requested; earlier bytes have been evicted. Saving does not stop RF.':'Local download requested. Separate UART bytes remain unchanged. Saving does not stop RF.';refresh();}
-selector.onchange=()=>{const next=selector.value;if(next===selected)return;if(controlPort||dataPort||choosing||closingControl||closingData||session.busy){selector.value=selected;message='Disconnect both ports before changing protocol.';refresh();return;}const event=new CustomEvent('radar-transport-change',{detail:{protocol:next},cancelable:true});window.dispatchEvent(event);if(event.defaultPrevented){selector.value=selected;return;}selected=next;$('tiDashboard').hidden=next==='original';$('originalPanel').hidden=next!=='original';$('modeBadge').textContent=next==='original'?'ORIGINAL DUAL UART · MANUAL CONTROL':'OFFLINE';};
-$('originalConnect').onclick=connectControl;$('originalDataConnect').onclick=connectData;$('originalDataDisconnect').onclick=disconnectData;$('originalDisconnect').onclick=disconnectControl;
-$('originalStatus').onclick=()=>run(()=>session.status());$('originalConfigure').onclick=()=>run(()=>session.configure(durationInput(),mountInput()));
-$('originalPair').onclick=()=>run(()=>{const bytes=new Uint8Array(16);crypto.getRandomValues(bytes);return session.pair(Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join(''));});
-function editDraft(){if(session.busy||session.seconds!=null||session.pairing||session.activeStream)session.invalidateConfiguration();}
-$('originalRunMode').onchange=()=>{editDraft();message='Run mode edited. Query status, Configure and pair again.';refresh();};
-$('originalSeconds').oninput=()=>{editDraft();message='Duration edited. If previously configured, query status, Configure and pair again.';refresh();};
-for(const id of ['originalHeight','originalTilt','originalOffset','originalMountConfirm'])$(id).oninput=()=>{editDraft();message='Mount values updated. Confirm the measurements, then Configure. If previously configured, query status first.';refresh();};
-$('originalStart').onclick=()=>run(()=>{if(JSON.stringify(mountInput())!==JSON.stringify(session.mountConfiguration)){session.invalidateConfiguration();throw Error('Mount changed. Configure and pair again.');}if(durationInput()!==session.seconds){session.invalidateConfiguration();throw Error('Duration changed. Configure and pair again.');}emergencyStopping=false;return session.start();});$('originalStop').onclick=()=>run(()=>session.stop());
-$('originalCancel').onclick=()=>{session.cancel();message='Cancelled. Already sent commands may execute. Use Stop/status.';refresh();};
-$('originalSave').onclick=()=>save();$('originalSaveRaw').onclick=()=>save('control');$('originalSaveDataRaw').onclick=()=>save('data');$('originalActivity').onclick=()=>run(()=>session.annotate('activity',$('originalLabel').value));$('originalTransitionStart').onclick=()=>run(()=>session.annotate('transition_start',$('originalTransition').value));$('originalTransitionEnd').onclick=()=>run(()=>session.annotate('transition_end',session.openTransition?.label||$('originalTransition').value));
-$('originalRange').onchange=renderTracking;$('originalZoomIn').onclick=()=>scene.zoom(1.25);$('originalZoomOut').onclick=()=>scene.zoom(1/1.25);$('originalViewReset').onclick=()=>scene.preset('reset');window.addEventListener('resize',renderTracking);setInterval(()=>{session.checkDataFreshness();session.heartbeat();tracker.expire(Date.now());renderTracking();},250);
-window.addEventListener('beforeunload',event=>{if(session.unconfirmed||session.bytes||session.dataBytes){event.preventDefault();event.returnValue='';}});
-if('serial'in navigator)navigator.serial.addEventListener('disconnect',event=>{if(event.target===dataPort)disconnectData();if(event.target===controlPort){message='Control unplugged; stop cannot be confirmed.';session.detach('Control unplugged');disconnectControl();}});
-if(typeof SessionGuide!=='undefined')SessionGuide.bind(session);
-if(globalThis.CameraCapture){session.onEvent=event=>CameraCapture.radarEvent(event);CameraCapture.bind(session,async()=>{if(session.busy){session.cancel();if(operation)await operation.catch(()=>{});}await session.stop();});}
-refresh();
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id),
+    selector = $('transportProtocol');
+  if (!selector) return;
+  let controlPort = null,
+    dataPort = null,
+    writer = null,
+    controlReader = null,
+    dataReader = null,
+    controlTask = null,
+    dataTask = null,
+    choosing = false,
+    closingControl = false,
+    closingData = false,
+    selected = 'ti',
+    message = '',
+    operation = null,
+    emergencyStopping = false;
+  let remembered = false;
+  try {
+    remembered = localStorage.getItem('original-radar-stop-unconfirmed') === 'true';
+  } catch (_) {
+    remembered = true;
+  }
+  const tracker = new OriginalTracker.Tracker(),
+    scene = new RadarScene($('originalScene'));
+  let trackingEpoch = null;
+  const derivedFrames = [];
+  let derivedDropped = 0;
+  scene.attachPointerControls();
+  const session = new OriginalDual.Session({
+    unconfirmed: remembered,
+    rfEnabled: true,
+    rfPolicy: OriginalDualAcceptance,
+    onChange: refresh,
+    setUnconfirmed: value => {
+      try {
+        localStorage.setItem('original-radar-stop-unconfirmed', String(value));
+      } catch (_) {
+        message = 'Safety storage unavailable: confirm idle before leaving.';
+      }
+    },
+    onFrame: frame => {
+      globalThis.CameraCapture?.radarFrame(frame);
+      if (tracker.nextId > 999990) tracker.reset('Diagnostic candidate ID generation renewed');
+      const result = tracker.update(frame, Date.now());
+      if (derivedFrames.length === 256) {
+        derivedFrames.shift();
+        derivedDropped++;
+      }
+      derivedFrames.push({
+        connection_epoch: session.connectionEpoch,
+        data_generation: session.dataGeneration,
+        session_epoch: session.epoch,
+        pair_nonce: frame.pair_nonce,
+        config_generation: frame.config_generation,
+        session_id: frame.session_id,
+        sequence: frame.sequence,
+        sensor_timestamp_us: frame.timestamp_us,
+        host_utc_ms: Date.now(),
+        ...result,
+      });
+    },
+  });
+  function renderTracking() {
+    const selected = Number($('originalRange').value),
+      range = [2, 5, 10, 20].includes(selected) ? selected : 20;
+    scene.setRange(range);
+    $('originalViewRangeInfo').textContent =
+      'Display: X ±' + range + ' m, Y 0–' + range + ' m, Z ±' + range + ' m. Orthographic sensor coordinates.';
+    const result = tracker.snapshot(),
+      observed = result.tracks.filter(t => t.observed);
+    scene.setFrame(
+      observed.length
+        ? { points: [], tracks: observed.map(t => ({ id: t.id, x: t.xyz[0], y: t.xyz[1], z: t.xyz[2] })) }
+        : null,
+    );
+    scene.setTrails(observed.map(t => ({ id: t.id, points: t.trail })));
+    scene.render();
+    $('originalTracks').textContent =
+      result.reason +
+      ' · ' +
+      result.rejected +
+      ' unusable observations omitted.\n' +
+      (result.tracks
+        .map(t => t.id + ' · ' + t.state + ' · ' + t.motion + ' · confidence: ' + t.confidence + ' · ' + t.uncertainty)
+        .join('\n') || 'No candidate tracks.');
+  }
+  function durationInput() {
+    return $('originalRunMode').value === 'continuous' ? 0 : Number($('originalSeconds').value);
+  }
+  function mountInput() {
+    const height = $('originalHeight').value.trim(),
+      tilt = $('originalTilt').value.trim(),
+      offset = $('originalOffset').value.trim();
+    if (!height || !tilt || !$('originalMountConfirm').checked) return null;
+    const bracket_top_mm = Number(height),
+      degrees = Number(tilt),
+      down_tilt_mdeg = Math.round(degrees * 1000),
+      antenna_offset_mm = offset === '' ? null : Number(offset);
+    if (
+      !Number.isInteger(bracket_top_mm) ||
+      bracket_top_mm < 100 ||
+      bracket_top_mm > 5000 ||
+      !Number.isFinite(degrees) ||
+      Math.abs(degrees * 1000 - down_tilt_mdeg) > 1e-7 ||
+      down_tilt_mdeg < -45000 ||
+      down_tilt_mdeg > 45000 ||
+      !(
+        antenna_offset_mm === null ||
+        (Number.isInteger(antenna_offset_mm) &&
+          antenna_offset_mm >= -1000 &&
+          antenna_offset_mm <= 1000 &&
+          bracket_top_mm + antenna_offset_mm > 0)
+      )
+    )
+      return null;
+    return { bracket_top_mm, down_tilt_mdeg, antenna_offset_mm, confirmed: true };
+  }
+  function refresh() {
+    const epoch =
+      session.connectionEpoch + ':' + session.dataGeneration + ':' + session.bootGeneration + ':' + session.epoch;
+    if (epoch !== trackingEpoch || !session.connected || !session.dataConnected || session.transportFault) {
+      tracker.reset('Transport/session reset; no live candidates');
+      trackingEpoch = epoch;
+    }
+    renderTracking();
+    const active = !!controlPort,
+      busy = session.busy || choosing || closingControl || closingData;
+    $('originalConnect').disabled = active || busy || !('serial' in navigator) || !isSecureContext;
+    $('originalDataConnect').disabled = !!dataPort || busy || !('serial' in navigator) || !isSecureContext;
+    $('originalDataDisconnect').disabled = !dataPort || choosing || closingData;
+    $('originalConfigure').disabled = !active || busy || !mountInput() || !!session.configureBlockReason();
+    $('originalStatus').disabled = !active || busy || !!session.pending;
+    $('originalPair').disabled =
+      busy ||
+      !session.connected ||
+      !session.dataConnected ||
+      session.state !== 'idle' ||
+      !session.configured ||
+      !Number.isInteger(session.seconds) ||
+      session.unconfirmed ||
+      session.rfPolicy.approved !== true;
+    const reason = session.startBlockReason();
+    $('originalStart').disabled = !!reason;
+    $('originalStart').textContent = reason
+      ? 'Start · dual-port gate locked'
+      : session.seconds === 0
+        ? 'Start · run until stopped'
+        : 'Start ' + session.seconds + '-second test';
+    const report = session.lastSelftestReport;
+    $('originalSelftest').textContent =
+      (report
+        ? 'Browser summary: firmware ' +
+          report.firmware_version +
+          ' · self-test v' +
+          report.selftest_version +
+          ' ' +
+          (report.selftest_ok === true ? 'reported passing' : 'not passing')
+        : 'No current control-port self-test report') +
+      ' · ' +
+      (reason ||
+        (session.seconds === 0
+          ? 'Continuous mode ready. Stop ends the run; loss of heartbeat also stops firmware.'
+          : 'Manual 1–5 second test ready. Physical sensing remains unvalidated.'));
+    $('originalControlTerminal').textContent = session.controlReplies.length
+      ? session.controlReplies.map(r => JSON.stringify(r, null, 2)).join('\n\n')
+      : 'No parsed control reply received.';
+    $('originalPairState').textContent = session.pairing
+      ? 'Paired by data-only nonce proof · session ' +
+        session.pairing.session_id +
+        ' · configuration ' +
+        session.pairing.config_generation +
+        ' · correlation, not authentication.'
+      : 'Ports are not paired. Open both ports, Configure, then Verify port pairing. No RF is started by pairing.';
+    $('originalStop').disabled = !active || busy;
+    $('originalCancel').disabled = !session.busy;
+    $('originalDisconnect').disabled = !active || choosing || closingControl;
+    $('originalRunMode').disabled = busy || session.state === 'running' || !!session.activeStream;
+    $('originalSeconds').disabled = busy || session.state === 'running' || $('originalRunMode').value === 'continuous';
+    $('originalSave').textContent = session.monitoring ? 'Save diagnostic window' : 'Save capture + annotations';
+    $('originalRetention').textContent = session.monitoring
+      ? 'Live monitoring; diagnostic window only. Retained ' +
+        (session.controlWindow.length + session.dataWindow.length) +
+        ' bytes; evicted ' +
+        (session.controlWindow.start + session.dataWindow.start) +
+        ' bytes. This download is not a complete recording and cannot enter bounded replay/training.'
+      : 'Timed mode retains the bounded capture and original UART bytes.';
+    $('originalSave').disabled = !(session.bytes || session.dataBytes);
+    $('originalSaveRaw').disabled = !session.bytes;
+    $('originalSaveDataRaw').disabled = !session.dataBytes;
+    const annotations = !active || session.state !== 'running' || session.overflow || !session.activeStream;
+    for (const id of ['originalActivity', 'originalTransitionStart', 'originalTransitionEnd'])
+      $(id).disabled = annotations;
+    $('originalState').textContent =
+      'Control: ' +
+      (session.connected ? 'connected' : 'disconnected') +
+      ' · Data: ' +
+      (session.dataConnected ? 'connected' : 'disconnected') +
+      ' · ' +
+      session.state +
+      ' · ' +
+      session.frames +
+      ' accepted frames · ' +
+      session.bytes +
+      ' control bytes / ' +
+      session.dataBytes +
+      ' data bytes';
+    $('originalRecovery').textContent = session.desynced ? OriginalDual.RECOVERY_CONTROL : '';
+    $('originalWarning').textContent = session.unconfirmed
+      ? 'STOP UNCONFIRMED: RF may still be running. Keep the control port open; use Stop and fresh status. Closing this page does not stop the board.'
+      : '';
+    $('originalMessage').textContent = message;
+    $('originalTelemetry').textContent = session.lastDataReply
+      ? JSON.stringify(session.lastDataReply, null, 2)
+      : 'No matched data probe or admitted frame received.';
+    $('originalIssues').textContent =
+      session.issues
+        .slice(-8)
+        .map(i => 'CONTROL/SESSION: ' + i.message)
+        .concat(session.dataIssues.slice(-8).map(i => 'DATA: ' + i.message))
+        .join('\n') || 'No input issues reported.';
+    $('originalAnnotations').textContent =
+      session.annotations
+        .slice(-12)
+        .map(
+          a =>
+            new Date(a.host_utc_ms).toISOString() +
+            ' · ' +
+            a.kind +
+            ' · ' +
+            a.label +
+            (a.incomplete ? ' · INCOMPLETE' : ''),
+        )
+        .join('\n') || 'No annotations yet.';
+    if (
+      active &&
+      session.unconfirmed &&
+      (session.transportFault || session.overflow) &&
+      !session.recoveringStop &&
+      !emergencyStopping
+    ) {
+      emergencyStopping = true;
+      setTimeout(async () => {
+        if (session.busy || operation) session.cancel();
+        if (operation) await operation.catch(() => {});
+        try {
+          await session.stop();
+          message = 'Transport interrupted. Stop/status completed on the control port; pair again before another run.';
+        } catch (e) {
+          message = 'Transport interrupted; stop is unconfirmed: ' + e.message;
+        }
+        refresh();
+      }, 0);
+    }
+  }
+  async function run(fn) {
+    if (operation || closingControl || closingData) {
+      message = 'Finish or cancel the pending action first.';
+      refresh();
+      return;
+    }
+    const task = Promise.resolve().then(fn);
+    operation = task;
+    try {
+      await task;
+      message = 'Action completed; review the acknowledged state.';
+    } catch (e) {
+      message = e.message;
+    } finally {
+      if (operation === task) operation = null;
+      refresh();
+    }
+  }
+  async function connectControl() {
+    if (choosing || controlPort || closingControl) return;
+    choosing = true;
+    refresh();
+    let candidate = null,
+      opened = false;
+    try {
+      candidate = await navigator.serial.requestPort();
+      if (candidate === dataPort)
+        throw Error('Choose the separate Enhanced control interface, not the open data interface');
+      await candidate.open({ baudRate: 115200, dataBits: 8, stopBits: 1, parity: 'none', flowControl: 'none' });
+      opened = true;
+      writer = candidate.writable.getWriter();
+      controlPort = candidate;
+      session.attach(bytes => writer.write(bytes));
+      controlTask = (async () => {
+        try {
+          await SerialRead.pump({
+            port: candidate,
+            active: () => controlPort === candidate,
+            onData: value => session.ingest(value),
+            onReader: r => {
+              controlReader = r;
+            },
+            onRecoverable: e => {
+              if (session.connected) session.detach('Control bytes lost: ' + e.name);
+              session.attach(bytes => writer.write(bytes));
+              message =
+                'Control read ' + e.name + ': bytes were lost and reading resumed. Query status before continuing.';
+              refresh();
+            },
+          });
+        } catch (e) {
+          message = 'Control read: ' + e.message;
+        } finally {
+          controlReader = null;
+          if (session.connected) session.detach('Control read ended');
+          refresh();
+        }
+      })();
+      message = 'Control connected at 115200. No command sent. Choose Standard data port and query status.';
+    } catch (e) {
+      if (opened && !controlPort) await candidate.close().catch(() => {});
+      message = 'Control connection: ' + e.message;
+    } finally {
+      choosing = false;
+      refresh();
+    }
+  }
+  async function connectData() {
+    if (choosing || dataPort || closingData) return;
+    choosing = true;
+    refresh();
+    let candidate = null,
+      opened = false;
+    try {
+      candidate = await navigator.serial.requestPort();
+      if (candidate === controlPort)
+        throw Error('Choose the separate Standard data interface, not the open control interface');
+      await candidate.open({
+        baudRate: 921600,
+        dataBits: 8,
+        stopBits: 1,
+        parity: 'none',
+        flowControl: 'none',
+        bufferSize: 1 << 20,
+      });
+      opened = true;
+      dataPort = candidate;
+      session.attachData();
+      dataTask = (async () => {
+        try {
+          await SerialRead.pump({
+            port: candidate,
+            active: () => dataPort === candidate,
+            onData: value => session.ingestData(value),
+            onReader: r => {
+              dataReader = r;
+            },
+            onRecoverable: e => {
+              if (session.dataConnected) session.detachData('Data bytes lost: ' + e.name);
+              session.attachData();
+              message =
+                'Data read ' +
+                e.name +
+                ': bytes were lost and reading resumed; any active pairing was invalidated. Verify port pairing again.';
+              refresh();
+            },
+          });
+        } catch (e) {
+          message = 'Data read: ' + e.message;
+        } finally {
+          dataReader = null;
+          if (session.dataConnected) session.detachData('Data read ended');
+          refresh();
+        }
+      })();
+      message = 'Data connected at 921600. No command or RF start sent. Configure, then verify port pairing.';
+    } catch (e) {
+      if (opened && !dataPort) await candidate.close().catch(() => {});
+      message = 'Data connection: ' + e.message;
+    } finally {
+      choosing = false;
+      refresh();
+    }
+  }
+  async function disconnectData() {
+    if (!dataPort || closingData) return;
+    closingData = true;
+    const old = dataPort;
+    dataPort = null;
+    session.detachData('Data port disconnected');
+    if (dataReader) await dataReader.cancel().catch(() => {});
+    if (dataTask) await dataTask;
+    await old.close().catch(e => {
+      message = 'Data close: ' + e.message;
+    });
+    closingData = false;
+    refresh();
+  }
+  async function disconnectControl() {
+    if (!controlPort || closingControl) return;
+    closingControl = true;
+    refresh();
+    if (session.busy || operation) {
+      session.cancel();
+      if (operation) await operation.catch(() => {});
+    }
+    if (session.connected && (session.unconfirmed || ['running', 'starting', 'stopping'].includes(session.state))) {
+      try {
+        await session.stop();
+      } catch (e) {
+        message = 'Disconnect: ' + e.message;
+        session.uncertain(true);
+      }
+    }
+    const old = controlPort;
+    controlPort = null;
+    if (controlReader) await controlReader.cancel().catch(() => {});
+    if (controlTask) await controlTask;
+    if (writer) {
+      writer.releaseLock();
+      writer = null;
+    }
+    await old.close().catch(e => {
+      message = 'Control close: ' + e.message;
+    });
+    if (session.connected) session.detach('Control disconnected');
+    closingControl = false;
+    refresh();
+  }
+  function save(which) {
+    let data, type;
+    if (which === 'control') {
+      data = session.rawBytes();
+      type = 'application/x-ndjson';
+    } else if (which === 'data') {
+      data = session.dataRawBytes();
+      type = 'application/x-ndjson';
+    } else {
+      data = JSON.stringify(
+        {
+          ...session.snapshot(),
+          guided_session: typeof SessionGuide === 'undefined' ? null : SessionGuide.snapshot(),
+          derived_candidate_tracking: {
+            schema: 'original-candidate-tracks-v1',
+            experimental: true,
+            algorithm: 'conservative-nearest-prediction-v1',
+            stable_human_identity: false,
+            people_count_inference: false,
+            activity_inference: false,
+            coordinate_space: 'sensor-exploratory',
+            frames: derivedFrames,
+            dropped_derived_frames: derivedDropped,
+          },
+        },
+        null,
+        2,
+      );
+      type = 'application/json';
+    }
+    const blob = new Blob([data], { type }),
+      url = URL.createObjectURL(blob),
+      a = document.createElement('a');
+    a.href = url;
+    a.download =
+      (session.monitoring ? 'original-radar-monitor-window-' : 'original-radar-v2-') +
+      new Date().toISOString().replace(/[:.]/g, '-') +
+      (which ? '.' + which + '.jsonl' : '.capture.json');
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    message = session.monitoring
+      ? 'Diagnostic-window download requested; earlier bytes have been evicted. Saving does not stop RF.'
+      : 'Local download requested. Separate UART bytes remain unchanged. Saving does not stop RF.';
+    refresh();
+  }
+  selector.onchange = () => {
+    const next = selector.value;
+    if (next === selected) return;
+    if (controlPort || dataPort || choosing || closingControl || closingData || session.busy) {
+      selector.value = selected;
+      message = 'Disconnect both ports before changing protocol.';
+      refresh();
+      return;
+    }
+    const event = new CustomEvent('radar-transport-change', { detail: { protocol: next }, cancelable: true });
+    window.dispatchEvent(event);
+    if (event.defaultPrevented) {
+      selector.value = selected;
+      return;
+    }
+    selected = next;
+    $('tiDashboard').hidden = next === 'original';
+    $('originalPanel').hidden = next !== 'original';
+    $('modeBadge').textContent = next === 'original' ? 'ORIGINAL DUAL UART · MANUAL CONTROL' : 'OFFLINE';
+  };
+  $('originalConnect').onclick = connectControl;
+  $('originalDataConnect').onclick = connectData;
+  $('originalDataDisconnect').onclick = disconnectData;
+  $('originalDisconnect').onclick = disconnectControl;
+  $('originalStatus').onclick = () => run(() => session.status());
+  $('originalConfigure').onclick = () => run(() => session.configure(durationInput(), mountInput()));
+  $('originalPair').onclick = () =>
+    run(() => {
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      return session.pair(Array.from(bytes, b => b.toString(16).padStart(2, '0')).join(''));
+    });
+  function editDraft() {
+    if (session.busy || session.seconds != null || session.pairing || session.activeStream)
+      session.invalidateConfiguration();
+  }
+  $('originalRunMode').onchange = () => {
+    editDraft();
+    message = 'Run mode edited. Query status, Configure and pair again.';
+    refresh();
+  };
+  $('originalSeconds').oninput = () => {
+    editDraft();
+    message = 'Duration edited. If previously configured, query status, Configure and pair again.';
+    refresh();
+  };
+  for (const id of ['originalHeight', 'originalTilt', 'originalOffset', 'originalMountConfirm'])
+    $(id).oninput = () => {
+      editDraft();
+      message =
+        'Mount values updated. Confirm the measurements, then Configure. If previously configured, query status first.';
+      refresh();
+    };
+  $('originalStart').onclick = () =>
+    run(() => {
+      if (JSON.stringify(mountInput()) !== JSON.stringify(session.mountConfiguration)) {
+        session.invalidateConfiguration();
+        throw Error('Mount changed. Configure and pair again.');
+      }
+      if (durationInput() !== session.seconds) {
+        session.invalidateConfiguration();
+        throw Error('Duration changed. Configure and pair again.');
+      }
+      emergencyStopping = false;
+      return session.start();
+    });
+  $('originalStop').onclick = () => run(() => session.stop());
+  $('originalCancel').onclick = () => {
+    session.cancel();
+    message = 'Cancelled. Already sent commands may execute. Use Stop/status.';
+    refresh();
+  };
+  $('originalSave').onclick = () => save();
+  $('originalSaveRaw').onclick = () => save('control');
+  $('originalSaveDataRaw').onclick = () => save('data');
+  $('originalActivity').onclick = () => run(() => session.annotate('activity', $('originalLabel').value));
+  $('originalTransitionStart').onclick = () =>
+    run(() => session.annotate('transition_start', $('originalTransition').value));
+  $('originalTransitionEnd').onclick = () =>
+    run(() => session.annotate('transition_end', session.openTransition?.label || $('originalTransition').value));
+  $('originalRange').onchange = renderTracking;
+  $('originalZoomIn').onclick = () => scene.zoom(1.25);
+  $('originalZoomOut').onclick = () => scene.zoom(1 / 1.25);
+  $('originalViewReset').onclick = () => scene.preset('reset');
+  window.addEventListener('resize', renderTracking);
+  setInterval(() => {
+    session.checkDataFreshness();
+    session.heartbeat();
+    tracker.expire(Date.now());
+    renderTracking();
+  }, 250);
+  window.addEventListener('beforeunload', event => {
+    if (session.unconfirmed || session.bytes || session.dataBytes) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  });
+  if ('serial' in navigator)
+    navigator.serial.addEventListener('disconnect', event => {
+      if (event.target === dataPort) disconnectData();
+      if (event.target === controlPort) {
+        message = 'Control unplugged; stop cannot be confirmed.';
+        session.detach('Control unplugged');
+        disconnectControl();
+      }
+    });
+  if (typeof SessionGuide !== 'undefined') SessionGuide.bind(session);
+  if (globalThis.CameraCapture) {
+    session.onEvent = event => CameraCapture.radarEvent(event);
+    CameraCapture.bind(session, async () => {
+      if (session.busy) {
+        session.cancel();
+        if (operation) await operation.catch(() => {});
+      }
+      await session.stop();
+    });
+  }
+  refresh();
 })();

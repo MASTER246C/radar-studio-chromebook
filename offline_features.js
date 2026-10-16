@@ -1,57 +1,556 @@
 /* Original local-only temporal feature extraction. Does not modify source captures. */
-(function(root,factory){const api=factory(typeof module==='object'&&module.exports?require('./motion_core.js'):root.MotionCore);if(typeof module==='object'&&module.exports)module.exports=api;else root.OfflineFeatures=api;})(typeof globalThis!=='undefined'?globalThis:this,function(Core){
-'use strict';
-const WINDOW_MS=3000,MAX_INPUT_BYTES=96*1024*1024,MAX_RECORDS=20000;
-const EVENT_NAMES=['startHeight','endHeight','heightChange','heightSlope','startSpeed','endSpeed','speedChange','peakSpeed','horizontalTravelSpeed'];
-const schemas=()=>({activity:{names:Core.FEATURE_NAMES.slice(),windowMs:WINDOW_MS},event:{names:EVENT_NAMES.slice(),windowMs:WINDOW_MS}});
-const clone=x=>JSON.parse(JSON.stringify(x)),mean=a=>a.reduce((s,x)=>s+x,0)/a.length;
-const human=()=>({source:'human_observed',status:'human_labeled'}),unlabeled=()=>({source:'unlabeled',status:'unreviewed'});
-const eventLabel=x=>({sit_to_stand:'stand_up',stand_up:'stand_up',stand_to_sit:'sit_down',sit_down:'sit_down',movement_onset:'motion_onset',motion_onset:'motion_onset',none:'none'})[x]||null;
-function canonicalText(value){const sorted=x=>Array.isArray(x)?x.map(sorted):x&&typeof x==='object'?Object.fromEntries(Object.keys(x).sort().map(k=>[k,sorted(x[k])])):x;return JSON.stringify(sorted(value));}
-async function sha256(value){const text=typeof value==='string'?value:JSON.stringify(value);if(typeof module==='object'&&module.exports)return require('node:crypto').createHash('sha256').update(text).digest('hex');const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));return [...new Uint8Array(bytes)].map(x=>x.toString(16).padStart(2,'0')).join('');}
-function checkedHash(h){if(typeof h!=='string'||!/^[a-f0-9]{64}$/i.test(h))throw Error('A SHA-256 of the original input file is required.');return h.toLowerCase();}
-function boundInput(input){if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Input must be a JSON object.');if(JSON.stringify(input).length>MAX_INPUT_BYTES)throw Error('Input exceeds 96 MiB text limit.');}
-function result(){return{schema:'radar-offline-features',version:1,license_status:'pending; derived from private capture sources',featureSchemas:schemas(),sources:[],records:[],notes:['Derived only: source bytes and labels remain unchanged.','Host-arrival windows, not synchronized sensor time.','No pretrained model or real-world accuracy claim.','Labels and imported provenance are human assertions, not authenticated facts.']};}
-function activityVector(samples){const values=key=>samples.map(s=>s[key]),std=a=>{const m=mean(a);return Math.sqrt(mean(a.map(x=>(x-m)**2)));};let path=0;for(let i=1;i<samples.length;i++)path+=Math.hypot(samples[i].x-samples[i-1].x,samples[i].y-samples[i-1].y);const seconds=(samples.at(-1).at-samples[0].at)/1000;
-return[mean(values('speed')),std(values('speed')),path/seconds,mean(values('z')),std(values('z')),mean(values('h90')),mean(values('hSpan')),mean(values('dAbs')),Math.sqrt(mean(values('dSquared'))),mean(values('pointCount')),mean(values('spread'))];}
-function eventVector(samples){const n=Math.max(1,Math.floor(samples.length/3)),first=samples.slice(0,n),last=samples.slice(-n),z0=mean(first.map(s=>s.z)),z1=mean(last.map(s=>s.z)),v0=mean(first.map(s=>s.speed)),v1=mean(last.map(s=>s.speed));let path=0;for(let i=1;i<samples.length;i++)path+=Math.hypot(samples[i].x-samples[i-1].x,samples[i].y-samples[i-1].y);const seconds=(samples.at(-1).at-samples[0].at)/1000;return[z0,z1,z1-z0,(z1-z0)/seconds,v0,v1,v1-v0,Math.max(...samples.map(s=>s.speed)),path/seconds];}
-async function fromFeatureDataset(input,options){const verified=new Core.Engine();verified.importDataset(JSON.stringify(input));const normalized=JSON.parse(verified.exportDataset()),out=result(),groups=new Map();
-for(const session of normalized.sessions){if(!groups.has(session.timeline))groups.set(session.timeline,[]);groups.get(session.timeline).push(session);}
-for(const sessions of groups.values()){const ids=new Set(sessions.map(s=>s.id)),rows=normalized.records.filter(r=>ids.has(r.sessionId)).sort((a,b)=>a.start-b.start),physical=rows.map(r=>{const s=sessions.find(s=>s.id===r.sessionId);return{start:r.start,end:r.end,features:r.vector,profile:s.profile,configSignature:s.signature};}),hash=await sha256(canonicalText(physical)),captureId='capture:'+hash;
-out.sources.push({id:captureId,sha256:hash,fileSha256:options.sourceHash,name:options.sourceName||'feature dataset',format:'radar-motion-dataset',timeBasis:'unix_epoch_arrival',lineageId:'motion-timeline:'+sessions[0].timeline,originalTimeline:sessions[0].timeline});
-for(const [i,r]of rows.entries()){const s=sessions.find(s=>s.id===r.sessionId);out.records.push({id:captureId+':activity:'+i,captureId,task:'activity',start:r.start,end:r.end,features:r.vector.slice(),label:r.label,annotation:human(),quality:{ok:true,reason:'Admitted original feature window; rejected acquisition windows are not present in this feature-only source.'},configSignature:s.signature,profile:s.profile,originalSessionId:s.id});}}
-out.notes.push('Feature-only input contains admitted activity windows only; event features and acquisition rejection coverage require a complete UART capture.');return out;}
-function rawEvents(input){if(!Array.isArray(input.events)||input.events.length>10000)throw Error('Invalid or oversized capture event list.');return input.events.map((e,i)=>{if(!e||!Number.isFinite(e.arrival_ms)||typeof e.type!=='string'||!e.data||typeof e.data!=='object')throw Error('Invalid capture event.');return{...e,_i:i};}).sort((a,b)=>a.arrival_ms-b.arrival_ms||a._i-b._i);}
-function humanEvent(data){const a=data.annotation||data,source=a.source,status=a.status;return(source===undefined||['human_observed','human_review'].includes(source))&&(status===undefined||['human_labeled','human_reviewed','unreviewed_annotation'].includes(status));}
-function eventIntervals(events){const intervals=[];let active=null;
-// Incomplete annotations still cover time: dropping them can turn a window
-// containing several observed transitions into a false single-event label.
-function close(end,complete=false){if(active&&end>active.start)intervals.push({...active,end,complete});active=null;}
-for(const e of events){if(e.type==='annotation-event-start'){close(e.arrival_ms);const label=humanEvent(e.data)?eventLabel(e.data.type):null;active=label?{label,start:e.arrival_ms}:null;}else if(e.type==='annotation-event-end'){const label=eventLabel(e.data.type),start=e.data.start_ms,end=e.data.end_ms;const complete=!!active&&humanEvent(e.data)&&label===active.label&&start===active.start&&end===e.arrival_ms&&e.data.complete===true&&end>start;close(e.arrival_ms,complete);}else if(e.type==='source-reset')close(e.arrival_ms);}close(Infinity);return intervals;}
-async function fromCapture(input,options){if(input.schema_version!==1||!Array.isArray(input.decoded_frames)||input.decoded_frames.length>100000)throw Error('Unsupported or oversized complete capture.');const frames=input.decoded_frames,events=rawEvents(input),intervals=eventIntervals(events),out=result();if(!frames.length)throw Error('Capture has no decoded frames. Original JSON Lines firmware is not a TI decoded-frame capture.');
-const hash=await sha256(canonicalText(frames)),captureId='capture:'+hash;out.sources.push({id:captureId,sha256:hash,fileSha256:options.sourceHash,name:options.sourceName||input.session_id||'capture',format:'radar-studio-local-capture',timeBasis:input.clock?.source==='Date.now'||input.clock?.origin==='Unix epoch'?'unix_epoch_arrival':'host_arrival_unspecified',lineageId:typeof input.session_id==='string'?'uart-session:'+input.session_id:null,losses:clone(input.status?.losses||input.summary?.losses||input.capture?.losses||input.losses||{}),clock:clone(input.clock||{}),captureStatus:clone(input.status||{})});
-let config=clone(input.metadata?.calibration||{}),label=null,session=null,eventIndex=0,bucket=null,lastAt=null,lastFrame=null,engine=null,signature=null,previousConfig=null;
-const base=frames[0].arrival_ms;if(!Number.isFinite(base))throw Error('Invalid first arrival timestamp.');let bucketIndex=0;
-function applyEvent(e){const d=e.data;if(e.type==='initial-label'){label=humanEvent(d)?d.label??null:null;session=d.currentSession||null;}else if(e.type==='observed-label')label=humanEvent(d)?d.label??null:null;else if(e.type==='label-session-start'){session=d.session||null;label=null;}else if(['label-session-stop','dataset-clear','dataset-import','source-reset','configuration-transmission-start'].includes(e.type)){label=null;session=null;}if(d.config&&['calibration-change','dataset-import'].includes(e.type))config=clone(d.config);if(e.type==='target-change'){config.targetId=d.targetId===''?null:Number(d.targetId);label=null;session=null;}if(e.type==='gate-change'){config.radius=d.radius;label=null;session=null;}if(e.type==='calibration-change'){label=null;session=null;}if(e.type==='configuration-transmission-start')config.calibrated=false;if(e.type==='annotation-event-start')label=null;}
-function newBucket(index){return {index,start:base+index*WINDOW_MS,end:base+(index+1)*WINDOW_MS,samples:[],issues:new Set(),labels:new Set(),signatures:new Set(),profiles:new Set(),lastArrival:null};}
-function finish(b,tail=false){if(!b)return;if(tail)b.issues.add('Incomplete final window; no sample at or after its end.');if(b.samples.length<Core.MIN_FRAMES)b.issues.add('Fewer than 12 valid frames in the 3-second window.');if(b.lastArrival===null||b.lastArrival<b.end-Core.MAX_GAP_MS)b.issues.add('Insufficient temporal coverage at the window end.');if(b.signatures.size!==1||b.profiles.size!==1)b.issues.add('Coordinate/configuration/profile changed inside the window.');const ok=b.issues.size===0,common={captureId,start:b.start,end:b.end,quality:{ok,reason:ok?'Complete clean 3-second causal window.':[...b.issues].join(' ')},configSignature:[...b.signatures][0]||'unverified',profile:[...b.profiles][0]||'unknown',frameCount:b.samples.length,latencyMs:WINDOW_MS};
-const stable=b.labels.size===1?[...b.labels][0]:null,activityLabel=Core.LABELS.includes(stable)?stable:null;
-out.records.push({...common,id:captureId+':activity:'+b.index,task:'activity',features:ok?activityVector(b.samples):null,label:activityLabel,annotation:activityLabel?human():unlabeled()});
-// Fixed causal windows must fully contain one complete human-marked transition;
-// intervals spanning a boundary are left unlabeled for review, never guessed.
-const touching=intervals.filter(i=>i.end>b.start&&i.start<b.end),contained=touching.filter(i=>i.complete&&i.start>=b.start&&i.end<=b.end),event=touching.length===1&&contained.length===1?contained[0].label:null;
-out.records.push({...common,id:captureId+':event:'+b.index,task:'event',features:ok?eventVector(b.samples):null,label:event,annotation:event?human():unlabeled(),annotationNote:event?'One complete human-click interval contained in this causal window.':'No unambiguous complete event interval. Review explicitly; stable activity does not automatically imply event none.'});}
-function drain(until,inclusive,b){while(eventIndex<events.length&&(events[eventIndex].arrival_ms<until||(inclusive&&events[eventIndex].arrival_ms===until))){const event=events[eventIndex++];if(event.arrival_ms>b.start&&event.arrival_ms<b.end&&['observed-label','initial-label','label-session-start','label-session-stop','annotation-event-start','annotation-event-end','dataset-clear','dataset-import','source-reset','configuration-transmission-start'].includes(event.type))b.labels.add(null);if(event.arrival_ms>b.start&&event.arrival_ms<b.end&&['calibration-change','target-change','gate-change','configuration-transmission-start','dataset-import','source-reset'].includes(event.type))b.issues.add('Configuration/source boundary inside this window.');applyEvent(event);}}
-for(const entry of frames){if(!entry||!Number.isFinite(entry.arrival_ms)||!entry.frame||typeof entry.frame!=='object')throw Error('Invalid decoded frame record.');const at=entry.arrival_ms,index=Math.floor((at-base)/WINDOW_MS);if(index<0||index>MAX_RECORDS/2)throw Error('Capture time span is out of bounds or clock regressed before capture origin.');
-if(!bucket)bucket=newBucket(index);if(index>bucket.index){drain(bucket.end,false,bucket);finish(bucket);for(let j=bucket.index+1;j<index;j++){const empty=newBucket(j);empty.issues.add('No received decoded frames in this interval.');drain(empty.end,false,empty);finish(empty);}bucket=newBucket(index);}else if(index<bucket.index){bucket.issues.add('Arrival clock regressed across window boundaries.');continue;}
-drain(at,true,bucket);
-let cfgKey;try{cfgKey=JSON.stringify(new Core.Engine(config).config);}catch(e){cfgKey='invalid';bucket.issues.add('Invalid calibration: '+e.message);}if(cfgKey!==previousConfig){try{engine=new Core.Engine(config);signature=Core.configSignature(engine.config);}catch(e){engine=null;signature='unverified';}previousConfig=cfgKey;}
-const profile=entry.frame.profile||input.metadata?.profile||'unknown';bucket.signatures.add(signature||'unverified');bucket.profiles.add(profile);bucket.labels.add(label);bucket.lastArrival=at;
-if(lastAt!==null&&(at<=lastAt||at-lastAt>Core.MAX_GAP_MS))bucket.issues.add('Duplicate, backwards or >500 ms arrival gap.');if(lastFrame!==null&&((entry.frame.frameNumber-lastFrame)>>>0)!==1)bucket.issues.add('Frame sequence discontinuity.');lastAt=at;lastFrame=entry.frame.frameNumber;
-if(!engine){bucket.issues.add('Missing verified calibration.');continue;}const status=engine.ingest(entry.frame,at,'live',profile);if(!status.quality.ok){bucket.issues.add(status.quality.reason);continue;}
-try{bucket.samples.push(engine._sample(entry.frame,at));}catch(e){bucket.issues.add(e.message);}if(out.records.length>MAX_RECORDS)throw Error('Too many derived windows.');}
-if(bucket)drain(bucket.end,false,bucket);finish(bucket,true);out.notes.push('Events use fixed causal 3-second windows and human interval annotations. Boundary-spanning or absent events stay unlabeled. Explicit human review supplies none negatives.','Invalid windows remain records with features:null and reasons; they cannot train a model.');return out;}
-async function extract(input,options={}){boundInput(input);options={...options,sourceHash:checkedHash(options.sourceHash)};if(input.schema==='radar-motion-dataset'&&input.version===1)return fromFeatureDataset(input,options);if(input.schema==='radar-studio-local-capture')return fromCapture(input,options);throw Error('Unsupported input. Use a v0.5 feature dataset or complete TI people/vitals UART capture; original firmware JSON Lines need a dedicated verified adapter.');}
-function merge(datasets){const out=result(),sources=new Map(),records=new Map(),lineages=new Map();for(const d of datasets){if(d.schema!=='radar-offline-features'||d.version!==1||JSON.stringify(d.featureSchemas)!==JSON.stringify(out.featureSchemas))throw Error('Incompatible offline feature schemas.');for(const source of d.sources){if(source.lineageId){if(lineages.has(source.lineageId)&&lineages.get(source.lineageId)!==source.sha256)throw Error('Incremental snapshots of the same original capture are not independent. Use one complete export per capture.');lineages.set(source.lineageId,source.sha256);}if(sources.has(source.id)&&sources.get(source.id).sha256!==source.sha256)throw Error('Capture identity conflict.');sources.set(source.id,clone(source));}for(const r of d.records){if(records.has(r.id)){if(JSON.stringify(records.get(r.id))!==JSON.stringify(r))throw Error('Duplicate physical capture has conflicting labels or records; use a review overlay instead.');continue;}records.set(r.id,clone(r));}if(records.size>MAX_RECORDS)throw Error('Merged dataset exceeds 20,000 records.');}out.sources=[...sources.values()];out.records=[...records.values()];const activity=out.records.filter(r=>r.task==='activity').sort((a,b)=>a.start-b.start);for(let i=0;i<activity.length;i++)for(let j=i+1;j<activity.length&&activity[j].start<activity[i].end;j++){const a=activity[i],b=activity[j];if(a.captureId!==b.captureId&&sources.get(a.captureId)?.timeBasis==='unix_epoch_arrival'&&sources.get(b.captureId)?.timeBasis==='unix_epoch_arrival'&&a.profile===b.profile&&a.configSignature===b.configSignature)throw Error('Overlapping host-time activity windows across capture identities are not independent; do not combine raw and feature exports of the same take.');}return out;}
-return{extract,merge,sha256,MAX_INPUT_BYTES,MAX_RECORDS,EVENT_NAMES,WINDOW_MS};
+(function (root, factory) {
+  const api = factory(typeof module === 'object' && module.exports ? require('./motion_core.js') : root.MotionCore);
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.OfflineFeatures = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (Core) {
+  'use strict';
+  const WINDOW_MS = 3000,
+    MAX_INPUT_BYTES = 96 * 1024 * 1024,
+    MAX_RECORDS = 20000;
+  const EVENT_NAMES = [
+    'startHeight',
+    'endHeight',
+    'heightChange',
+    'heightSlope',
+    'startSpeed',
+    'endSpeed',
+    'speedChange',
+    'peakSpeed',
+    'horizontalTravelSpeed',
+  ];
+  const schemas = () => ({
+    activity: { names: Core.FEATURE_NAMES.slice(), windowMs: WINDOW_MS },
+    event: { names: EVENT_NAMES.slice(), windowMs: WINDOW_MS },
+  });
+  const clone = x => JSON.parse(JSON.stringify(x)),
+    mean = a => a.reduce((s, x) => s + x, 0) / a.length;
+  const human = () => ({ source: 'human_observed', status: 'human_labeled' }),
+    unlabeled = () => ({ source: 'unlabeled', status: 'unreviewed' });
+  const eventLabel = x =>
+    ({
+      sit_to_stand: 'stand_up',
+      stand_up: 'stand_up',
+      stand_to_sit: 'sit_down',
+      sit_down: 'sit_down',
+      movement_onset: 'motion_onset',
+      motion_onset: 'motion_onset',
+      none: 'none',
+    })[x] || null;
+  function canonicalText(value) {
+    const sorted = x =>
+      Array.isArray(x)
+        ? x.map(sorted)
+        : x && typeof x === 'object'
+          ? Object.fromEntries(
+              Object.keys(x)
+                .sort()
+                .map(k => [k, sorted(x[k])]),
+            )
+          : x;
+    return JSON.stringify(sorted(value));
+  }
+  async function sha256(value) {
+    const text = typeof value === 'string' ? value : JSON.stringify(value);
+    if (typeof module === 'object' && module.exports)
+      return require('node:crypto').createHash('sha256').update(text).digest('hex');
+    const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return [...new Uint8Array(bytes)].map(x => x.toString(16).padStart(2, '0')).join('');
+  }
+  function checkedHash(h) {
+    if (typeof h !== 'string' || !/^[a-f0-9]{64}$/i.test(h))
+      throw Error('A SHA-256 of the original input file is required.');
+    return h.toLowerCase();
+  }
+  function boundInput(input) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) throw Error('Input must be a JSON object.');
+    if (JSON.stringify(input).length > MAX_INPUT_BYTES) throw Error('Input exceeds 96 MiB text limit.');
+  }
+  function result() {
+    return {
+      schema: 'radar-offline-features',
+      version: 1,
+      license_status: 'pending; derived from private capture sources',
+      featureSchemas: schemas(),
+      sources: [],
+      records: [],
+      notes: [
+        'Derived only: source bytes and labels remain unchanged.',
+        'Host-arrival windows, not synchronized sensor time.',
+        'No pretrained model or real-world accuracy claim.',
+        'Labels and imported provenance are human assertions, not authenticated facts.',
+      ],
+    };
+  }
+  function activityVector(samples) {
+    const values = key => samples.map(s => s[key]),
+      std = a => {
+        const m = mean(a);
+        return Math.sqrt(mean(a.map(x => (x - m) ** 2)));
+      };
+    let path = 0;
+    for (let i = 1; i < samples.length; i++)
+      path += Math.hypot(samples[i].x - samples[i - 1].x, samples[i].y - samples[i - 1].y);
+    const seconds = (samples.at(-1).at - samples[0].at) / 1000;
+    return [
+      mean(values('speed')),
+      std(values('speed')),
+      path / seconds,
+      mean(values('z')),
+      std(values('z')),
+      mean(values('h90')),
+      mean(values('hSpan')),
+      mean(values('dAbs')),
+      Math.sqrt(mean(values('dSquared'))),
+      mean(values('pointCount')),
+      mean(values('spread')),
+    ];
+  }
+  function eventVector(samples) {
+    const n = Math.max(1, Math.floor(samples.length / 3)),
+      first = samples.slice(0, n),
+      last = samples.slice(-n),
+      z0 = mean(first.map(s => s.z)),
+      z1 = mean(last.map(s => s.z)),
+      v0 = mean(first.map(s => s.speed)),
+      v1 = mean(last.map(s => s.speed));
+    let path = 0;
+    for (let i = 1; i < samples.length; i++)
+      path += Math.hypot(samples[i].x - samples[i - 1].x, samples[i].y - samples[i - 1].y);
+    const seconds = (samples.at(-1).at - samples[0].at) / 1000;
+    return [
+      z0,
+      z1,
+      z1 - z0,
+      (z1 - z0) / seconds,
+      v0,
+      v1,
+      v1 - v0,
+      Math.max(...samples.map(s => s.speed)),
+      path / seconds,
+    ];
+  }
+  async function fromFeatureDataset(input, options) {
+    const verified = new Core.Engine();
+    verified.importDataset(JSON.stringify(input));
+    const normalized = JSON.parse(verified.exportDataset()),
+      out = result(),
+      groups = new Map();
+    for (const session of normalized.sessions) {
+      if (!groups.has(session.timeline)) groups.set(session.timeline, []);
+      groups.get(session.timeline).push(session);
+    }
+    for (const sessions of groups.values()) {
+      const ids = new Set(sessions.map(s => s.id)),
+        rows = normalized.records.filter(r => ids.has(r.sessionId)).sort((a, b) => a.start - b.start),
+        physical = rows.map(r => {
+          const s = sessions.find(s => s.id === r.sessionId);
+          return { start: r.start, end: r.end, features: r.vector, profile: s.profile, configSignature: s.signature };
+        }),
+        hash = await sha256(canonicalText(physical)),
+        captureId = 'capture:' + hash;
+      out.sources.push({
+        id: captureId,
+        sha256: hash,
+        fileSha256: options.sourceHash,
+        name: options.sourceName || 'feature dataset',
+        format: 'radar-motion-dataset',
+        timeBasis: 'unix_epoch_arrival',
+        lineageId: 'motion-timeline:' + sessions[0].timeline,
+        originalTimeline: sessions[0].timeline,
+      });
+      for (const [i, r] of rows.entries()) {
+        const s = sessions.find(s => s.id === r.sessionId);
+        out.records.push({
+          id: captureId + ':activity:' + i,
+          captureId,
+          task: 'activity',
+          start: r.start,
+          end: r.end,
+          features: r.vector.slice(),
+          label: r.label,
+          annotation: human(),
+          quality: {
+            ok: true,
+            reason:
+              'Admitted original feature window; rejected acquisition windows are not present in this feature-only source.',
+          },
+          configSignature: s.signature,
+          profile: s.profile,
+          originalSessionId: s.id,
+        });
+      }
+    }
+    out.notes.push(
+      'Feature-only input contains admitted activity windows only; event features and acquisition rejection coverage require a complete UART capture.',
+    );
+    return out;
+  }
+  function rawEvents(input) {
+    if (!Array.isArray(input.events) || input.events.length > 10000)
+      throw Error('Invalid or oversized capture event list.');
+    return input.events
+      .map((e, i) => {
+        if (!e || !Number.isFinite(e.arrival_ms) || typeof e.type !== 'string' || !e.data || typeof e.data !== 'object')
+          throw Error('Invalid capture event.');
+        return { ...e, _i: i };
+      })
+      .sort((a, b) => a.arrival_ms - b.arrival_ms || a._i - b._i);
+  }
+  function humanEvent(data) {
+    const a = data.annotation || data,
+      source = a.source,
+      status = a.status;
+    return (
+      (source === undefined || ['human_observed', 'human_review'].includes(source)) &&
+      (status === undefined || ['human_labeled', 'human_reviewed', 'unreviewed_annotation'].includes(status))
+    );
+  }
+  function eventIntervals(events) {
+    const intervals = [];
+    let active = null;
+    // Incomplete annotations still cover time: dropping them can turn a window
+    // containing several observed transitions into a false single-event label.
+    function close(end, complete = false) {
+      if (active && end > active.start) intervals.push({ ...active, end, complete });
+      active = null;
+    }
+    for (const e of events) {
+      if (e.type === 'annotation-event-start') {
+        close(e.arrival_ms);
+        const label = humanEvent(e.data) ? eventLabel(e.data.type) : null;
+        active = label ? { label, start: e.arrival_ms } : null;
+      } else if (e.type === 'annotation-event-end') {
+        const label = eventLabel(e.data.type),
+          start = e.data.start_ms,
+          end = e.data.end_ms;
+        const complete =
+          !!active &&
+          humanEvent(e.data) &&
+          label === active.label &&
+          start === active.start &&
+          end === e.arrival_ms &&
+          e.data.complete === true &&
+          end > start;
+        close(e.arrival_ms, complete);
+      } else if (e.type === 'source-reset') close(e.arrival_ms);
+    }
+    close(Infinity);
+    return intervals;
+  }
+  async function fromCapture(input, options) {
+    if (input.schema_version !== 1 || !Array.isArray(input.decoded_frames) || input.decoded_frames.length > 100000)
+      throw Error('Unsupported or oversized complete capture.');
+    const frames = input.decoded_frames,
+      events = rawEvents(input),
+      intervals = eventIntervals(events),
+      out = result();
+    if (!frames.length)
+      throw Error('Capture has no decoded frames. Original JSON Lines firmware is not a TI decoded-frame capture.');
+    const hash = await sha256(canonicalText(frames)),
+      captureId = 'capture:' + hash;
+    out.sources.push({
+      id: captureId,
+      sha256: hash,
+      fileSha256: options.sourceHash,
+      name: options.sourceName || input.session_id || 'capture',
+      format: 'radar-studio-local-capture',
+      timeBasis:
+        input.clock?.source === 'Date.now' || input.clock?.origin === 'Unix epoch'
+          ? 'unix_epoch_arrival'
+          : 'host_arrival_unspecified',
+      lineageId: typeof input.session_id === 'string' ? 'uart-session:' + input.session_id : null,
+      losses: clone(input.status?.losses || input.summary?.losses || input.capture?.losses || input.losses || {}),
+      clock: clone(input.clock || {}),
+      captureStatus: clone(input.status || {}),
+    });
+    let config = clone(input.metadata?.calibration || {}),
+      label = null,
+      session = null,
+      eventIndex = 0,
+      bucket = null,
+      lastAt = null,
+      lastFrame = null,
+      engine = null,
+      signature = null,
+      previousConfig = null;
+    const base = frames[0].arrival_ms;
+    if (!Number.isFinite(base)) throw Error('Invalid first arrival timestamp.');
+    let bucketIndex = 0;
+    function applyEvent(e) {
+      const d = e.data;
+      if (e.type === 'initial-label') {
+        label = humanEvent(d) ? (d.label ?? null) : null;
+        session = d.currentSession || null;
+      } else if (e.type === 'observed-label') label = humanEvent(d) ? (d.label ?? null) : null;
+      else if (e.type === 'label-session-start') {
+        session = d.session || null;
+        label = null;
+      } else if (
+        [
+          'label-session-stop',
+          'dataset-clear',
+          'dataset-import',
+          'source-reset',
+          'configuration-transmission-start',
+        ].includes(e.type)
+      ) {
+        label = null;
+        session = null;
+      }
+      if (d.config && ['calibration-change', 'dataset-import'].includes(e.type)) config = clone(d.config);
+      if (e.type === 'target-change') {
+        config.targetId = d.targetId === '' ? null : Number(d.targetId);
+        label = null;
+        session = null;
+      }
+      if (e.type === 'gate-change') {
+        config.radius = d.radius;
+        label = null;
+        session = null;
+      }
+      if (e.type === 'calibration-change') {
+        label = null;
+        session = null;
+      }
+      if (e.type === 'configuration-transmission-start') config.calibrated = false;
+      if (e.type === 'annotation-event-start') label = null;
+    }
+    function newBucket(index) {
+      return {
+        index,
+        start: base + index * WINDOW_MS,
+        end: base + (index + 1) * WINDOW_MS,
+        samples: [],
+        issues: new Set(),
+        labels: new Set(),
+        signatures: new Set(),
+        profiles: new Set(),
+        lastArrival: null,
+      };
+    }
+    function finish(b, tail = false) {
+      if (!b) return;
+      if (tail) b.issues.add('Incomplete final window; no sample at or after its end.');
+      if (b.samples.length < Core.MIN_FRAMES) b.issues.add('Fewer than 12 valid frames in the 3-second window.');
+      if (b.lastArrival === null || b.lastArrival < b.end - Core.MAX_GAP_MS)
+        b.issues.add('Insufficient temporal coverage at the window end.');
+      if (b.signatures.size !== 1 || b.profiles.size !== 1)
+        b.issues.add('Coordinate/configuration/profile changed inside the window.');
+      const ok = b.issues.size === 0,
+        common = {
+          captureId,
+          start: b.start,
+          end: b.end,
+          quality: { ok, reason: ok ? 'Complete clean 3-second causal window.' : [...b.issues].join(' ') },
+          configSignature: [...b.signatures][0] || 'unverified',
+          profile: [...b.profiles][0] || 'unknown',
+          frameCount: b.samples.length,
+          latencyMs: WINDOW_MS,
+        };
+      const stable = b.labels.size === 1 ? [...b.labels][0] : null,
+        activityLabel = Core.LABELS.includes(stable) ? stable : null;
+      out.records.push({
+        ...common,
+        id: captureId + ':activity:' + b.index,
+        task: 'activity',
+        features: ok ? activityVector(b.samples) : null,
+        label: activityLabel,
+        annotation: activityLabel ? human() : unlabeled(),
+      });
+      // Fixed causal windows must fully contain one complete human-marked transition;
+      // intervals spanning a boundary are left unlabeled for review, never guessed.
+      const touching = intervals.filter(i => i.end > b.start && i.start < b.end),
+        contained = touching.filter(i => i.complete && i.start >= b.start && i.end <= b.end),
+        event = touching.length === 1 && contained.length === 1 ? contained[0].label : null;
+      out.records.push({
+        ...common,
+        id: captureId + ':event:' + b.index,
+        task: 'event',
+        features: ok ? eventVector(b.samples) : null,
+        label: event,
+        annotation: event ? human() : unlabeled(),
+        annotationNote: event
+          ? 'One complete human-click interval contained in this causal window.'
+          : 'No unambiguous complete event interval. Review explicitly; stable activity does not automatically imply event none.',
+      });
+    }
+    function drain(until, inclusive, b) {
+      while (
+        eventIndex < events.length &&
+        (events[eventIndex].arrival_ms < until || (inclusive && events[eventIndex].arrival_ms === until))
+      ) {
+        const event = events[eventIndex++];
+        if (
+          event.arrival_ms > b.start &&
+          event.arrival_ms < b.end &&
+          [
+            'observed-label',
+            'initial-label',
+            'label-session-start',
+            'label-session-stop',
+            'annotation-event-start',
+            'annotation-event-end',
+            'dataset-clear',
+            'dataset-import',
+            'source-reset',
+            'configuration-transmission-start',
+          ].includes(event.type)
+        )
+          b.labels.add(null);
+        if (
+          event.arrival_ms > b.start &&
+          event.arrival_ms < b.end &&
+          [
+            'calibration-change',
+            'target-change',
+            'gate-change',
+            'configuration-transmission-start',
+            'dataset-import',
+            'source-reset',
+          ].includes(event.type)
+        )
+          b.issues.add('Configuration/source boundary inside this window.');
+        applyEvent(event);
+      }
+    }
+    for (const entry of frames) {
+      if (!entry || !Number.isFinite(entry.arrival_ms) || !entry.frame || typeof entry.frame !== 'object')
+        throw Error('Invalid decoded frame record.');
+      const at = entry.arrival_ms,
+        index = Math.floor((at - base) / WINDOW_MS);
+      if (index < 0 || index > MAX_RECORDS / 2)
+        throw Error('Capture time span is out of bounds or clock regressed before capture origin.');
+      if (!bucket) bucket = newBucket(index);
+      if (index > bucket.index) {
+        drain(bucket.end, false, bucket);
+        finish(bucket);
+        for (let j = bucket.index + 1; j < index; j++) {
+          const empty = newBucket(j);
+          empty.issues.add('No received decoded frames in this interval.');
+          drain(empty.end, false, empty);
+          finish(empty);
+        }
+        bucket = newBucket(index);
+      } else if (index < bucket.index) {
+        bucket.issues.add('Arrival clock regressed across window boundaries.');
+        continue;
+      }
+      drain(at, true, bucket);
+      let cfgKey;
+      try {
+        cfgKey = JSON.stringify(new Core.Engine(config).config);
+      } catch (e) {
+        cfgKey = 'invalid';
+        bucket.issues.add('Invalid calibration: ' + e.message);
+      }
+      if (cfgKey !== previousConfig) {
+        try {
+          engine = new Core.Engine(config);
+          signature = Core.configSignature(engine.config);
+        } catch (e) {
+          engine = null;
+          signature = 'unverified';
+        }
+        previousConfig = cfgKey;
+      }
+      const profile = entry.frame.profile || input.metadata?.profile || 'unknown';
+      bucket.signatures.add(signature || 'unverified');
+      bucket.profiles.add(profile);
+      bucket.labels.add(label);
+      bucket.lastArrival = at;
+      if (lastAt !== null && (at <= lastAt || at - lastAt > Core.MAX_GAP_MS))
+        bucket.issues.add('Duplicate, backwards or >500 ms arrival gap.');
+      if (lastFrame !== null && (entry.frame.frameNumber - lastFrame) >>> 0 !== 1)
+        bucket.issues.add('Frame sequence discontinuity.');
+      lastAt = at;
+      lastFrame = entry.frame.frameNumber;
+      if (!engine) {
+        bucket.issues.add('Missing verified calibration.');
+        continue;
+      }
+      const status = engine.ingest(entry.frame, at, 'live', profile);
+      if (!status.quality.ok) {
+        bucket.issues.add(status.quality.reason);
+        continue;
+      }
+      try {
+        bucket.samples.push(engine._sample(entry.frame, at));
+      } catch (e) {
+        bucket.issues.add(e.message);
+      }
+      if (out.records.length > MAX_RECORDS) throw Error('Too many derived windows.');
+    }
+    if (bucket) drain(bucket.end, false, bucket);
+    finish(bucket, true);
+    out.notes.push(
+      'Events use fixed causal 3-second windows and human interval annotations. Boundary-spanning or absent events stay unlabeled. Explicit human review supplies none negatives.',
+      'Invalid windows remain records with features:null and reasons; they cannot train a model.',
+    );
+    return out;
+  }
+  async function extract(input, options = {}) {
+    boundInput(input);
+    options = { ...options, sourceHash: checkedHash(options.sourceHash) };
+    if (input.schema === 'radar-motion-dataset' && input.version === 1) return fromFeatureDataset(input, options);
+    if (input.schema === 'radar-studio-local-capture') return fromCapture(input, options);
+    throw Error(
+      'Unsupported input. Use a v0.5 feature dataset or complete TI people/vitals UART capture; original firmware JSON Lines need a dedicated verified adapter.',
+    );
+  }
+  function merge(datasets) {
+    const out = result(),
+      sources = new Map(),
+      records = new Map(),
+      lineages = new Map();
+    for (const d of datasets) {
+      if (
+        d.schema !== 'radar-offline-features' ||
+        d.version !== 1 ||
+        JSON.stringify(d.featureSchemas) !== JSON.stringify(out.featureSchemas)
+      )
+        throw Error('Incompatible offline feature schemas.');
+      for (const source of d.sources) {
+        if (source.lineageId) {
+          if (lineages.has(source.lineageId) && lineages.get(source.lineageId) !== source.sha256)
+            throw Error(
+              'Incremental snapshots of the same original capture are not independent. Use one complete export per capture.',
+            );
+          lineages.set(source.lineageId, source.sha256);
+        }
+        if (sources.has(source.id) && sources.get(source.id).sha256 !== source.sha256)
+          throw Error('Capture identity conflict.');
+        sources.set(source.id, clone(source));
+      }
+      for (const r of d.records) {
+        if (records.has(r.id)) {
+          if (JSON.stringify(records.get(r.id)) !== JSON.stringify(r))
+            throw Error('Duplicate physical capture has conflicting labels or records; use a review overlay instead.');
+          continue;
+        }
+        records.set(r.id, clone(r));
+      }
+      if (records.size > MAX_RECORDS) throw Error('Merged dataset exceeds 20,000 records.');
+    }
+    out.sources = [...sources.values()];
+    out.records = [...records.values()];
+    const activity = out.records.filter(r => r.task === 'activity').sort((a, b) => a.start - b.start);
+    for (let i = 0; i < activity.length; i++)
+      for (let j = i + 1; j < activity.length && activity[j].start < activity[i].end; j++) {
+        const a = activity[i],
+          b = activity[j];
+        if (
+          a.captureId !== b.captureId &&
+          sources.get(a.captureId)?.timeBasis === 'unix_epoch_arrival' &&
+          sources.get(b.captureId)?.timeBasis === 'unix_epoch_arrival' &&
+          a.profile === b.profile &&
+          a.configSignature === b.configSignature
+        )
+          throw Error(
+            'Overlapping host-time activity windows across capture identities are not independent; do not combine raw and feature exports of the same take.',
+          );
+      }
+    return out;
+  }
+  return { extract, merge, sha256, MAX_INPUT_BYTES, MAX_RECORDS, EVENT_NAMES, WINDOW_MS };
 });

@@ -49,6 +49,7 @@ Python 3 and Node.js 20+ are development tools only, not runtime dependencies. C
 
 ```sh
 for builder in tests/build_*.py; do python3 "$builder"; done   # then: git diff --exit-code -- tests/
+npx prettier@3.8.1 --check $(git ls-files '*.js' '*.mjs' | grep -v '^vendor/')   # formatting; --write to fix
 node tests/run-all.js                                   # every *.test.js and *.test.mjs suite
 node tools/check-shared-modules.js                      # shared files match their pins
 python3 tools/release_manifest.py RELEASE_MANIFEST.json # manifest lists every tracked file

@@ -1,51 +1,705 @@
 /* Original local recording/review tools. Project LICENSE applies. No network or RF commands. */
-(function(root,factory){const node=typeof module==='object'&&module.exports,api=factory(node?require('./original_dual.js'):root.OriginalDual,node?require('./viewer_version.js'):root.RadarStudioVersion);if(typeof module==='object'&&module.exports)module.exports=api;else root.OriginalSessions=api;})(typeof globalThis!=='undefined'?globalThis:this,function(Dual,viewerVersion){
-'use strict';
-if(typeof viewerVersion!=='string')throw Error('Load viewer_version.js before original_sessions.js');
-const VERSION=viewerVersion,MAX_BYTES=24*1024*1024,MAX_LABELS=10000;
-const LABELS={activity:['walking','standing','sitting','unknown'],transition:['stand_up','sit_down','motion_onset','none','unknown']};
-const clone=x=>JSON.parse(JSON.stringify(x));
-function canonical(x,depth=0){if(depth>30)throw Error('Nesting limit exceeded');if(typeof x==='number'&&!Number.isFinite(x))throw Error('Nonfinite value');if(Array.isArray(x))return '['+x.map(v=>canonical(v,depth+1)).join(',')+']';if(x&&typeof x==='object')return '{'+Object.keys(x).sort().map(k=>JSON.stringify(k)+':'+canonical(x[k],depth+1)).join(',')+'}';const s=JSON.stringify(x);if(s===undefined)throw Error('Unsupported value');return s;}
-async function hash(x){const s=typeof x==='string'?x:canonical(x);if(typeof module==='object'&&module.exports)return require('node:crypto').createHash('sha256').update(s).digest('hex');const a=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return Array.from(new Uint8Array(a),b=>b.toString(16).padStart(2,'0')).join('');}
-function text(x,max=100){if(typeof x!=='string'||!x.trim()||x.length>max||/[\x00-\x1f]/.test(x))throw Error('A short readable name is required');return x.trim();}
-function bytes(lane){if(!lane||lane.raw_encoding!=='base64'||!Number.isSafeInteger(lane.raw_byte_count)||lane.raw_byte_count<0||lane.raw_byte_count>8*1024*1024||typeof lane.raw_jsonl_bytes!=='string'||lane.raw_jsonl_bytes.length>11184812||lane.raw_jsonl_bytes.length%4!==0||/[^A-Za-z0-9+/=]/.test(lane.raw_jsonl_bytes)||/=/.test(lane.raw_jsonl_bytes.slice(0,-2))||(!/^[A-Za-z0-9+/]*={0,2}$/.test(lane.raw_jsonl_bytes.slice(-2))))throw Error('Invalid raw stream');const s=typeof atob==='function'?atob(lane.raw_jsonl_bytes):Buffer.from(lane.raw_jsonl_bytes,'base64').toString('binary');if(s.length!==lane.raw_byte_count)throw Error('Raw stream byte count mismatch');return Uint8Array.from(s,c=>c.charCodeAt(0));}
-function scan(b,lane){const records=[],issues=[];let droppedIssues=0;const issue=x=>{if(issues.length<512)issues.push(x);else droppedIssues++;};const d=new Dual.Decoder((r,line,offset)=>{if(r.channel!==lane){issue('Wrong channel at line '+line);return;}records.push({r,line,...offset});},(message,line)=>issue(message+' at line '+line));d.push(b);d.finish();return {records,issues,droppedIssues};}
-async function loadCapture(input){if(typeof input!=='string'||new TextEncoder().encode(input).length>MAX_BYTES)throw Error('Capture exceeds 24 MiB limit');const c=JSON.parse(input);if(c.schema!=='original-radar-capture'||c.version!==2||c.protocol!=='original-radar-v2'||!Array.isArray(c.accepted_data_frames)||c.accepted_data_frames.length>256)throw Error('Expected an original dual-UART version 2 capture');
- canonical(c);const control=bytes(c.raw_streams?.control),data=bytes(c.raw_streams?.data);if(control.length+data.length>8*1024*1024)throw Error('Combined raw limit exceeded');const cs=scan(control,'control'),ds=scan(data,'data'),byOffset=new Map(ds.records.map(r=>[r.start+':'+r.end,r]));
- const diagnostics={control_parse_issues:cs.issues,data_parse_issues:ds.issues,dropped_parse_issue_details:cs.droppedIssues+ds.droppedIssues,control_fault_reports:cs.records.filter(x=>x.r.type==='status'&&['fault','capture_fault','rf_fault','rf_error','deadline_misses','control_tx_fault','data_tx_fault'].some(k=>!!x.r[k])).length,rejected_admission_entries:0,unadmitted_data_records:0,missing_sequence_frames:0,fault_frames:0,truncated_frames:0,invalid_coordinate_detections:0,capture_overflow:c.capture_overflow===true,stop_unconfirmed:c.stop_unconfirmed!==false,final_state:c.state??'unknown',dropped_accepted_data_frames:c.dropped_accepted_data_frames??0,unsaved_byte_count:(c.unsaved_byte_count??0)+(c.data_unsaved_byte_count??0),dropped_event_count:c.dropped_event_count??0,reported_control_issue_count:Array.isArray(c.issues)?c.issues.length:0,reported_data_issue_count:Array.isArray(c.data_issues)?c.data_issues.length:0};
- for(const key of ['dropped_accepted_data_frames','unsaved_byte_count','dropped_event_count'])if(!Number.isSafeInteger(diagnostics[key])||diagnostics[key]<0)throw Error('Invalid loss counter');if(!['idle','starting','running','stopping','fault','unknown'].includes(diagnostics.final_state))throw Error('Invalid final state'); const segments=[],map=new Map(),used=new Set();
- for(const a of c.accepted_data_frames){try{if(a.admission!=='matched-active-pair'||a.channel!=='data'||!Number.isSafeInteger(a.connection_epoch)||!Number.isSafeInteger(a.data_generation))throw Error('Bad admission');const record=byOffset.get(a.raw_byte_start+':'+a.raw_byte_end);if(!record||used.has(record.start)||record.r.type!=='frame'||canonical(record.r)!==canonical(a.frame))throw Error('Raw corroboration mismatch');const f=Dual.validate(a.frame);const key=[a.connection_epoch,a.data_generation,f.pair_nonce,f.config_generation,f.session_id].join(':');let seg=map.get(key);if(!seg){seg={id:'segment-'+(segments.length+1),connection_epoch:a.connection_epoch,data_generation:a.data_generation,session_id:f.session_id,config_generation:f.config_generation,origin_timestamp_us:f.timestamp_us,frames:[]};map.set(key,seg);segments.push(seg);}const last=seg.frames.at(-1);if(last&&(f.sequence<=last.sequence||f.timestamp_us<=seg.origin_timestamp_us+last.relative_us))throw Error('Stale frame');if(last)diagnostics.missing_sequence_frames+=Math.max(0,f.sequence-last.sequence-1);used.add(record.start);if(f.capture_fault||f.deadline_misses||!f.complete)diagnostics.fault_frames++;if(f.truncated)diagnostics.truncated_frames++;
- const detections=f.detections.map(d=>{const valid=d.phasors.every(p=>Math.hypot(...p)>0)&&Array.isArray(d.sensor_xyz_m)&&d.sensor_xyz_m.every(Number.isFinite)&&(d.spatial_flags&3)===3&&d.sensor_xyz_m[1]>=0&&Math.abs(Math.hypot(...d.sensor_xyz_m)-d.range_m)<=Math.max(.25,.2*d.range_m);if(!valid)diagnostics.invalid_coordinate_detections++;return {range_m:d.range_m,velocity_mps:d.velocity_mps,power:d.power,sensor_xyz_m:valid?clone(d.sensor_xyz_m):null,spatial_flags:d.spatial_flags};});seg.frames.push({index:seg.frames.length,relative_us:f.timestamp_us-seg.origin_timestamp_us,sequence:f.sequence,quality:f.quality,complete:f.complete,capture_fault:f.capture_fault,missed_frames:f.missed_frames,deadline_misses:f.deadline_misses,truncated:f.truncated,detections});}catch(_){diagnostics.rejected_admission_entries++;}}
- diagnostics.unadmitted_data_records=ds.records.filter(r=>r.r.type==='frame'&&!used.has(r.start)).length;
- const identity=c.onboard_selftest_report||c.identity||{};for(const v of [identity.firmware_version??identity.version??null,identity.build_id??null])if(v!==null)text(v,100);let mount=null;if(c.mount_input!==null&&c.mount_input!==undefined){const m=c.mount_input;if(!m||typeof m!=='object'||!Number.isInteger(m.bracket_top_mm)||m.bracket_top_mm<100||m.bracket_top_mm>5000||!Number.isInteger(m.down_tilt_mdeg)||Math.abs(m.down_tilt_mdeg)>45000||!(m.antenna_offset_mm===null||(Number.isInteger(m.antenna_offset_mm)&&Math.abs(m.antenna_offset_mm)<=1000))||m.confirmed!==true)throw Error('Invalid declared mount');mount={bracket_top_mm:m.bracket_top_mm,down_tilt_mdeg:m.down_tilt_mdeg,antenna_offset_mm:m.antenna_offset_mm,confirmed:true};}const config={protocol:c.protocol,firmware_version:identity.firmware_version??identity.version??null,build_id:identity.build_id??null,profile:'room64_v1',mount_input:mount};
- return {capture:c,source:{sha256:await hash(input),protocol:c.protocol,capture_version:2,firmware_version:config.firmware_version,build_id:config.build_id,coordinate_frame:'sensor_xyz_m',timing_basis:'sensor_relative_us'},segments,diagnostics,config,raw:{control,data},note:'Imported host admission claims are corroborated against captured bytes, not authenticated. Raw malformed/unadmitted records are diagnostics only.'};
-}
-class Review {
- constructor(loaded,metadata={}){this.loaded=loaded;this.session={id:metadata.id?text(metadata.id):('session-'+loaded.source.sha256.slice(0,20)),name:metadata.name?text(metadata.name):'Untitled session',participant_group:metadata.participant_group?text(metadata.participant_group):null,prompt:['walking','standing','sitting','transition','unknown'].includes(metadata.prompt)?metadata.prompt:'unknown',synthetic:metadata.synthetic===true,viewer_version:VERSION,mount_input:clone(loaded.config.mount_input),config_identity:canonical(loaded.config)};this.labels=[];this.sync_markers=[];this.history=[];this.pending=null;this.audit=[];}
- save(action='edit',details=null){if(this.audit.length>=20000)throw Error('Review audit limit reached');this.audit.push({revision:this.audit.length+1,action,details:clone(details),at:new Date().toISOString()});if(this.history.length===100)this.history.shift();this.history.push(clone({revision:this.audit.length,labels:this.labels,sync_markers:this.sync_markers,pending:this.pending}));}
- undo(){if(this.audit.length>=20000)throw Error('Review audit limit reached');const x=this.history.pop();if(x){this.audit.push({revision:this.audit.length+1,action:'undo',reverted_revision:x.revision,at:new Date().toISOString()});this.labels=x.labels;this.sync_markers=x.sync_markers;this.pending=x.pending;}return !!x;}
- segment(id){const s=this.loaded.segments.find(s=>s.id===id);if(!s)throw Error('Unknown segment');return s;}
- point(id,at){const s=this.segment(id);if(!Number.isSafeInteger(at)||at<0||at>(s.frames.at(-1)?.relative_us??-1))throw Error('Time outside observed segment');return s;}
- begin(segment_id,start_us,task,label){this.point(segment_id,start_us);if(this.pending)throw Error('End or undo the current interval first');if(!LABELS[task]?.includes(label))throw Error('Unsupported label');this.save('begin',{segment_id,start_us,task,label});this.pending={segment_id,start_us,task,label};}
- end(segment_id,end_us){if(!this.pending||this.pending.segment_id!==segment_id)throw Error('Interval must end in its original segment');this.point(segment_id,end_us);if(end_us<=this.pending.start_us)throw Error('End must be later than start');if(this.labels.length>=MAX_LABELS)throw Error('Label limit reached');this.save('end',{...this.pending,end_us});this.labels.push({id:'label-'+(this.labels.length+1),...this.pending,end_us,review_status:'unreviewed',reviewer:null,reviewed_at:null,source:'human',timing_uncertainty_ms:null});this.pending=null;}
- review(id,status,reviewer){const r=this.labels.find(r=>r.id===id);if(!r||!['reviewed','excluded','unreviewed'].includes(status))throw Error('Invalid review');const who=status==='unreviewed'?null:text(reviewer);this.save('review:'+id+':'+status,{id,status,reviewer:who,previous:clone(r)});Object.assign(r,{review_status:status,reviewer:who,reviewed_at:who?new Date().toISOString():null});}
- marker(segment_id,relative_us,note){this.point(segment_id,relative_us);if(this.sync_markers.length>=1000)throw Error('Marker limit reached');let clean;try{clean=text(note,200);}catch{throw Error('Enter a marker note of 1-200 printable characters');}this.save('sync_marker',{segment_id,relative_us,note:clean});this.sync_markers.push({segment_id,relative_us,note:clean,clock:'sensor_relative_us',synchronized:false,external_time_ms:null,uncertainty_ms:null});}
- async restore(dataset){validateDataset(dataset);const {dataset_sha256,...payload}=dataset;if(typeof dataset_sha256!=='string'||dataset_sha256!==await hash(payload))throw Error('Dataset hash mismatch');if(dataset.source.sha256!==this.loaded.source.sha256||canonical(dataset.segments)!==canonical(this.loaded.segments)||dataset.session.config_identity!==canonical(this.loaded.config))throw Error('Review does not match this exact source capture');this.labels=clone(dataset.labels);this.sync_markers=clone(dataset.sync_markers);this.audit=clone(dataset.annotation_audit);this.history=[];this.pending=null;this.session={...this.session,name:text(dataset.session.name),participant_group:dataset.session.participant_group===null?null:text(dataset.session.participant_group)};}
- async dataset(){if(this.pending)throw Error('End or undo the open interval before export');const d={schema:'original-radar-dataset',version:1,source:clone(this.loaded.source),session:clone(this.session),segments:clone(this.loaded.segments),labels:clone(this.labels),annotation_audit:clone(this.audit),sync_markers:clone(this.sync_markers),diagnostics:clone(this.loaded.diagnostics),provenance:{admission:'imported-host-claim-raw-byte-corroborated',authenticated:false,coordinates:'exploratory sensor coordinates; no measured phase/axis calibration',power_units:'native; not SNR',clock_sync:'unmeasured',license_status:'Private capture rights require separate permission; source license does not grant dataset rights',raw_and_video_included:false}};validateDataset(d);d.dataset_sha256=await hash(d);return d;}
-}
-function validateDataset(d){
- const only=(o,keys)=>{if(!o||typeof o!=='object'||Array.isArray(o)||Object.keys(o).some(k=>!keys.includes(k)))throw Error('Unexpected dataset fields');};
- const uint=(v,max=Number.MAX_SAFE_INTEGER)=>Number.isSafeInteger(v)&&v>=0&&v<=max;
- const finite=(v,min=-1e9,max=1e9)=>Number.isFinite(v)&&v>=min&&v<=max;
- if(!d||d.schema!=='original-radar-dataset'||d.version!==1||!d.source||!/^[a-f0-9]{64}$/.test(d.source.sha256)||d.source.protocol!=='original-radar-v2'||d.source.capture_version!==2||d.source.coordinate_frame!=='sensor_xyz_m'||d.source.timing_basis!=='sensor_relative_us'||!d.session||!Array.isArray(d.segments)||d.segments.length>256||!Array.isArray(d.labels)||d.labels.length>MAX_LABELS)throw Error('Invalid dataset');
- only(d,['schema','version','source','session','segments','labels','annotation_audit','sync_markers','diagnostics','provenance','dataset_sha256']);only(d.source,['sha256','protocol','capture_version','firmware_version','build_id','coordinate_frame','timing_basis']);for(const v of [d.source.firmware_version,d.source.build_id])if(v!==null)text(v,100);only(d.session,['id','name','participant_group','prompt','synthetic','viewer_version','mount_input','config_identity']);
- if(new TextEncoder().encode(canonical(d)).length>MAX_BYTES)throw Error('Dataset exceeds size limit');text(d.session.id);text(d.session.name);text(d.session.config_identity,2000);if(d.session.participant_group!==null)text(d.session.participant_group);if(typeof d.session.synthetic!=='boolean')throw Error('Missing synthetic declaration');
- const ids=new Set();let total=0;for(const s of d.segments){only(s,['id','connection_epoch','data_generation','session_id','config_generation','origin_timestamp_us','frames']);text(s.id);if(ids.has(s.id)||!Array.isArray(s.frames)||!s.frames.length||s.frames.length>256||!uint(s.connection_epoch)||!uint(s.data_generation)||!uint(s.session_id)||!uint(s.config_generation)||!uint(s.origin_timestamp_us))throw Error('Invalid segment');ids.add(s.id);let prev=-1,sequence=-1;for(const f of s.frames){only(f,['index','relative_us','sequence','quality','complete','capture_fault','missed_frames','deadline_misses','truncated','detections']);total++;if(!uint(f.relative_us)||f.relative_us<=prev||!uint(f.sequence)||f.sequence<=sequence||!uint(f.index)||!uint(f.quality)||!uint(f.capture_fault)||!uint(f.missed_frames)||!uint(f.deadline_misses)||typeof f.complete!=='boolean'||typeof f.truncated!=='boolean'||!Array.isArray(f.detections)||f.detections.length>3)throw Error('Invalid frame');prev=f.relative_us;sequence=f.sequence;for(const x of f.detections){only(x,['range_m','velocity_mps','power','sensor_xyz_m','spatial_flags']);if(!finite(x.range_m,0,1000)||!finite(x.velocity_mps,-1000,1000)||!finite(x.power,0,1e100)||!uint(x.spatial_flags)||!(x.sensor_xyz_m===null||(Array.isArray(x.sensor_xyz_m)&&x.sensor_xyz_m.length===3&&x.sensor_xyz_m.every(v=>finite(v,-1000,1000)))))throw Error('Invalid detection');}}}if(total>256)throw Error('Frame aggregate exceeds capture cap');
- const labels=new Set();for(const a of d.labels){only(a,['id','segment_id','start_us','end_us','task','label','review_status','reviewer','reviewed_at','source','timing_uncertainty_ms']);text(a.id);const s=d.segments.find(s=>s.id===a.segment_id);if(labels.has(a.id)||!s||!LABELS[a.task]?.includes(a.label)||!uint(a.start_us)||!uint(a.end_us)||a.end_us<=a.start_us||a.end_us>s.frames.at(-1).relative_us||!['reviewed','unreviewed','excluded'].includes(a.review_status)||a.source!=='human'||!(a.timing_uncertainty_ms===null||finite(a.timing_uncertainty_ms,0,60000)))throw Error('Invalid label interval');labels.add(a.id);if(a.reviewer!==null)text(a.reviewer);if(a.reviewed_at!==null&&(typeof a.reviewed_at!=='string'||a.reviewed_at.length>40||!Number.isFinite(Date.parse(a.reviewed_at))))throw Error('Invalid review timestamp');if(a.review_status==='unreviewed'&&(a.reviewer!==null||a.reviewed_at!==null))throw Error('Unreviewed labels require null review provenance');if(a.review_status!=='unreviewed'){text(a.reviewer);if(typeof a.reviewed_at!=='string'||!Number.isFinite(Date.parse(a.reviewed_at)))throw Error('Missing explicit review provenance');}}
- if(!Array.isArray(d.sync_markers)||d.sync_markers.length>1000)throw Error('Invalid sync markers');for(const m of d.sync_markers){only(m,['segment_id','relative_us','note','clock','synchronized','external_time_ms','uncertainty_ms']);const s=d.segments.find(s=>s.id===m.segment_id);if(!s||!uint(m.relative_us)||m.relative_us>s.frames.at(-1).relative_us||m.synchronized!==false||m.external_time_ms!==null||m.uncertainty_ms!==null||m.clock!=='sensor_relative_us')throw Error('Unverified clock mapping');text(m.note,200);}
- if(!Array.isArray(d.annotation_audit)||d.annotation_audit.length>20000)throw Error('Invalid annotation audit');for(const a of d.annotation_audit){only(a,['revision','action','details','at','reverted_revision']);if(a.details!==null&&a.details!==undefined){only(a.details,['segment_id','start_us','task','label','end_us','id','status','reviewer','previous','relative_us','note']);if(a.details.previous)only(a.details.previous,['id','segment_id','start_us','end_us','task','label','review_status','reviewer','reviewed_at','source','timing_uncertainty_ms']);for(const [key,v] of Object.entries(a.details)){if(key==='previous'){for(const item of Object.values(v||{})){if(typeof item==='string')text(item,200);else if(item!==null&&typeof item!=='number')throw Error('Invalid prior audit state');}continue;}if(typeof v==='string')text(v,200);else if(v!==null&&typeof v!=='number')throw Error('Invalid nested audit content');}}if(!uint(a.revision)||typeof a.at!=='string'||!Number.isFinite(Date.parse(a.at)))throw Error('Invalid audit revision');text(a.action,150);}
- if(!d.diagnostics||!d.provenance||d.provenance.raw_and_video_included!==false)throw Error('Missing provenance');return d;
-}
+(function (root, factory) {
+  const node = typeof module === 'object' && module.exports,
+    api = factory(
+      node ? require('./original_dual.js') : root.OriginalDual,
+      node ? require('./viewer_version.js') : root.RadarStudioVersion,
+    );
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.OriginalSessions = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (Dual, viewerVersion) {
+  'use strict';
+  if (typeof viewerVersion !== 'string') throw Error('Load viewer_version.js before original_sessions.js');
+  const VERSION = viewerVersion,
+    MAX_BYTES = 24 * 1024 * 1024,
+    MAX_LABELS = 10000;
+  const LABELS = {
+    activity: ['walking', 'standing', 'sitting', 'unknown'],
+    transition: ['stand_up', 'sit_down', 'motion_onset', 'none', 'unknown'],
+  };
+  const clone = x => JSON.parse(JSON.stringify(x));
+  function canonical(x, depth = 0) {
+    if (depth > 30) throw Error('Nesting limit exceeded');
+    if (typeof x === 'number' && !Number.isFinite(x)) throw Error('Nonfinite value');
+    if (Array.isArray(x)) return '[' + x.map(v => canonical(v, depth + 1)).join(',') + ']';
+    if (x && typeof x === 'object')
+      return (
+        '{' +
+        Object.keys(x)
+          .sort()
+          .map(k => JSON.stringify(k) + ':' + canonical(x[k], depth + 1))
+          .join(',') +
+        '}'
+      );
+    const s = JSON.stringify(x);
+    if (s === undefined) throw Error('Unsupported value');
+    return s;
+  }
+  async function hash(x) {
+    const s = typeof x === 'string' ? x : canonical(x);
+    if (typeof module === 'object' && module.exports)
+      return require('node:crypto').createHash('sha256').update(s).digest('hex');
+    const a = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+    return Array.from(new Uint8Array(a), b => b.toString(16).padStart(2, '0')).join('');
+  }
+  function text(x, max = 100) {
+    if (typeof x !== 'string' || !x.trim() || x.length > max || /[\x00-\x1f]/.test(x))
+      throw Error('A short readable name is required');
+    return x.trim();
+  }
+  function bytes(lane) {
+    if (
+      !lane ||
+      lane.raw_encoding !== 'base64' ||
+      !Number.isSafeInteger(lane.raw_byte_count) ||
+      lane.raw_byte_count < 0 ||
+      lane.raw_byte_count > 8 * 1024 * 1024 ||
+      typeof lane.raw_jsonl_bytes !== 'string' ||
+      lane.raw_jsonl_bytes.length > 11184812 ||
+      lane.raw_jsonl_bytes.length % 4 !== 0 ||
+      /[^A-Za-z0-9+/=]/.test(lane.raw_jsonl_bytes) ||
+      /=/.test(lane.raw_jsonl_bytes.slice(0, -2)) ||
+      !/^[A-Za-z0-9+/]*={0,2}$/.test(lane.raw_jsonl_bytes.slice(-2))
+    )
+      throw Error('Invalid raw stream');
+    const s =
+      typeof atob === 'function'
+        ? atob(lane.raw_jsonl_bytes)
+        : Buffer.from(lane.raw_jsonl_bytes, 'base64').toString('binary');
+    if (s.length !== lane.raw_byte_count) throw Error('Raw stream byte count mismatch');
+    return Uint8Array.from(s, c => c.charCodeAt(0));
+  }
+  function scan(b, lane) {
+    const records = [],
+      issues = [];
+    let droppedIssues = 0;
+    const issue = x => {
+      if (issues.length < 512) issues.push(x);
+      else droppedIssues++;
+    };
+    const d = new Dual.Decoder(
+      (r, line, offset) => {
+        if (r.channel !== lane) {
+          issue('Wrong channel at line ' + line);
+          return;
+        }
+        records.push({ r, line, ...offset });
+      },
+      (message, line) => issue(message + ' at line ' + line),
+    );
+    d.push(b);
+    d.finish();
+    return { records, issues, droppedIssues };
+  }
+  async function loadCapture(input) {
+    if (typeof input !== 'string' || new TextEncoder().encode(input).length > MAX_BYTES)
+      throw Error('Capture exceeds 24 MiB limit');
+    const c = JSON.parse(input);
+    if (
+      c.schema !== 'original-radar-capture' ||
+      c.version !== 2 ||
+      c.protocol !== 'original-radar-v2' ||
+      !Array.isArray(c.accepted_data_frames) ||
+      c.accepted_data_frames.length > 256
+    )
+      throw Error('Expected an original dual-UART version 2 capture');
+    canonical(c);
+    const control = bytes(c.raw_streams?.control),
+      data = bytes(c.raw_streams?.data);
+    if (control.length + data.length > 8 * 1024 * 1024) throw Error('Combined raw limit exceeded');
+    const cs = scan(control, 'control'),
+      ds = scan(data, 'data'),
+      byOffset = new Map(ds.records.map(r => [r.start + ':' + r.end, r]));
+    const diagnostics = {
+      control_parse_issues: cs.issues,
+      data_parse_issues: ds.issues,
+      dropped_parse_issue_details: cs.droppedIssues + ds.droppedIssues,
+      control_fault_reports: cs.records.filter(
+        x =>
+          x.r.type === 'status' &&
+          [
+            'fault',
+            'capture_fault',
+            'rf_fault',
+            'rf_error',
+            'deadline_misses',
+            'control_tx_fault',
+            'data_tx_fault',
+          ].some(k => !!x.r[k]),
+      ).length,
+      rejected_admission_entries: 0,
+      unadmitted_data_records: 0,
+      missing_sequence_frames: 0,
+      fault_frames: 0,
+      truncated_frames: 0,
+      invalid_coordinate_detections: 0,
+      capture_overflow: c.capture_overflow === true,
+      stop_unconfirmed: c.stop_unconfirmed !== false,
+      final_state: c.state ?? 'unknown',
+      dropped_accepted_data_frames: c.dropped_accepted_data_frames ?? 0,
+      unsaved_byte_count: (c.unsaved_byte_count ?? 0) + (c.data_unsaved_byte_count ?? 0),
+      dropped_event_count: c.dropped_event_count ?? 0,
+      reported_control_issue_count: Array.isArray(c.issues) ? c.issues.length : 0,
+      reported_data_issue_count: Array.isArray(c.data_issues) ? c.data_issues.length : 0,
+    };
+    for (const key of ['dropped_accepted_data_frames', 'unsaved_byte_count', 'dropped_event_count'])
+      if (!Number.isSafeInteger(diagnostics[key]) || diagnostics[key] < 0) throw Error('Invalid loss counter');
+    if (!['idle', 'starting', 'running', 'stopping', 'fault', 'unknown'].includes(diagnostics.final_state))
+      throw Error('Invalid final state');
+    const segments = [],
+      map = new Map(),
+      used = new Set();
+    for (const a of c.accepted_data_frames) {
+      try {
+        if (
+          a.admission !== 'matched-active-pair' ||
+          a.channel !== 'data' ||
+          !Number.isSafeInteger(a.connection_epoch) ||
+          !Number.isSafeInteger(a.data_generation)
+        )
+          throw Error('Bad admission');
+        const record = byOffset.get(a.raw_byte_start + ':' + a.raw_byte_end);
+        if (
+          !record ||
+          used.has(record.start) ||
+          record.r.type !== 'frame' ||
+          canonical(record.r) !== canonical(a.frame)
+        )
+          throw Error('Raw corroboration mismatch');
+        const f = Dual.validate(a.frame);
+        const key = [a.connection_epoch, a.data_generation, f.pair_nonce, f.config_generation, f.session_id].join(':');
+        let seg = map.get(key);
+        if (!seg) {
+          seg = {
+            id: 'segment-' + (segments.length + 1),
+            connection_epoch: a.connection_epoch,
+            data_generation: a.data_generation,
+            session_id: f.session_id,
+            config_generation: f.config_generation,
+            origin_timestamp_us: f.timestamp_us,
+            frames: [],
+          };
+          map.set(key, seg);
+          segments.push(seg);
+        }
+        const last = seg.frames.at(-1);
+        if (last && (f.sequence <= last.sequence || f.timestamp_us <= seg.origin_timestamp_us + last.relative_us))
+          throw Error('Stale frame');
+        if (last) diagnostics.missing_sequence_frames += Math.max(0, f.sequence - last.sequence - 1);
+        used.add(record.start);
+        if (f.capture_fault || f.deadline_misses || !f.complete) diagnostics.fault_frames++;
+        if (f.truncated) diagnostics.truncated_frames++;
+        const detections = f.detections.map(d => {
+          const valid =
+            d.phasors.every(p => Math.hypot(...p) > 0) &&
+            Array.isArray(d.sensor_xyz_m) &&
+            d.sensor_xyz_m.every(Number.isFinite) &&
+            (d.spatial_flags & 3) === 3 &&
+            d.sensor_xyz_m[1] >= 0 &&
+            Math.abs(Math.hypot(...d.sensor_xyz_m) - d.range_m) <= Math.max(0.25, 0.2 * d.range_m);
+          if (!valid) diagnostics.invalid_coordinate_detections++;
+          return {
+            range_m: d.range_m,
+            velocity_mps: d.velocity_mps,
+            power: d.power,
+            sensor_xyz_m: valid ? clone(d.sensor_xyz_m) : null,
+            spatial_flags: d.spatial_flags,
+          };
+        });
+        seg.frames.push({
+          index: seg.frames.length,
+          relative_us: f.timestamp_us - seg.origin_timestamp_us,
+          sequence: f.sequence,
+          quality: f.quality,
+          complete: f.complete,
+          capture_fault: f.capture_fault,
+          missed_frames: f.missed_frames,
+          deadline_misses: f.deadline_misses,
+          truncated: f.truncated,
+          detections,
+        });
+      } catch (_) {
+        diagnostics.rejected_admission_entries++;
+      }
+    }
+    diagnostics.unadmitted_data_records = ds.records.filter(r => r.r.type === 'frame' && !used.has(r.start)).length;
+    const identity = c.onboard_selftest_report || c.identity || {};
+    for (const v of [identity.firmware_version ?? identity.version ?? null, identity.build_id ?? null])
+      if (v !== null) text(v, 100);
+    let mount = null;
+    if (c.mount_input !== null && c.mount_input !== undefined) {
+      const m = c.mount_input;
+      if (
+        !m ||
+        typeof m !== 'object' ||
+        !Number.isInteger(m.bracket_top_mm) ||
+        m.bracket_top_mm < 100 ||
+        m.bracket_top_mm > 5000 ||
+        !Number.isInteger(m.down_tilt_mdeg) ||
+        Math.abs(m.down_tilt_mdeg) > 45000 ||
+        !(
+          m.antenna_offset_mm === null ||
+          (Number.isInteger(m.antenna_offset_mm) && Math.abs(m.antenna_offset_mm) <= 1000)
+        ) ||
+        m.confirmed !== true
+      )
+        throw Error('Invalid declared mount');
+      mount = {
+        bracket_top_mm: m.bracket_top_mm,
+        down_tilt_mdeg: m.down_tilt_mdeg,
+        antenna_offset_mm: m.antenna_offset_mm,
+        confirmed: true,
+      };
+    }
+    const config = {
+      protocol: c.protocol,
+      firmware_version: identity.firmware_version ?? identity.version ?? null,
+      build_id: identity.build_id ?? null,
+      profile: 'room64_v1',
+      mount_input: mount,
+    };
+    return {
+      capture: c,
+      source: {
+        sha256: await hash(input),
+        protocol: c.protocol,
+        capture_version: 2,
+        firmware_version: config.firmware_version,
+        build_id: config.build_id,
+        coordinate_frame: 'sensor_xyz_m',
+        timing_basis: 'sensor_relative_us',
+      },
+      segments,
+      diagnostics,
+      config,
+      raw: { control, data },
+      note: 'Imported host admission claims are corroborated against captured bytes, not authenticated. Raw malformed/unadmitted records are diagnostics only.',
+    };
+  }
+  class Review {
+    constructor(loaded, metadata = {}) {
+      this.loaded = loaded;
+      this.session = {
+        id: metadata.id ? text(metadata.id) : 'session-' + loaded.source.sha256.slice(0, 20),
+        name: metadata.name ? text(metadata.name) : 'Untitled session',
+        participant_group: metadata.participant_group ? text(metadata.participant_group) : null,
+        prompt: ['walking', 'standing', 'sitting', 'transition', 'unknown'].includes(metadata.prompt)
+          ? metadata.prompt
+          : 'unknown',
+        synthetic: metadata.synthetic === true,
+        viewer_version: VERSION,
+        mount_input: clone(loaded.config.mount_input),
+        config_identity: canonical(loaded.config),
+      };
+      this.labels = [];
+      this.sync_markers = [];
+      this.history = [];
+      this.pending = null;
+      this.audit = [];
+    }
+    save(action = 'edit', details = null) {
+      if (this.audit.length >= 20000) throw Error('Review audit limit reached');
+      this.audit.push({
+        revision: this.audit.length + 1,
+        action,
+        details: clone(details),
+        at: new Date().toISOString(),
+      });
+      if (this.history.length === 100) this.history.shift();
+      this.history.push(
+        clone({
+          revision: this.audit.length,
+          labels: this.labels,
+          sync_markers: this.sync_markers,
+          pending: this.pending,
+        }),
+      );
+    }
+    undo() {
+      if (this.audit.length >= 20000) throw Error('Review audit limit reached');
+      const x = this.history.pop();
+      if (x) {
+        this.audit.push({
+          revision: this.audit.length + 1,
+          action: 'undo',
+          reverted_revision: x.revision,
+          at: new Date().toISOString(),
+        });
+        this.labels = x.labels;
+        this.sync_markers = x.sync_markers;
+        this.pending = x.pending;
+      }
+      return !!x;
+    }
+    segment(id) {
+      const s = this.loaded.segments.find(s => s.id === id);
+      if (!s) throw Error('Unknown segment');
+      return s;
+    }
+    point(id, at) {
+      const s = this.segment(id);
+      if (!Number.isSafeInteger(at) || at < 0 || at > (s.frames.at(-1)?.relative_us ?? -1))
+        throw Error('Time outside observed segment');
+      return s;
+    }
+    begin(segment_id, start_us, task, label) {
+      this.point(segment_id, start_us);
+      if (this.pending) throw Error('End or undo the current interval first');
+      if (!LABELS[task]?.includes(label)) throw Error('Unsupported label');
+      this.save('begin', { segment_id, start_us, task, label });
+      this.pending = { segment_id, start_us, task, label };
+    }
+    end(segment_id, end_us) {
+      if (!this.pending || this.pending.segment_id !== segment_id)
+        throw Error('Interval must end in its original segment');
+      this.point(segment_id, end_us);
+      if (end_us <= this.pending.start_us) throw Error('End must be later than start');
+      if (this.labels.length >= MAX_LABELS) throw Error('Label limit reached');
+      this.save('end', { ...this.pending, end_us });
+      this.labels.push({
+        id: 'label-' + (this.labels.length + 1),
+        ...this.pending,
+        end_us,
+        review_status: 'unreviewed',
+        reviewer: null,
+        reviewed_at: null,
+        source: 'human',
+        timing_uncertainty_ms: null,
+      });
+      this.pending = null;
+    }
+    review(id, status, reviewer) {
+      const r = this.labels.find(r => r.id === id);
+      if (!r || !['reviewed', 'excluded', 'unreviewed'].includes(status)) throw Error('Invalid review');
+      const who = status === 'unreviewed' ? null : text(reviewer);
+      this.save('review:' + id + ':' + status, { id, status, reviewer: who, previous: clone(r) });
+      Object.assign(r, { review_status: status, reviewer: who, reviewed_at: who ? new Date().toISOString() : null });
+    }
+    marker(segment_id, relative_us, note) {
+      this.point(segment_id, relative_us);
+      if (this.sync_markers.length >= 1000) throw Error('Marker limit reached');
+      let clean;
+      try {
+        clean = text(note, 200);
+      } catch {
+        throw Error('Enter a marker note of 1-200 printable characters');
+      }
+      this.save('sync_marker', { segment_id, relative_us, note: clean });
+      this.sync_markers.push({
+        segment_id,
+        relative_us,
+        note: clean,
+        clock: 'sensor_relative_us',
+        synchronized: false,
+        external_time_ms: null,
+        uncertainty_ms: null,
+      });
+    }
+    async restore(dataset) {
+      validateDataset(dataset);
+      const { dataset_sha256, ...payload } = dataset;
+      if (typeof dataset_sha256 !== 'string' || dataset_sha256 !== (await hash(payload)))
+        throw Error('Dataset hash mismatch');
+      if (
+        dataset.source.sha256 !== this.loaded.source.sha256 ||
+        canonical(dataset.segments) !== canonical(this.loaded.segments) ||
+        dataset.session.config_identity !== canonical(this.loaded.config)
+      )
+        throw Error('Review does not match this exact source capture');
+      this.labels = clone(dataset.labels);
+      this.sync_markers = clone(dataset.sync_markers);
+      this.audit = clone(dataset.annotation_audit);
+      this.history = [];
+      this.pending = null;
+      this.session = {
+        ...this.session,
+        name: text(dataset.session.name),
+        participant_group: dataset.session.participant_group === null ? null : text(dataset.session.participant_group),
+      };
+    }
+    async dataset() {
+      if (this.pending) throw Error('End or undo the open interval before export');
+      const d = {
+        schema: 'original-radar-dataset',
+        version: 1,
+        source: clone(this.loaded.source),
+        session: clone(this.session),
+        segments: clone(this.loaded.segments),
+        labels: clone(this.labels),
+        annotation_audit: clone(this.audit),
+        sync_markers: clone(this.sync_markers),
+        diagnostics: clone(this.loaded.diagnostics),
+        provenance: {
+          admission: 'imported-host-claim-raw-byte-corroborated',
+          authenticated: false,
+          coordinates: 'exploratory sensor coordinates; no measured phase/axis calibration',
+          power_units: 'native; not SNR',
+          clock_sync: 'unmeasured',
+          license_status:
+            'Private capture rights require separate permission; source license does not grant dataset rights',
+          raw_and_video_included: false,
+        },
+      };
+      validateDataset(d);
+      d.dataset_sha256 = await hash(d);
+      return d;
+    }
+  }
+  function validateDataset(d) {
+    const only = (o, keys) => {
+      if (!o || typeof o !== 'object' || Array.isArray(o) || Object.keys(o).some(k => !keys.includes(k)))
+        throw Error('Unexpected dataset fields');
+    };
+    const uint = (v, max = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(v) && v >= 0 && v <= max;
+    const finite = (v, min = -1e9, max = 1e9) => Number.isFinite(v) && v >= min && v <= max;
+    if (
+      !d ||
+      d.schema !== 'original-radar-dataset' ||
+      d.version !== 1 ||
+      !d.source ||
+      !/^[a-f0-9]{64}$/.test(d.source.sha256) ||
+      d.source.protocol !== 'original-radar-v2' ||
+      d.source.capture_version !== 2 ||
+      d.source.coordinate_frame !== 'sensor_xyz_m' ||
+      d.source.timing_basis !== 'sensor_relative_us' ||
+      !d.session ||
+      !Array.isArray(d.segments) ||
+      d.segments.length > 256 ||
+      !Array.isArray(d.labels) ||
+      d.labels.length > MAX_LABELS
+    )
+      throw Error('Invalid dataset');
+    only(d, [
+      'schema',
+      'version',
+      'source',
+      'session',
+      'segments',
+      'labels',
+      'annotation_audit',
+      'sync_markers',
+      'diagnostics',
+      'provenance',
+      'dataset_sha256',
+    ]);
+    only(d.source, [
+      'sha256',
+      'protocol',
+      'capture_version',
+      'firmware_version',
+      'build_id',
+      'coordinate_frame',
+      'timing_basis',
+    ]);
+    for (const v of [d.source.firmware_version, d.source.build_id]) if (v !== null) text(v, 100);
+    only(d.session, [
+      'id',
+      'name',
+      'participant_group',
+      'prompt',
+      'synthetic',
+      'viewer_version',
+      'mount_input',
+      'config_identity',
+    ]);
+    if (new TextEncoder().encode(canonical(d)).length > MAX_BYTES) throw Error('Dataset exceeds size limit');
+    text(d.session.id);
+    text(d.session.name);
+    text(d.session.config_identity, 2000);
+    if (d.session.participant_group !== null) text(d.session.participant_group);
+    if (typeof d.session.synthetic !== 'boolean') throw Error('Missing synthetic declaration');
+    const ids = new Set();
+    let total = 0;
+    for (const s of d.segments) {
+      only(s, [
+        'id',
+        'connection_epoch',
+        'data_generation',
+        'session_id',
+        'config_generation',
+        'origin_timestamp_us',
+        'frames',
+      ]);
+      text(s.id);
+      if (
+        ids.has(s.id) ||
+        !Array.isArray(s.frames) ||
+        !s.frames.length ||
+        s.frames.length > 256 ||
+        !uint(s.connection_epoch) ||
+        !uint(s.data_generation) ||
+        !uint(s.session_id) ||
+        !uint(s.config_generation) ||
+        !uint(s.origin_timestamp_us)
+      )
+        throw Error('Invalid segment');
+      ids.add(s.id);
+      let prev = -1,
+        sequence = -1;
+      for (const f of s.frames) {
+        only(f, [
+          'index',
+          'relative_us',
+          'sequence',
+          'quality',
+          'complete',
+          'capture_fault',
+          'missed_frames',
+          'deadline_misses',
+          'truncated',
+          'detections',
+        ]);
+        total++;
+        if (
+          !uint(f.relative_us) ||
+          f.relative_us <= prev ||
+          !uint(f.sequence) ||
+          f.sequence <= sequence ||
+          !uint(f.index) ||
+          !uint(f.quality) ||
+          !uint(f.capture_fault) ||
+          !uint(f.missed_frames) ||
+          !uint(f.deadline_misses) ||
+          typeof f.complete !== 'boolean' ||
+          typeof f.truncated !== 'boolean' ||
+          !Array.isArray(f.detections) ||
+          f.detections.length > 3
+        )
+          throw Error('Invalid frame');
+        prev = f.relative_us;
+        sequence = f.sequence;
+        for (const x of f.detections) {
+          only(x, ['range_m', 'velocity_mps', 'power', 'sensor_xyz_m', 'spatial_flags']);
+          if (
+            !finite(x.range_m, 0, 1000) ||
+            !finite(x.velocity_mps, -1000, 1000) ||
+            !finite(x.power, 0, 1e100) ||
+            !uint(x.spatial_flags) ||
+            !(
+              x.sensor_xyz_m === null ||
+              (Array.isArray(x.sensor_xyz_m) &&
+                x.sensor_xyz_m.length === 3 &&
+                x.sensor_xyz_m.every(v => finite(v, -1000, 1000)))
+            )
+          )
+            throw Error('Invalid detection');
+        }
+      }
+    }
+    if (total > 256) throw Error('Frame aggregate exceeds capture cap');
+    const labels = new Set();
+    for (const a of d.labels) {
+      only(a, [
+        'id',
+        'segment_id',
+        'start_us',
+        'end_us',
+        'task',
+        'label',
+        'review_status',
+        'reviewer',
+        'reviewed_at',
+        'source',
+        'timing_uncertainty_ms',
+      ]);
+      text(a.id);
+      const s = d.segments.find(s => s.id === a.segment_id);
+      if (
+        labels.has(a.id) ||
+        !s ||
+        !LABELS[a.task]?.includes(a.label) ||
+        !uint(a.start_us) ||
+        !uint(a.end_us) ||
+        a.end_us <= a.start_us ||
+        a.end_us > s.frames.at(-1).relative_us ||
+        !['reviewed', 'unreviewed', 'excluded'].includes(a.review_status) ||
+        a.source !== 'human' ||
+        !(a.timing_uncertainty_ms === null || finite(a.timing_uncertainty_ms, 0, 60000))
+      )
+        throw Error('Invalid label interval');
+      labels.add(a.id);
+      if (a.reviewer !== null) text(a.reviewer);
+      if (
+        a.reviewed_at !== null &&
+        (typeof a.reviewed_at !== 'string' || a.reviewed_at.length > 40 || !Number.isFinite(Date.parse(a.reviewed_at)))
+      )
+        throw Error('Invalid review timestamp');
+      if (a.review_status === 'unreviewed' && (a.reviewer !== null || a.reviewed_at !== null))
+        throw Error('Unreviewed labels require null review provenance');
+      if (a.review_status !== 'unreviewed') {
+        text(a.reviewer);
+        if (typeof a.reviewed_at !== 'string' || !Number.isFinite(Date.parse(a.reviewed_at)))
+          throw Error('Missing explicit review provenance');
+      }
+    }
+    if (!Array.isArray(d.sync_markers) || d.sync_markers.length > 1000) throw Error('Invalid sync markers');
+    for (const m of d.sync_markers) {
+      only(m, ['segment_id', 'relative_us', 'note', 'clock', 'synchronized', 'external_time_ms', 'uncertainty_ms']);
+      const s = d.segments.find(s => s.id === m.segment_id);
+      if (
+        !s ||
+        !uint(m.relative_us) ||
+        m.relative_us > s.frames.at(-1).relative_us ||
+        m.synchronized !== false ||
+        m.external_time_ms !== null ||
+        m.uncertainty_ms !== null ||
+        m.clock !== 'sensor_relative_us'
+      )
+        throw Error('Unverified clock mapping');
+      text(m.note, 200);
+    }
+    if (!Array.isArray(d.annotation_audit) || d.annotation_audit.length > 20000)
+      throw Error('Invalid annotation audit');
+    for (const a of d.annotation_audit) {
+      only(a, ['revision', 'action', 'details', 'at', 'reverted_revision']);
+      if (a.details !== null && a.details !== undefined) {
+        only(a.details, [
+          'segment_id',
+          'start_us',
+          'task',
+          'label',
+          'end_us',
+          'id',
+          'status',
+          'reviewer',
+          'previous',
+          'relative_us',
+          'note',
+        ]);
+        if (a.details.previous)
+          only(a.details.previous, [
+            'id',
+            'segment_id',
+            'start_us',
+            'end_us',
+            'task',
+            'label',
+            'review_status',
+            'reviewer',
+            'reviewed_at',
+            'source',
+            'timing_uncertainty_ms',
+          ]);
+        for (const [key, v] of Object.entries(a.details)) {
+          if (key === 'previous') {
+            for (const item of Object.values(v || {})) {
+              if (typeof item === 'string') text(item, 200);
+              else if (item !== null && typeof item !== 'number') throw Error('Invalid prior audit state');
+            }
+            continue;
+          }
+          if (typeof v === 'string') text(v, 200);
+          else if (v !== null && typeof v !== 'number') throw Error('Invalid nested audit content');
+        }
+      }
+      if (!uint(a.revision) || typeof a.at !== 'string' || !Number.isFinite(Date.parse(a.at)))
+        throw Error('Invalid audit revision');
+      text(a.action, 150);
+    }
+    if (!d.diagnostics || !d.provenance || d.provenance.raw_and_video_included !== false)
+      throw Error('Missing provenance');
+    return d;
+  }
 
-return {VERSION,MAX_BYTES,LABELS,canonical,hash,loadCapture,Review,validateDataset};
+  return { VERSION, MAX_BYTES, LABELS, canonical, hash, loadCapture, Review, validateDataset };
 });

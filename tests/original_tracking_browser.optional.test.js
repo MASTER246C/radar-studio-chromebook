@@ -1,12 +1,126 @@
 /* Local browser smoke check; synthetic serial only, no device/network services. */
 'use strict';
-const {chromium}=require('playwright'),fs=require('fs'),path=require('path'),http=require('http'),assert=require('node:assert/strict');
-const root=path.resolve(__dirname,'..');
-(async()=>{const server=http.createServer((req,res)=>{const file=path.join(root,req.url==='/'?'index.html':req.url);fs.readFile(file,(err,data)=>{res.statusCode=err?404:200;res.end(err?'missing':data);});});await new Promise(r=>server.listen(0,'127.0.0.1',r));let browser;
-try{browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||undefined,headless:true,args:['--no-sandbox']});const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
-await page.addInitScript(()=>{window.mockWrites=[];const serial=new EventTarget();serial.requestPort=async()=>({async open(){this.readable=new ReadableStream({start(c){window.emit=r=>c.enqueue(new TextEncoder().encode(JSON.stringify(r)+'\n'));}});this.writable=new WritableStream({write(b){mockWrites.push(new TextDecoder().decode(b));}});},async close(){}});Object.defineProperty(navigator,'serial',{value:serial});});
-await page.goto('http://127.0.0.1:'+server.address().port+'/original_oneport.html');await page.selectOption('#transportProtocol','original');await page.click('#originalConnect');await page.waitForFunction(()=>document.getElementById('originalState').textContent.startsWith('Connected'));
-const emit=()=>page.evaluate(()=>{for(let n=1;n<=3;n++)window.emit({protocol:'original-radar-v1',type:'frame',sequence:n,timestamp_us:n*200000,complete:true,capture_fault:0,missed_frames:0,deadline_misses:0,quality:44,count:2,detected_count:2,truncated:false,profile_energy:[100,100,100],mount:{bracket_top_m:1.219,down_tilt_deg:0,antenna_offset_m:null,antenna_height_m:null,world_height_valid:false},frame_events:1,processing_us:1000,previous_tx_us:1000,range_bin_m:.195,velocity_bin_mps:.305,detections:[-1,1].map(x=>({sensor_xyz_m:[x,2,0],world_xyz_m:null,range_m:Math.hypot(x,2),velocity_mps:0,power:100,spatial_flags:3,activity:null,phasors:[[10,0],[10,0],[10,0],[10,0]]}))});});await emit();await page.waitForFunction(()=>document.getElementById('originalTracks').textContent.includes('persistent candidate'));assert(await page.isDisabled('#originalStart'));assert(await page.isDisabled('#originalConfigure'));assert.deepEqual(await page.evaluate(()=>mockWrites),[]);
-await page.locator('#originalScene').screenshot({path:path.join(root,'tests','original-tracking-scene.png')});await page.click('#originalViewReset');await page.locator('#originalScene').focus();await page.keyboard.press('ArrowLeft');await page.keyboard.press('Home');
-await page.setViewportSize({width:390,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await page.screenshot({path:path.join(root,'tests','original-tracking-mobile.png'),fullPage:true});await page.waitForTimeout(1200);assert.match(await page.textContent('#originalTracks'),/No candidate tracks/);assert.deepEqual(errors,[]);console.log('PASS local Chromium: synthetic candidates/3D canvas, keyboard/reset, responsive mobile, no-data expiry, locked RF, zero serial writes, no browser errors.');
-}finally{if(browser)await browser.close();await new Promise(r=>server.close(r));}})().catch(e=>{console.error(e);process.exitCode=1;});
+const { chromium } = require('playwright'),
+  fs = require('fs'),
+  path = require('path'),
+  http = require('http'),
+  assert = require('node:assert/strict');
+const root = path.resolve(__dirname, '..');
+(async () => {
+  const server = http.createServer((req, res) => {
+    const file = path.join(root, req.url === '/' ? 'index.html' : req.url);
+    fs.readFile(file, (err, data) => {
+      res.statusCode = err ? 404 : 200;
+      res.end(err ? 'missing' : data);
+    });
+  });
+  await new Promise(r => server.listen(0, '127.0.0.1', r));
+  let browser;
+  try {
+    browser = await chromium.launch({
+      executablePath: process.env.CHROMIUM_PATH || undefined,
+      headless: true,
+      args: ['--no-sandbox'],
+    });
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } }),
+      errors = [];
+    page.on('pageerror', e => errors.push(e.message));
+    await page.addInitScript(() => {
+      window.mockWrites = [];
+      const serial = new EventTarget();
+      serial.requestPort = async () => ({
+        async open() {
+          this.readable = new ReadableStream({
+            start(c) {
+              window.emit = r => c.enqueue(new TextEncoder().encode(JSON.stringify(r) + '\n'));
+            },
+          });
+          this.writable = new WritableStream({
+            write(b) {
+              mockWrites.push(new TextDecoder().decode(b));
+            },
+          });
+        },
+        async close() {},
+      });
+      Object.defineProperty(navigator, 'serial', { value: serial });
+    });
+    await page.goto('http://127.0.0.1:' + server.address().port + '/original_oneport.html');
+    await page.selectOption('#transportProtocol', 'original');
+    await page.click('#originalConnect');
+    await page.waitForFunction(() => document.getElementById('originalState').textContent.startsWith('Connected'));
+    const emit = () =>
+      page.evaluate(() => {
+        for (let n = 1; n <= 3; n++)
+          window.emit({
+            protocol: 'original-radar-v1',
+            type: 'frame',
+            sequence: n,
+            timestamp_us: n * 200000,
+            complete: true,
+            capture_fault: 0,
+            missed_frames: 0,
+            deadline_misses: 0,
+            quality: 44,
+            count: 2,
+            detected_count: 2,
+            truncated: false,
+            profile_energy: [100, 100, 100],
+            mount: {
+              bracket_top_m: 1.219,
+              down_tilt_deg: 0,
+              antenna_offset_m: null,
+              antenna_height_m: null,
+              world_height_valid: false,
+            },
+            frame_events: 1,
+            processing_us: 1000,
+            previous_tx_us: 1000,
+            range_bin_m: 0.195,
+            velocity_bin_mps: 0.305,
+            detections: [-1, 1].map(x => ({
+              sensor_xyz_m: [x, 2, 0],
+              world_xyz_m: null,
+              range_m: Math.hypot(x, 2),
+              velocity_mps: 0,
+              power: 100,
+              spatial_flags: 3,
+              activity: null,
+              phasors: [
+                [10, 0],
+                [10, 0],
+                [10, 0],
+                [10, 0],
+              ],
+            })),
+          });
+      });
+    await emit();
+    await page.waitForFunction(() =>
+      document.getElementById('originalTracks').textContent.includes('persistent candidate'),
+    );
+    assert(await page.isDisabled('#originalStart'));
+    assert(await page.isDisabled('#originalConfigure'));
+    assert.deepEqual(await page.evaluate(() => mockWrites), []);
+    await page.locator('#originalScene').screenshot({ path: path.join(root, 'tests', 'original-tracking-scene.png') });
+    await page.click('#originalViewReset');
+    await page.locator('#originalScene').focus();
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('Home');
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.screenshot({ path: path.join(root, 'tests', 'original-tracking-mobile.png'), fullPage: true });
+    await page.waitForTimeout(1200);
+    assert.match(await page.textContent('#originalTracks'), /No candidate tracks/);
+    assert.deepEqual(errors, []);
+    console.log(
+      'PASS local Chromium: synthetic candidates/3D canvas, keyboard/reset, responsive mobile, no-data expiry, locked RF, zero serial writes, no browser errors.',
+    );
+  } finally {
+    if (browser) await browser.close();
+    await new Promise(r => server.close(r));
+  }
+})().catch(e => {
+  console.error(e);
+  process.exitCode = 1;
+});

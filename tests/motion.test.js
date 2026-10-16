@@ -1,49 +1,483 @@
 'use strict';
 // Synthetic fixtures below verify implementation behavior only. They are not
 // human motion measurements and cannot support a model performance claim.
-const assert=require('node:assert/strict');
-const M=require('../motion_core.js');
-let tested=0;
-function test(name,fn){fn();console.log('PASS '+name);tested++;}
-const near=(a,b,e=1e-9)=>assert.ok(Math.abs(a-b)<=e,`${a} != ${b}`);
-const CONFIG={pointsCoordinates:'world',tracksCoordinates:'world',bracketHeight:1.48,antennaOffset:.02,height:1.5,tilt:15,orientation:'front-facing',tolerance:.02,setupIdentity:'deterministic-test-fixture-not-hardware',calibrated:true,targetId:7,radius:.7};
-function fixture(n,label='standing',variant=0){
-  const walking=label==='walking',z=label==='sitting'?.65:1.15,x=walking?n*.01:0,v=walking?.1:0;
-  return {profile:'people',frameNumber:n,tracks:[{id:7,x,y:2,z:z+variant*.01,vx:v,vy:0,vz:0}],points:Array.from({length:12},(_,i)=>({x:x+.1*Math.cos(i),y:2+.1*Math.sin(i),z:z+(i%6)*.09+variant*.01,doppler:walking?(i%2?.3:-.2):.008+variant*.0005})),trackIndexes:Array(12).fill(99)};
+const assert = require('node:assert/strict');
+const M = require('../motion_core.js');
+let tested = 0;
+function test(name, fn) {
+  fn();
+  console.log('PASS ' + name);
+  tested++;
 }
-function driver(engine,source={kind:'live',id:'fixture-test-only'}){
- let n=0,t=0;
- return {feed(label='standing',variant=0,count=31){let out;for(let i=0;i<count;i++){out=engine.ingest(fixture(n++,label,variant),t,source,'people');t+=100;}return out;},skip(ms){t+=ms;},set(n2,t2){n=n2;t=t2;},get at(){return t;},get n(){return n;}};
+const near = (a, b, e = 1e-9) => assert.ok(Math.abs(a - b) <= e, `${a} != ${b}`);
+const CONFIG = {
+  pointsCoordinates: 'world',
+  tracksCoordinates: 'world',
+  bracketHeight: 1.48,
+  antennaOffset: 0.02,
+  height: 1.5,
+  tilt: 15,
+  orientation: 'front-facing',
+  tolerance: 0.02,
+  setupIdentity: 'deterministic-test-fixture-not-hardware',
+  calibrated: true,
+  targetId: 7,
+  radius: 0.7,
+};
+function fixture(n, label = 'standing', variant = 0) {
+  const walking = label === 'walking',
+    z = label === 'sitting' ? 0.65 : 1.15,
+    x = walking ? n * 0.01 : 0,
+    v = walking ? 0.1 : 0;
+  return {
+    profile: 'people',
+    frameNumber: n,
+    tracks: [{ id: 7, x, y: 2, z: z + variant * 0.01, vx: v, vy: 0, vz: 0 }],
+    points: Array.from({ length: 12 }, (_, i) => ({
+      x: x + 0.1 * Math.cos(i),
+      y: 2 + 0.1 * Math.sin(i),
+      z: z + (i % 6) * 0.09 + variant * 0.01,
+      doppler: walking ? (i % 2 ? 0.3 : -0.2) : 0.008 + variant * 0.0005,
+    })),
+    trackIndexes: Array(12).fill(99),
+  };
 }
-function populated(){const e=new M.Engine(CONFIG),d=driver(e);for(let pass=0;pass<3;pass++)for(const label of M.LABELS){e.resetSource();if(pass===2)d.skip(3100);e.startSession({id:label+pass,role:pass<2?'train':'heldout'});e.setLabel(label);d.feed(label,pass);e.stopSession();}return {e,d};}
+function driver(engine, source = { kind: 'live', id: 'fixture-test-only' }) {
+  let n = 0,
+    t = 0;
+  return {
+    feed(label = 'standing', variant = 0, count = 31) {
+      let out;
+      for (let i = 0; i < count; i++) {
+        out = engine.ingest(fixture(n++, label, variant), t, source, 'people');
+        t += 100;
+      }
+      return out;
+    },
+    skip(ms) {
+      t += ms;
+    },
+    set(n2, t2) {
+      n = n2;
+      t = t2;
+    },
+    get at() {
+      return t;
+    },
+    get n() {
+      return n;
+    },
+  };
+}
+function populated() {
+  const e = new M.Engine(CONFIG),
+    d = driver(e);
+  for (let pass = 0; pass < 3; pass++)
+    for (const label of M.LABELS) {
+      e.resetSource();
+      if (pass === 2) d.skip(3100);
+      e.startSession({ id: label + pass, role: pass < 2 ? 'train' : 'heldout' });
+      e.setLabel(label);
+      d.feed(label, pass);
+      e.stopSession();
+    }
+  return { e, d };
+}
 
-test('exports deterministic browser/CommonJS API and three labels',()=>{assert.equal(globalThis.MotionCore,M);assert.equal(M.WINDOW_MS,3000);assert.deepEqual(M.LABELS,['sitting','walking','standing']);assert.equal(M.FEATURE_NAMES.length,11);});
-test('separate sensor/world transform and downward-positive tilt',()=>{const c={...CONFIG,height:2,tilt:30,pointsCoordinates:'sensor',tracksCoordinates:'world'},p=M.transformPoint({x:1,y:2,z:0},c);near(p.x,1);near(p.y,Math.sqrt(3));near(p.z,1);const w=M.transformTrack({id:7,x:1,y:2,z:1,vx:0,vy:1,vz:0},c);near(w.y,2);near(w.z,1);near(w.vy,1);c.tracksCoordinates='sensor';const t=M.transformTrack(w,c);near(t.vy,Math.sqrt(3)/2);near(t.vz,-.5);assert.throws(()=>M.transformPoint({x:0,y:1,z:0},{height:1,pointsCoordinates:'unknown'}),/unknown/);});
-test('bracket-top height plus signed antenna offset derives antenna height',()=>{const e=new M.Engine({...CONFIG,bracketHeight:1.5,antennaOffset:.02,height:1.52});near(e.snapshot().config.height,1.52);assert.throws(()=>e.configure({height:2}),/must equal/);assert.throws(()=>new M.Engine({...CONFIG,bracketHeight:1.5,antennaOffset:null}),/both/);assert.throws(()=>e.configure({bogus:true}),/Unknown/);});
-test('default unknown calibration or missing explicit target blocks data',()=>{for(const opts of [{},{...CONFIG,calibrated:false},{...CONFIG,targetId:null},{...CONFIG,pointsCoordinates:'unknown'}]){const e=new M.Engine(opts);e.startSession({id:'s',role:'train'});e.setLabel('standing');driver(e).feed();assert.equal(e.snapshot().counts.total,0);assert.equal(e.snapshot().quality.ok,false);}});
-test('synthetic/replay input never populates windows or dataset',()=>{for(const src of ['synthetic','replay','unknown']){const e=new M.Engine(CONFIG);e.startSession({id:'s',role:'train'});e.setLabel('standing');driver(e,src).feed();const s=e.snapshot();assert.equal(s.counts.total,0);assert.equal(s.window.frames,0);assert.equal(s.prediction,null);assert.match(s.quality.reason,/Only explicitly live/);}});
-test('only people/vitals admitted and profile mismatch rejected',()=>{const e=new M.Engine(CONFIG);let s=e.ingest(fixture(0),0,'live','oob');assert.match(s.quality.reason,/only verified people and vitals/);e.resetSource();s=e.ingest({...fixture(0),profile:'vitals'},0,'live','people');assert.match(s.quality.reason,/mismatch/);});
-test('complete windows nonoverlap, labels start fresh, current frame used only next window',()=>{const e=new M.Engine(CONFIG),d=driver(e);e.startSession({id:'session',role:'train'});e.setLabel('standing');d.feed('standing',0,30);assert.equal(e.snapshot().counts.total,0);d.feed('standing',0,1);let s=e.snapshot();assert.equal(s.counts.total,1);assert.equal(s.latestWindow.frames,30);assert.equal(s.latestWindow.start,0);assert.equal(s.latestWindow.end,3000);assert.equal(s.window.frames,1);d.feed('standing',0,30);s=e.snapshot();assert.equal(s.counts.total,2);assert.equal(s.latestWindow.start,3000);e.setLabel('sitting');assert.equal(e.snapshot().window.frames,0);d.feed('sitting',0,31);const data=JSON.parse(e.exportDataset());assert.deepEqual(data.records.map(r=>r.label),['standing','standing','sitting']);assert.ok(data.records[2].start>=data.records[1].end);});
-test('track indexes ignored; explicit ROI exclusion and close second target guard',()=>{const e=new M.Engine(CONFIG);let f=fixture(0);f.points.push({x:10,y:10,z:90,doppler:10});let s=e.ingest(f,0,'live','people');assert.equal(s.window.points,12);f=fixture(1);f.tracks.push({...f.tracks[0],id:8,x:1});s=e.ingest(f,100,'live','people');assert.match(s.quality.reason,/overlaps/);assert.equal(s.window.frames,0);f=fixture(2);f.tracks=[];s=e.ingest(f,200,'live','people');assert.match(s.quality.reason,/missing/);});
-test('sparse, static, malformed and duplicate-target frames rejected',()=>{const mutations=[f=>{f.points=f.points.slice(0,3);},f=>{f.points.forEach(p=>p.static=true);},f=>{f.tracks.push({...f.tracks[0]});},f=>{f.points[0].doppler=NaN;},f=>{delete f.tracks[0].vx;}];for(const mutate of mutations){const e=new M.Engine(CONFIG),f=fixture(0);mutate(f);const s=e.ingest(f,0,'live','people');assert.equal(s.quality.ok,false);assert.equal(s.window.frames,0);}});
-test('duplicate frame/time, missing sequence, out-of-order are not training windows',()=>{for(const mode of ['frame','time','missing','backward']){const e=new M.Engine(CONFIG);e.ingest(fixture(10),1000,'live','people');const n=mode==='frame'?10:mode==='missing'?12:mode==='backward'?9:11,at=mode==='time'?1000:1100;const s=e.ingest(fixture(n),at,'live','people');assert.equal(s.window.frames,0);assert.equal(s.quality.ok,false);assert.equal(s.counts.total,0);}});
-test('uint32 sequence wraps safely without requiring fabricated timestamps',()=>{const e=new M.Engine(CONFIG);let f=fixture(0);f.frameNumber=0xffffffff;e.ingest(f,0,'live','people');f.frameNumber=0;assert.equal(e.ingest(f,100,'live','people').window.frames,2);});
-test('gap drops partial and tick clears stale predictions/window',()=>{const e=new M.Engine(CONFIG);e.ingest(fixture(0),0,'live','people');e.ingest(fixture(1),100,'live','people');let s=e.ingest(fixture(2),1000,'live','people');assert.equal(s.window.frames,1);s=e.tick(2101);assert.equal(s.window.frames,0);assert.equal(s.prediction,null);assert.match(s.quality.reason,/stale/);});
-test('source/profile change closes recording, clearData/source reset do not mix sessions',()=>{const e=new M.Engine(CONFIG),d=driver(e);e.startSession({id:'s',role:'train'});e.setLabel('standing');d.feed();let s=e.ingest(fixture(31),3100,{kind:'live',id:'different-device'},'people');assert.equal(s.currentSession,null);assert.equal(s.counts.total,1);assert.equal(s.prediction,null);s=e.resetSource();assert.equal(s.counts.total,1);assert.throws(()=>e.startSession({id:'s',role:'heldout'}),/cannot be reused/);});
-test('one capture cannot switch split roles; separate restart is required',()=>{const e=new M.Engine(CONFIG),d=driver(e);e.startSession({id:'train',role:'train'});e.setLabel('standing');d.feed();assert.throws(()=>e.startSession({id:'held',role:'heldout'}),/One capture/);e.resetSource();e.startSession({id:'held',role:'heldout'});e.setLabel('standing');d.feed();assert.equal(e.snapshot().counts.heldout,1);});
-test('two training sessions/class and held-out sessions/class are required',()=>{const e=new M.Engine(CONFIG),d=driver(e);for(const label of M.LABELS){e.startSession({id:label,role:'train'});e.setLabel(label);d.feed(label);}assert.equal(e.snapshot().readiness.canTrain,false);assert.throws(()=>e.train(),/2 distinct/);assert.throws(()=>e.evaluate(),/Train first/);});
-test('training uses training split only; evaluation reports all held-out labels',()=>{const {e}=populated();assert.equal(e.snapshot().counts.total,9);assert.equal(e.snapshot().readiness.canTrain,true);e.train();let s=e.snapshot();assert.equal(s.model.trainingWindows,6);assert.equal(s.model.trainingSessions,6);assert.equal(s.readiness.canEvaluate,true);const before=JSON.stringify(e._model),ev=e.evaluate();assert.equal(JSON.stringify(e._model),before);assert.equal(ev.windows,3);assert.equal(ev.sessions,3);assert.deepEqual(Object.keys(ev.confusion),M.LABELS);for(const label of M.LABELS)assert.equal(Object.values(ev.confusion[label]).reduce((a,b)=>a+b,0),1);assert.match(ev.warning,/Not an accuracy claim/);});
-test('unknown rejection is bounded nonprobabilistic geometry, no forced activity',()=>{const {e}=populated();e.train();const unknown=e._predict(Array(M.FEATURE_NAMES.length).fill(900));assert.equal(unknown.label,'unknown');assert.equal(unknown.heuristic,true);assert.ok(unknown.score>=0&&unknown.score<=1);assert.match(unknown.reason,/Outside/);const m=e._model;for(const label of M.LABELS)m.centroids[label]=Array(M.FEATURE_NAMES.length).fill(0);const amb=e._predict(m.means);assert.equal(amb.label,'unknown');assert.match(amb.reason,/too close/);});
-test('calibration changes stop session and prevent mixed-signature training',()=>{const {e}=populated();e.train();e.configure({tilt:16});const s=e.snapshot();assert.equal(s.currentSession,null);assert.equal(s.model,null);assert.equal(s.counts.total,9);assert.equal(s.readiness.canTrain,false);assert.throws(()=>e.train(),/configuration differs/);});
-test('new training windows invalidate trained model and held-out evaluation',()=>{const {e,d}=populated();e.train();e.evaluate();e.resetSource();d.skip(3100);e.startSession({id:'newtrain',role:'train'});e.setLabel('standing');d.feed();assert.equal(e.snapshot().model,null);assert.equal(e.snapshot().evaluation,null);});
-test('JSON roundtrip validates own bounded records and marks imported origin',()=>{const {e}=populated(),data=e.exportDataset(),copy=new M.Engine(CONFIG);assert.equal(JSON.parse(data).license_status,'pending');copy.importDataset(data);assert.equal(copy.snapshot().counts.total,9);assert.ok(copy.snapshot().sessions.every(s=>s.imported));copy.train();assert.equal(copy.evaluate().windows,3);assert.throws(()=>copy.importDataset(data),/Duplicate session/);});
-test('empty or interrupted sessions omitted from exported training data',()=>{const e=new M.Engine(CONFIG);e.startSession({id:'empty',role:'train'});const data=JSON.parse(e.exportDataset());assert.equal(data.sessions.length,0);assert.equal(data.records.length,0);new M.Engine(CONFIG).importDataset(JSON.stringify(data));});
-test('malformed imports are atomic and reject fake source, nonfinite/bounds and split tampering',()=>{const {e}=populated(),base=JSON.parse(e.exportDataset());for(const mutate of [x=>x.records[0].vector[0]=null,x=>x.records[0].end++,x=>x.sessions[0].source.kind='synthetic',x=>x.sessions[0].signature='forged',x=>x.records[0].sessionId='missing',x=>x.featureNames=['wrong'],x=>{x.records[1].start=x.records[0].start;x.records[1].end=x.records[0].end;x.sessions[1].timeline=x.sessions[0].timeline;},x=>x.records[0].frames=2]){const data=JSON.parse(JSON.stringify(base));mutate(data);const target=new M.Engine(CONFIG);assert.throws(()=>target.importDataset(JSON.stringify(data)));assert.equal(target.snapshot().counts.total,0);assert.equal(target.snapshot().sessions.length,0);}assert.throws(()=>e.importDataset('x'.repeat(2*1024*1024+1)),/bounded/);});
-test('duplicate copied content cannot evade validation merely by relabeling session',()=>{const {e}=populated(),data=JSON.parse(e.exportDataset());data.records[1].start=data.records[0].start;data.records[1].end=data.records[0].end;data.records[1].vector=data.records[0].vector.slice();assert.throws(()=>new M.Engine(CONFIG).importDataset(JSON.stringify(data)),/Duplicate window content/);});
-test('two labels sessions from one capture do not count as independent training sessions',()=>{const e=new M.Engine(CONFIG),d=driver(e);for(let k=0;k<2;k++)for(const label of M.LABELS){e.startSession({id:label+k,role:'train'});e.setLabel(label);d.feed(label);}assert.equal(e.snapshot().readiness.canTrain,false);assert.equal(e.snapshot().readiness.trainingSessions.standing,1);});
-test('setup identity and measurement fields gate calibration and compatibility',()=>{for(const change of [{bracketHeight:null,antennaOffset:null},{tilt:null},{tolerance:null},{setupIdentity:'unverified'},{orientation:'unverified'}]){const e=new M.Engine({...CONFIG,...change});assert.equal(driver(e).feed().quality.ok,false);}const {e}=populated();e.configure({setupIdentity:'different-firmware'});assert.equal(e.snapshot().readiness.canTrain,false);});
-test('profile-bound model never predicts under a different parser profile',()=>{const {e}=populated();e.train();const result=e._predict(e._model.means,'vitals');assert.equal(result.label,'unknown');assert.match(result.reason,/profile differs/);});
-test('unsafe imported record IDs and AI proposal annotations rejected atomically',()=>{const {e}=populated();for(const mutate of [data=>data.records[0].id='w9007199254740992',data=>data.records[0].annotation.status='ai_proposed',data=>data.sessions[0].annotation.source='model']){const data=JSON.parse(e.exportDataset());mutate(data);const copy=new M.Engine(CONFIG);assert.throws(()=>copy.importDataset(JSON.stringify(data)));assert.equal(copy.snapshot().counts.total,0);}});
-test('decoder warnings block class admission while original frames remain untouched',()=>{const e=new M.Engine(CONFIG),f=fixture(0);f.warnings=['Header point count differs'];const before=JSON.stringify(f);const out=e.ingest(f,0,'live','people');assert.equal(out.quality.ok,false);assert.match(out.quality.reason,/Decoder/);assert.equal(JSON.stringify(f),before);});
-test('evaluation reports independent capture count separately from named label sessions',()=>{const e=new M.Engine(CONFIG),d=driver(e);for(let k=0;k<3;k++){e.resetSource();for(const label of M.LABELS){e.startSession({id:label+k,role:k<2?'train':'heldout'});e.setLabel(label);d.feed(label,k);e.stopSession();}}e.train();const ev=e.evaluate();assert.equal(e.snapshot().model.trainingSessions,2);assert.equal(ev.sessions,1);assert.equal(ev.labelSessions,3);assert.equal(ev.windows,3);});
+test('exports deterministic browser/CommonJS API and three labels', () => {
+  assert.equal(globalThis.MotionCore, M);
+  assert.equal(M.WINDOW_MS, 3000);
+  assert.deepEqual(M.LABELS, ['sitting', 'walking', 'standing']);
+  assert.equal(M.FEATURE_NAMES.length, 11);
+});
+test('separate sensor/world transform and downward-positive tilt', () => {
+  const c = { ...CONFIG, height: 2, tilt: 30, pointsCoordinates: 'sensor', tracksCoordinates: 'world' },
+    p = M.transformPoint({ x: 1, y: 2, z: 0 }, c);
+  near(p.x, 1);
+  near(p.y, Math.sqrt(3));
+  near(p.z, 1);
+  const w = M.transformTrack({ id: 7, x: 1, y: 2, z: 1, vx: 0, vy: 1, vz: 0 }, c);
+  near(w.y, 2);
+  near(w.z, 1);
+  near(w.vy, 1);
+  c.tracksCoordinates = 'sensor';
+  const t = M.transformTrack(w, c);
+  near(t.vy, Math.sqrt(3) / 2);
+  near(t.vz, -0.5);
+  assert.throws(() => M.transformPoint({ x: 0, y: 1, z: 0 }, { height: 1, pointsCoordinates: 'unknown' }), /unknown/);
+});
+test('bracket-top height plus signed antenna offset derives antenna height', () => {
+  const e = new M.Engine({ ...CONFIG, bracketHeight: 1.5, antennaOffset: 0.02, height: 1.52 });
+  near(e.snapshot().config.height, 1.52);
+  assert.throws(() => e.configure({ height: 2 }), /must equal/);
+  assert.throws(() => new M.Engine({ ...CONFIG, bracketHeight: 1.5, antennaOffset: null }), /both/);
+  assert.throws(() => e.configure({ bogus: true }), /Unknown/);
+});
+test('default unknown calibration or missing explicit target blocks data', () => {
+  for (const opts of [
+    {},
+    { ...CONFIG, calibrated: false },
+    { ...CONFIG, targetId: null },
+    { ...CONFIG, pointsCoordinates: 'unknown' },
+  ]) {
+    const e = new M.Engine(opts);
+    e.startSession({ id: 's', role: 'train' });
+    e.setLabel('standing');
+    driver(e).feed();
+    assert.equal(e.snapshot().counts.total, 0);
+    assert.equal(e.snapshot().quality.ok, false);
+  }
+});
+test('synthetic/replay input never populates windows or dataset', () => {
+  for (const src of ['synthetic', 'replay', 'unknown']) {
+    const e = new M.Engine(CONFIG);
+    e.startSession({ id: 's', role: 'train' });
+    e.setLabel('standing');
+    driver(e, src).feed();
+    const s = e.snapshot();
+    assert.equal(s.counts.total, 0);
+    assert.equal(s.window.frames, 0);
+    assert.equal(s.prediction, null);
+    assert.match(s.quality.reason, /Only explicitly live/);
+  }
+});
+test('only people/vitals admitted and profile mismatch rejected', () => {
+  const e = new M.Engine(CONFIG);
+  let s = e.ingest(fixture(0), 0, 'live', 'oob');
+  assert.match(s.quality.reason, /only verified people and vitals/);
+  e.resetSource();
+  s = e.ingest({ ...fixture(0), profile: 'vitals' }, 0, 'live', 'people');
+  assert.match(s.quality.reason, /mismatch/);
+});
+test('complete windows nonoverlap, labels start fresh, current frame used only next window', () => {
+  const e = new M.Engine(CONFIG),
+    d = driver(e);
+  e.startSession({ id: 'session', role: 'train' });
+  e.setLabel('standing');
+  d.feed('standing', 0, 30);
+  assert.equal(e.snapshot().counts.total, 0);
+  d.feed('standing', 0, 1);
+  let s = e.snapshot();
+  assert.equal(s.counts.total, 1);
+  assert.equal(s.latestWindow.frames, 30);
+  assert.equal(s.latestWindow.start, 0);
+  assert.equal(s.latestWindow.end, 3000);
+  assert.equal(s.window.frames, 1);
+  d.feed('standing', 0, 30);
+  s = e.snapshot();
+  assert.equal(s.counts.total, 2);
+  assert.equal(s.latestWindow.start, 3000);
+  e.setLabel('sitting');
+  assert.equal(e.snapshot().window.frames, 0);
+  d.feed('sitting', 0, 31);
+  const data = JSON.parse(e.exportDataset());
+  assert.deepEqual(
+    data.records.map(r => r.label),
+    ['standing', 'standing', 'sitting'],
+  );
+  assert.ok(data.records[2].start >= data.records[1].end);
+});
+test('track indexes ignored; explicit ROI exclusion and close second target guard', () => {
+  const e = new M.Engine(CONFIG);
+  let f = fixture(0);
+  f.points.push({ x: 10, y: 10, z: 90, doppler: 10 });
+  let s = e.ingest(f, 0, 'live', 'people');
+  assert.equal(s.window.points, 12);
+  f = fixture(1);
+  f.tracks.push({ ...f.tracks[0], id: 8, x: 1 });
+  s = e.ingest(f, 100, 'live', 'people');
+  assert.match(s.quality.reason, /overlaps/);
+  assert.equal(s.window.frames, 0);
+  f = fixture(2);
+  f.tracks = [];
+  s = e.ingest(f, 200, 'live', 'people');
+  assert.match(s.quality.reason, /missing/);
+});
+test('sparse, static, malformed and duplicate-target frames rejected', () => {
+  const mutations = [
+    f => {
+      f.points = f.points.slice(0, 3);
+    },
+    f => {
+      f.points.forEach(p => (p.static = true));
+    },
+    f => {
+      f.tracks.push({ ...f.tracks[0] });
+    },
+    f => {
+      f.points[0].doppler = NaN;
+    },
+    f => {
+      delete f.tracks[0].vx;
+    },
+  ];
+  for (const mutate of mutations) {
+    const e = new M.Engine(CONFIG),
+      f = fixture(0);
+    mutate(f);
+    const s = e.ingest(f, 0, 'live', 'people');
+    assert.equal(s.quality.ok, false);
+    assert.equal(s.window.frames, 0);
+  }
+});
+test('duplicate frame/time, missing sequence, out-of-order are not training windows', () => {
+  for (const mode of ['frame', 'time', 'missing', 'backward']) {
+    const e = new M.Engine(CONFIG);
+    e.ingest(fixture(10), 1000, 'live', 'people');
+    const n = mode === 'frame' ? 10 : mode === 'missing' ? 12 : mode === 'backward' ? 9 : 11,
+      at = mode === 'time' ? 1000 : 1100;
+    const s = e.ingest(fixture(n), at, 'live', 'people');
+    assert.equal(s.window.frames, 0);
+    assert.equal(s.quality.ok, false);
+    assert.equal(s.counts.total, 0);
+  }
+});
+test('uint32 sequence wraps safely without requiring fabricated timestamps', () => {
+  const e = new M.Engine(CONFIG);
+  let f = fixture(0);
+  f.frameNumber = 0xffffffff;
+  e.ingest(f, 0, 'live', 'people');
+  f.frameNumber = 0;
+  assert.equal(e.ingest(f, 100, 'live', 'people').window.frames, 2);
+});
+test('gap drops partial and tick clears stale predictions/window', () => {
+  const e = new M.Engine(CONFIG);
+  e.ingest(fixture(0), 0, 'live', 'people');
+  e.ingest(fixture(1), 100, 'live', 'people');
+  let s = e.ingest(fixture(2), 1000, 'live', 'people');
+  assert.equal(s.window.frames, 1);
+  s = e.tick(2101);
+  assert.equal(s.window.frames, 0);
+  assert.equal(s.prediction, null);
+  assert.match(s.quality.reason, /stale/);
+});
+test('source/profile change closes recording, clearData/source reset do not mix sessions', () => {
+  const e = new M.Engine(CONFIG),
+    d = driver(e);
+  e.startSession({ id: 's', role: 'train' });
+  e.setLabel('standing');
+  d.feed();
+  let s = e.ingest(fixture(31), 3100, { kind: 'live', id: 'different-device' }, 'people');
+  assert.equal(s.currentSession, null);
+  assert.equal(s.counts.total, 1);
+  assert.equal(s.prediction, null);
+  s = e.resetSource();
+  assert.equal(s.counts.total, 1);
+  assert.throws(() => e.startSession({ id: 's', role: 'heldout' }), /cannot be reused/);
+});
+test('one capture cannot switch split roles; separate restart is required', () => {
+  const e = new M.Engine(CONFIG),
+    d = driver(e);
+  e.startSession({ id: 'train', role: 'train' });
+  e.setLabel('standing');
+  d.feed();
+  assert.throws(() => e.startSession({ id: 'held', role: 'heldout' }), /One capture/);
+  e.resetSource();
+  e.startSession({ id: 'held', role: 'heldout' });
+  e.setLabel('standing');
+  d.feed();
+  assert.equal(e.snapshot().counts.heldout, 1);
+});
+test('two training sessions/class and held-out sessions/class are required', () => {
+  const e = new M.Engine(CONFIG),
+    d = driver(e);
+  for (const label of M.LABELS) {
+    e.startSession({ id: label, role: 'train' });
+    e.setLabel(label);
+    d.feed(label);
+  }
+  assert.equal(e.snapshot().readiness.canTrain, false);
+  assert.throws(() => e.train(), /2 distinct/);
+  assert.throws(() => e.evaluate(), /Train first/);
+});
+test('training uses training split only; evaluation reports all held-out labels', () => {
+  const { e } = populated();
+  assert.equal(e.snapshot().counts.total, 9);
+  assert.equal(e.snapshot().readiness.canTrain, true);
+  e.train();
+  let s = e.snapshot();
+  assert.equal(s.model.trainingWindows, 6);
+  assert.equal(s.model.trainingSessions, 6);
+  assert.equal(s.readiness.canEvaluate, true);
+  const before = JSON.stringify(e._model),
+    ev = e.evaluate();
+  assert.equal(JSON.stringify(e._model), before);
+  assert.equal(ev.windows, 3);
+  assert.equal(ev.sessions, 3);
+  assert.deepEqual(Object.keys(ev.confusion), M.LABELS);
+  for (const label of M.LABELS)
+    assert.equal(
+      Object.values(ev.confusion[label]).reduce((a, b) => a + b, 0),
+      1,
+    );
+  assert.match(ev.warning, /Not an accuracy claim/);
+});
+test('unknown rejection is bounded nonprobabilistic geometry, no forced activity', () => {
+  const { e } = populated();
+  e.train();
+  const unknown = e._predict(Array(M.FEATURE_NAMES.length).fill(900));
+  assert.equal(unknown.label, 'unknown');
+  assert.equal(unknown.heuristic, true);
+  assert.ok(unknown.score >= 0 && unknown.score <= 1);
+  assert.match(unknown.reason, /Outside/);
+  const m = e._model;
+  for (const label of M.LABELS) m.centroids[label] = Array(M.FEATURE_NAMES.length).fill(0);
+  const amb = e._predict(m.means);
+  assert.equal(amb.label, 'unknown');
+  assert.match(amb.reason, /too close/);
+});
+test('calibration changes stop session and prevent mixed-signature training', () => {
+  const { e } = populated();
+  e.train();
+  e.configure({ tilt: 16 });
+  const s = e.snapshot();
+  assert.equal(s.currentSession, null);
+  assert.equal(s.model, null);
+  assert.equal(s.counts.total, 9);
+  assert.equal(s.readiness.canTrain, false);
+  assert.throws(() => e.train(), /configuration differs/);
+});
+test('new training windows invalidate trained model and held-out evaluation', () => {
+  const { e, d } = populated();
+  e.train();
+  e.evaluate();
+  e.resetSource();
+  d.skip(3100);
+  e.startSession({ id: 'newtrain', role: 'train' });
+  e.setLabel('standing');
+  d.feed();
+  assert.equal(e.snapshot().model, null);
+  assert.equal(e.snapshot().evaluation, null);
+});
+test('JSON roundtrip validates own bounded records and marks imported origin', () => {
+  const { e } = populated(),
+    data = e.exportDataset(),
+    copy = new M.Engine(CONFIG);
+  assert.equal(JSON.parse(data).license_status, 'pending');
+  copy.importDataset(data);
+  assert.equal(copy.snapshot().counts.total, 9);
+  assert.ok(copy.snapshot().sessions.every(s => s.imported));
+  copy.train();
+  assert.equal(copy.evaluate().windows, 3);
+  assert.throws(() => copy.importDataset(data), /Duplicate session/);
+});
+test('empty or interrupted sessions omitted from exported training data', () => {
+  const e = new M.Engine(CONFIG);
+  e.startSession({ id: 'empty', role: 'train' });
+  const data = JSON.parse(e.exportDataset());
+  assert.equal(data.sessions.length, 0);
+  assert.equal(data.records.length, 0);
+  new M.Engine(CONFIG).importDataset(JSON.stringify(data));
+});
+test('malformed imports are atomic and reject fake source, nonfinite/bounds and split tampering', () => {
+  const { e } = populated(),
+    base = JSON.parse(e.exportDataset());
+  for (const mutate of [
+    x => (x.records[0].vector[0] = null),
+    x => x.records[0].end++,
+    x => (x.sessions[0].source.kind = 'synthetic'),
+    x => (x.sessions[0].signature = 'forged'),
+    x => (x.records[0].sessionId = 'missing'),
+    x => (x.featureNames = ['wrong']),
+    x => {
+      x.records[1].start = x.records[0].start;
+      x.records[1].end = x.records[0].end;
+      x.sessions[1].timeline = x.sessions[0].timeline;
+    },
+    x => (x.records[0].frames = 2),
+  ]) {
+    const data = JSON.parse(JSON.stringify(base));
+    mutate(data);
+    const target = new M.Engine(CONFIG);
+    assert.throws(() => target.importDataset(JSON.stringify(data)));
+    assert.equal(target.snapshot().counts.total, 0);
+    assert.equal(target.snapshot().sessions.length, 0);
+  }
+  assert.throws(() => e.importDataset('x'.repeat(2 * 1024 * 1024 + 1)), /bounded/);
+});
+test('duplicate copied content cannot evade validation merely by relabeling session', () => {
+  const { e } = populated(),
+    data = JSON.parse(e.exportDataset());
+  data.records[1].start = data.records[0].start;
+  data.records[1].end = data.records[0].end;
+  data.records[1].vector = data.records[0].vector.slice();
+  assert.throws(() => new M.Engine(CONFIG).importDataset(JSON.stringify(data)), /Duplicate window content/);
+});
+test('two labels sessions from one capture do not count as independent training sessions', () => {
+  const e = new M.Engine(CONFIG),
+    d = driver(e);
+  for (let k = 0; k < 2; k++)
+    for (const label of M.LABELS) {
+      e.startSession({ id: label + k, role: 'train' });
+      e.setLabel(label);
+      d.feed(label);
+    }
+  assert.equal(e.snapshot().readiness.canTrain, false);
+  assert.equal(e.snapshot().readiness.trainingSessions.standing, 1);
+});
+test('setup identity and measurement fields gate calibration and compatibility', () => {
+  for (const change of [
+    { bracketHeight: null, antennaOffset: null },
+    { tilt: null },
+    { tolerance: null },
+    { setupIdentity: 'unverified' },
+    { orientation: 'unverified' },
+  ]) {
+    const e = new M.Engine({ ...CONFIG, ...change });
+    assert.equal(driver(e).feed().quality.ok, false);
+  }
+  const { e } = populated();
+  e.configure({ setupIdentity: 'different-firmware' });
+  assert.equal(e.snapshot().readiness.canTrain, false);
+});
+test('profile-bound model never predicts under a different parser profile', () => {
+  const { e } = populated();
+  e.train();
+  const result = e._predict(e._model.means, 'vitals');
+  assert.equal(result.label, 'unknown');
+  assert.match(result.reason, /profile differs/);
+});
+test('unsafe imported record IDs and AI proposal annotations rejected atomically', () => {
+  const { e } = populated();
+  for (const mutate of [
+    data => (data.records[0].id = 'w9007199254740992'),
+    data => (data.records[0].annotation.status = 'ai_proposed'),
+    data => (data.sessions[0].annotation.source = 'model'),
+  ]) {
+    const data = JSON.parse(e.exportDataset());
+    mutate(data);
+    const copy = new M.Engine(CONFIG);
+    assert.throws(() => copy.importDataset(JSON.stringify(data)));
+    assert.equal(copy.snapshot().counts.total, 0);
+  }
+});
+test('decoder warnings block class admission while original frames remain untouched', () => {
+  const e = new M.Engine(CONFIG),
+    f = fixture(0);
+  f.warnings = ['Header point count differs'];
+  const before = JSON.stringify(f);
+  const out = e.ingest(f, 0, 'live', 'people');
+  assert.equal(out.quality.ok, false);
+  assert.match(out.quality.reason, /Decoder/);
+  assert.equal(JSON.stringify(f), before);
+});
+test('evaluation reports independent capture count separately from named label sessions', () => {
+  const e = new M.Engine(CONFIG),
+    d = driver(e);
+  for (let k = 0; k < 3; k++) {
+    e.resetSource();
+    for (const label of M.LABELS) {
+      e.startSession({ id: label + k, role: k < 2 ? 'train' : 'heldout' });
+      e.setLabel(label);
+      d.feed(label, k);
+      e.stopSession();
+    }
+  }
+  e.train();
+  const ev = e.evaluate();
+  assert.equal(e.snapshot().model.trainingSessions, 2);
+  assert.equal(ev.sessions, 1);
+  assert.equal(ev.labelSessions, 3);
+  assert.equal(ev.windows, 3);
+});
 console.log(`${tested} motion logic tests passed. Synthetic fixtures provide no real-world performance evidence.`);

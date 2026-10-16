@@ -1,216 +1,1568 @@
 /* Original project code; governed by the unchanged project LICENSE. */
-(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.OriginalDual=api;})(typeof globalThis!=='undefined'?globalThis:this,function(){
-'use strict';
-const RECOVERY_CONTROL='Save capture first, then disconnect and reconnect the control port and query status. A board reset alone does not clear the browser’s desynchronized command stream. Configure and Verify port pairing again before any separate manual Start.';
-const PROTOCOL='original-radar-v2',STATES=['idle','starting','running','stopping','fault'];
-const uint=x=>Number.isSafeInteger(x)&&x>=0;
-// A bounded diagnostic window. Offsets count every received byte, including evictions.
-class ByteWindow{
- constructor(capacity){this.capacity=capacity;this.chunks=[];this.length=0;this.end=0;}
- get start(){return this.end-this.length;}
- push(input){const bytes=Uint8Array.from(input);this.end+=bytes.length;this.chunks.push(bytes);this.length+=bytes.length;while(this.length>this.capacity){const extra=this.length-this.capacity,first=this.chunks[0];if(first.length<=extra){this.chunks.shift();this.length-=first.length;}else{this.chunks[0]=first.slice(extra);this.length-=extra;}}}
- bytes(){const result=new Uint8Array(this.length);let offset=0;for(const chunk of this.chunks){result.set(chunk,offset);offset+=chunk.length;}return result;}
-}
-function validate(r){
- const finite=v=>{if(typeof v==='number'&&!Number.isFinite(v))throw Error('Non-finite JSON number');if(v&&typeof v==='object')for(const x of Object.values(v))finite(x);};finite(r);
- if(!r||r.protocol!==PROTOCOL)throw Error('Wrong or missing protocol');
- if(['identity','status','ack'].includes(r.type)&&!(r.channel==='control'&&r.dual_uart===true&&r.control_baud===115200&&r.data_baud===921600))throw Error('Missing exact dual-UART control capability');
- if(r.type==='status'&&!(typeof r.paired==='boolean'&&uint(r.config_generation)&&uint(r.session_id)&&(/^[0-9a-f]{32}$/.test(r.pair_nonce)||(!r.paired&&(r.pair_nonce===''||r.pair_nonce===null)))))throw Error('Invalid pairing status');
- if(r.type==='data_probe'){if(r.channel!=='data'||typeof r.firmware_version!=='string'||typeof r.build_id!=='string'||!/^[0-9a-f]{32}$/.test(r.pair_nonce)||!uint(r.config_generation)||!uint(r.session_id)||r.session_id===0)throw Error('Invalid data probe');}
- else if(r.type==='ack'){if(typeof r.command!=='string'||!Number.isInteger(r.code)||!STATES.includes(r.state)||typeof r.configured!=='boolean')throw Error('Invalid ACK');}
- else if(r.type==='status'){if(!STATES.includes(r.state)||typeof r.configured!=='boolean'||!uint(r.fault)||!uint(r.frames))throw Error('Invalid status');}
- else if(r.type==='identity'){if(r.baud!==115200||typeof r.version!=='string'||r.classifier!==false)throw Error('Unsupported identity');}
- else if(r.type==='frame'){
-  if(r.channel!=='data'||!/^[0-9a-f]{32}$/.test(r.pair_nonce)||!uint(r.config_generation)||!uint(r.session_id)||r.session_id===0)throw Error('Invalid data frame correlation');
-  if(!uint(r.sequence)||!uint(r.timestamp_us)||typeof r.complete!=='boolean'||!uint(r.capture_fault)||!uint(r.missed_frames)||!uint(r.deadline_misses)||!uint(r.quality)||!uint(r.count)||r.count>3||!uint(r.detected_count)||r.detected_count>8||r.detected_count<r.count||typeof r.truncated!=='boolean'||r.truncated!==(r.detected_count>r.count)||!Array.isArray(r.detections)||r.detections.length!==r.count||!Array.isArray(r.profile_energy)||r.profile_energy.length!==3||!r.profile_energy.every(x=>Number.isFinite(x)&&x>=0))throw Error('Invalid frame shape');
-  if(!r.mount||!Number.isFinite(r.mount.bracket_top_m)||!Number.isFinite(r.mount.down_tilt_deg)||![r.mount.antenna_offset_m,r.mount.antenna_height_m].every(v=>v===null||Number.isFinite(v))||typeof r.mount.world_height_valid!=='boolean'||!uint(r.frame_events)||!uint(r.processing_us)||!uint(r.previous_tx_us)||!Number.isFinite(r.range_bin_m)||r.range_bin_m<=0||!Number.isFinite(r.velocity_bin_mps)||r.velocity_bin_mps<=0)throw Error('Invalid frame metadata');
-  for(const d of r.detections){if(!d||!Number.isFinite(d.range_m)||d.range_m<0||!Number.isFinite(d.velocity_mps)||!Number.isFinite(d.power)||d.power<0||!uint(d.spatial_flags)||d.activity!==null||!Array.isArray(d.phasors)||d.phasors.length!==4||!d.phasors.every(p=>Array.isArray(p)&&p.length===2&&p.every(Number.isFinite))||![d.sensor_xyz_m,d.world_xyz_m].every(p=>p===null||(Array.isArray(p)&&p.length===3&&p.every(Number.isFinite))))throw Error('Invalid detection');}
- }else throw Error('Unknown record type');
- return r;
-}
-class Decoder{
- constructor(onRecord,onIssue){this.onRecord=onRecord;this.onIssue=onIssue;this.line=[];this.discard=false;this.lines=0;this.offset=0;this.lineStart=0;}
- push(bytes){for(const b of bytes){this.offset++;if(b===10){this.lines++;if(!this.discard){try{const text=new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(this.line));this.onRecord(validate(JSON.parse(text)),this.lines,{start:this.lineStart,end:this.offset});}catch(e){this.onIssue(e.message,this.lines);}}this.line=[];this.discard=false;this.lineStart=this.offset;}else if(!this.discard){this.line.push(b);if(this.line.length>4096){this.onIssue('Overlong JSONL record',this.lines+1);this.line=[];this.discard=true;}}}}
- finish(){if(this.line.length||this.discard)this.onIssue('Incomplete final JSONL record',this.lines+1);this.line=[];this.discard=false;}
-}
-// Bounded log: keeps the first `head` entries (connection/setup provenance) and the newest after them. Returns 1 when an entry was dropped.
-function retain(list,item,limit=2048,head=256){if(list.length<limit){list.push(item);return 0;}list.splice(head,1);list.push(item);return 1;}
-class Session{
- constructor({write,onFrame=()=>{},onChange=()=>{},setUnconfirmed=()=>{},unconfirmed=false,timeoutMs=5000,rfEnabled=false,rfPolicy=null,now=null,monotonic=null,maxBytes=8*1024*1024}={}){
-   // now: wall clock for host_utc_ms record stamps. monotonic: deadlines and spacing, immune to system clock steps.
-   monotonic=monotonic||now||(()=>typeof performance==='object'?performance.now():Date.now());now=now||(()=>Date.now());
-  this.rfPolicy=Object.freeze({...rfPolicy});this.selftestReceipt=null;this.lastSelftestReport=null;Object.assign(this,{write,onFrame,onChange,setUnconfirmed,unconfirmed,timeoutMs,rfEnabled,now,monotonic,maxBytes});this.connected=false;this.state='unknown';this.configured=false;this.pending=null;this.busy=false;this.cancelled=false;this.desynced=false;this.raw=[];this.bytes=0;this.issues=[];this.events=[];this.droppedIssues=0;this.droppedEvents=0;this.annotations=[];this.frames=0;this.lastFrame=null;this.identity=null;this.lastSequence=null;this.epoch=0;this.connectionEpoch=0;this.openTransition=null;this.overflow=false;this.unsavedBytes=0;this.createdAt=now();this.stateRevision=0;this.bootGeneration=0;this.configurationGeneration=0;this.decoder=this.newDecoder();
-  this.acceptedDataFrames=[];this.droppedAcceptedDataFrames=0;this.recoveringStop=false;this.drainingStream=null;this.dataConnected=false;this.dataGeneration=0;this.dataRaw=[];this.dataBytes=0;this.dataUnsavedBytes=0;this.dataIssues=[];this.dataDroppedIssues=0;this.pairing=null;this.pairPending=null;this.activeStream=null;this.pairConsumed=false;this.controlReplies=[];this.lastDataReply=null;this.transportFault=false;this.lastControlStatus=null;this.usedNonces=new Set();this.dataDecoder=this.newDataDecoder();this.monitoring=false;this.controlWindow=null;this.dataWindow=null;this.heartbeatGeneration=0;this.lastHeartbeatSent=null;this.heartbeatPromise=null;this.onRawChunk=null;
- }
- continuousBuild(r){const p=this.rfPolicy.continuous;return !!(p?.approved===true&&p.firmwareVersion==='0.3.2-rc1'&&p.buildId&&r?.firmware_version===p.firmwareVersion&&r.build_id===p.buildId&&p.leaseMs===5000&&p.heartbeatMs===1000);}
- continuousFields(r){return this.continuousBuild(r)&&r.session_mode==='continuous'&&r.session_seconds===0&&r.keepalive_lease_ms===5000;}
- validDuration(){return Number.isInteger(this.seconds)&&((this.seconds>=1&&this.seconds<=5&&this.seconds<=this.rfPolicy.maxSeconds)||(this.seconds===0&&this.continuousFields(this.lastControlStatus)));}
- enableMonitoring(){if(this.monitoring)return;this.controlWindow=new ByteWindow(Math.floor(this.maxBytes/2));this.dataWindow=new ByteWindow(Math.floor(this.maxBytes/2));this.controlWindow.push(this.rawBytes());this.dataWindow.push(this.dataRawBytes());this.raw=[];this.dataRaw=[];this.monitoring=true;}
- notifyRaw(channel,bytes){if(this.onRawChunk)this.onRawChunk(channel,bytes,{host_utc_ms:this.now(),host_monotonic_ms:typeof performance==='object'?performance.now():null});}
- newDecoder(){return new Decoder((r,line)=>{if(r.channel!=='control')return this.controlIssue('Data record rejected on control port',{line});this.record(r,line);},(message,line)=>this.controlIssue(message,{line}));}
- event(type,detail={}){const event={type,host_utc_ms:this.now(),epoch:this.epoch,connection_epoch:this.connectionEpoch,raw_byte_offset:this.bytes,observed_byte_offset:this.bytes+this.unsavedBytes,data_raw_byte_offset:this.dataBytes??0,...detail};this.onEvent?.(event);this.droppedEvents+=retain(this.events,event);this.onChange();}
- issue(message,detail={}){this.selftestReceipt=null;this.stateRevision++;this.droppedIssues+=retain(this.issues,{message,host_utc_ms:this.now(),epoch:this.epoch,connection_epoch:this.connectionEpoch,raw_byte_offset:this.bytes,observed_byte_offset:this.bytes+this.unsavedBytes,data_raw_byte_offset:this.dataBytes??0,...detail});this.onChange();}
- uncertain(value){if(value)this.selftestReceipt=null;this.unconfirmed=value;this.setUnconfirmed(value);this.onChange();}
- attach(write){this.clearPair('Control connected');if(this.connected)throw Error('Already connected');this.controlReplies=[];this.lastDataReply=null;this.write=write;this.connectionEpoch++;this.bootGeneration++;this.seconds=null;this.selftestReceipt=null;this.lastSelftestReport=null;this.identity=null;this.lastSequence=null;this.decoder=this.newDecoder();this.connected=true;this.lastFrame=null;this.state='unknown';this.configured=false;this.desynced=false;this.uncertain(true);this.event('connected');}
- detach(reason='disconnected'){this.clearPair(reason);this.bootGeneration++;this.seconds=null;this.selftestReceipt=null;
-  if(['running','starting','stopping'].includes(this.state)||this.pending?.command==='start'||this.unconfirmed)this.uncertain(true);
-  this.connected=false;this.configured=false;this.decoder.finish();if(this.pending)this.pending.finish(Error(reason));this.closeTransition(true,reason);this.event('disconnected',{reason});this.state='unknown';this.onChange();
- }
- ingest(input){const bytes=Uint8Array.from(input);this.notifyRaw('control',bytes);if(this.monitoring){this.controlWindow.push(bytes);this.bytes+=bytes.length;this.decoder.push(bytes);this.onChange();return;}if(this.overflow||this.bytes+this.dataBytes+bytes.length>this.maxBytes){if(!this.overflow){this.overflow=true;this.issue('Capture memory limit reached; incoming bytes are no longer saved');this.uncertain(true);this.cancelled=true;}this.unsavedBytes+=bytes.length;this.decoder.push(bytes);this.onChange();return;}
-  let at=0;while(at<bytes.length){const index=Math.floor(this.bytes/65536),offset=this.bytes%65536;if(!this.raw[index])this.raw[index]=new Uint8Array(65536);const n=Math.min(65536-offset,bytes.length-at);this.raw[index].set(bytes.subarray(at,at+n),offset);this.bytes+=n;at+=n;}this.decoder.push(bytes);this.onChange();
- }
- controlIssue(message,detail={}){const active=!!this.activeStream||this.pairConsumed;this.transportFault=true;this.clearPair(message);if(active)this.uncertain(true);this.issue(message,{channel:'control',...detail});}
- checkDataFreshness(hostMs=this.monotonic()){if(!this.activeStream||this.recoveringStop)return;const deadline=this.lastDataHost===null?this.firstFrameDeadline:this.lastDataHost+1000;if(!Number.isFinite(hostMs)||hostMs<this.activeStartedAt||(this.lastDataHost!==null&&hostMs<this.lastDataHost)||hostMs>deadline)this.dataIssue('Paired data stream stale: Stop required');}
- newDataDecoder(){const base=this.dataBytes??0;return new Decoder((r,line,offset)=>this.dataRecord(r,line,{start:base+offset.start,end:base+offset.end}),(message,line)=>this.dataIssue(message,{line}));}
- clearPair(reason){this.heartbeatGeneration++;this.pairGeneration=(this.pairGeneration??0)+1;this.pairing=null;this.activeStream=null;this.pairConsumed=false;this.selftestReceipt=null;if(this.pairPending){this.pairPending.invalidated=true;this.pairPending.fail(Error(reason));}}
- dataIssue(message,detail={}){const active=!!this.activeStream||this.pairConsumed;this.transportFault=true;this.clearPair(message);if(active)this.uncertain(true);this.stateRevision++;this.dataDroppedIssues+=retain(this.dataIssues,{message,channel:'data',host_utc_ms:this.now(),data_generation:this.dataGeneration,raw_byte_offset:this.dataBytes,...detail});this.onChange();}
- attachData(){if(this.dataConnected)throw Error('Data port already connected');this.clearPair('Data connected');this.dataGeneration++;this.dataConnected=true;this.lastDataReply=null;this.dataDecoder=this.newDataDecoder();this.event('data_connected',{channel:'data',data_generation:this.dataGeneration});}
- detachData(reason='Data disconnected'){const active=!!this.activeStream||this.pairConsumed||['running','starting','stopping'].includes(this.state)||this.unconfirmed;this.transportFault=true;this.clearPair(reason);this.dataGeneration++;this.dataConnected=false;this.dataDecoder.finish();this.lastFrame=null;if(active)this.uncertain(true);this.event('data_disconnected',{channel:'data',data_generation:this.dataGeneration,reason});}
- ingestData(input){const bytes=Uint8Array.from(input);this.notifyRaw('data',bytes);if(this.monitoring){this.dataWindow.push(bytes);this.dataBytes+=bytes.length;this.dataDecoder.push(bytes);const retained=this.acceptedDataFrames.filter(f=>f.raw_byte_start>=this.dataWindow.start&&f.raw_byte_end<=this.dataWindow.end);this.droppedAcceptedDataFrames+=this.acceptedDataFrames.length-retained.length;this.acceptedDataFrames=retained;this.onChange();return;}if(this.overflow||this.bytes+this.dataBytes+bytes.length>this.maxBytes){this.overflow=true;this.dataUnsavedBytes+=bytes.length;this.dataIssue('Combined capture memory limit reached');this.uncertain(true);return;}
-  let at=0;while(at<bytes.length){const index=Math.floor(this.dataBytes/65536),offset=this.dataBytes%65536;if(!this.dataRaw[index])this.dataRaw[index]=new Uint8Array(65536);const n=Math.min(65536-offset,bytes.length-at);this.dataRaw[index].set(bytes.subarray(at,at+n),offset);this.dataBytes+=n;at+=n;}this.dataDecoder.push(bytes);this.onChange();
- }
- dataRecord(r,line,offset={}){
-  if(r.channel!=='data'||!['data_probe','frame'].includes(r.type))return this.dataIssue('Control record rejected on data port',{line});
-  if(r.type==='data_probe'){
-   const p=this.pairPending;if(!p||!p.sent)return this.dataIssue('Unsolicited data probe rejected',{line});
-   if(r.protocol!==PROTOCOL||!this.acceptedIdentity(r)||(this.seconds===0&&!this.continuousFields(r))||r.pair_nonce!==p.nonce||r.config_generation!==p.configGeneration||!Number.isSafeInteger(r.session_id)||r.session_id<=0)return this.dataIssue('Data probe does not match exact pairing challenge',{line});
-   p.probe=JSON.parse(JSON.stringify(r));this.lastDataReply=JSON.parse(JSON.stringify(r));p.resolve();return;
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.OriginalDual = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+  const RECOVERY_CONTROL =
+    'Save capture first, then disconnect and reconnect the control port and query status. A board reset alone does not clear the browser’s desynchronized command stream. Configure and Verify port pairing again before any separate manual Start.';
+  const PROTOCOL = 'original-radar-v2',
+    STATES = ['idle', 'starting', 'running', 'stopping', 'fault'];
+  const uint = x => Number.isSafeInteger(x) && x >= 0;
+  // A bounded diagnostic window. Offsets count every received byte, including evictions.
+  class ByteWindow {
+    constructor(capacity) {
+      this.capacity = capacity;
+      this.chunks = [];
+      this.length = 0;
+      this.end = 0;
+    }
+    get start() {
+      return this.end - this.length;
+    }
+    push(input) {
+      const bytes = Uint8Array.from(input);
+      this.end += bytes.length;
+      this.chunks.push(bytes);
+      this.length += bytes.length;
+      while (this.length > this.capacity) {
+        const extra = this.length - this.capacity,
+          first = this.chunks[0];
+        if (first.length <= extra) {
+          this.chunks.shift();
+          this.length -= first.length;
+        } else {
+          this.chunks[0] = first.slice(extra);
+          this.length -= extra;
+        }
+      }
+    }
+    bytes() {
+      const result = new Uint8Array(this.length);
+      let offset = 0;
+      for (const chunk of this.chunks) {
+        result.set(chunk, offset);
+        offset += chunk.length;
+      }
+      return result;
+    }
   }
-  const drain=this.drainingStream;if(this.recoveringStop&&drain&&r.pair_nonce===drain.pair_nonce&&r.config_generation===drain.config_generation&&r.session_id===drain.session_id){this.event('data_tail_ignored',{channel:'data',sequence:r.sequence});return;}
-  const p=this.activeStream;if(!p||!this.dataConnected||p.data_generation!==this.dataGeneration||p.connection_epoch!==this.connectionEpoch||r.pair_nonce!==p.pair_nonce||r.config_generation!==p.config_generation||r.session_id!==p.session_id)return this.dataIssue('Frame rejected: no matching active paired session',{line,sequence:r.sequence});
-  if(this.seconds===0&&(r.session_mode!=='continuous'||r.session_seconds!==0||r.keepalive_lease_ms!==5000||r.timestamp_basis!=='session_elapsed'))return this.dataIssue('Continuous frame mode, lease or timestamp basis changed',{line,sequence:r.sequence});
-  if(this.seconds===0&&this.lastSequence!==null&&r.sequence!==this.lastSequence+1)return this.dataIssue('Continuous stream sequence gap',{line,sequence:r.sequence});
-  if((this.lastSequence!==null&&r.sequence<=this.lastSequence)||(this.lastDataTimestamp!==null&&r.timestamp_us<=this.lastDataTimestamp)||(this.lastDataHost!==null&&this.monotonic()<this.lastDataHost))return this.dataIssue('Stale or backward data sample rejected',{line,sequence:r.sequence});
-  this.lastDataTimestamp=r.timestamp_us;this.lastDataHost=this.monotonic();
-  if(this.acceptedDataFrames.length===256){this.acceptedDataFrames.shift();this.droppedAcceptedDataFrames++;}this.acceptedDataFrames.push({connection_epoch:this.connectionEpoch,data_generation:this.dataGeneration,host_utc_ms:this.now(),admission:'matched-active-pair',channel:'data',raw_byte_start:offset.start??null,raw_byte_end:offset.end??null,raw_line:line,human_reviewed:false,frame:JSON.parse(JSON.stringify(r))});
-  this.selftestReceipt=null;this.stateRevision++;this.frames++;this.lastFrame=JSON.parse(JSON.stringify(r));this.lastDataReply=JSON.parse(JSON.stringify(r));
-  if(!r.complete||r.capture_fault||r.missed_frames||r.deadline_misses){this.dataIssue('Frame acquisition fault/incomplete data',{line,sequence:r.sequence});this.onFrame(JSON.parse(JSON.stringify(r)));return;}
-  if(r.truncated)this.issue('Top-three output truncated; detections omitted',{channel:'data',line,sequence:r.sequence});
-  if(this.lastSequence!==null&&r.sequence!==this.lastSequence+1)this.issue('Sequence gap/reset/duplicate',{channel:'data',line,sequence:r.sequence,previous:this.lastSequence});this.lastSequence=r.sequence;
-  // Data observations never overwrite control-authoritative state/configuration/fault.
-  this.onFrame(JSON.parse(JSON.stringify(r)));this.onChange();
- }
- async pair(nonce){
-  if(!/^[0-9a-f]{32}$/.test(nonce))throw Error('Pairing nonce must be 32 lowercase hex characters');
-  if(this.usedNonces.has(nonce)||this.usedNonces.size>=256)throw Error('Pairing requires a new nonce; reload after 256 challenges');
-  if(this.busy||!this.connected||!this.dataConnected||!this.configured||this.state!=='idle'||this.unconfirmed||this.desynced||this.overflow||!this.validDuration()||!this.lastControlStatus||!this.matchesAcceptedSelftest(this.lastControlStatus))throw Error('Pairing requires two open ports, exact accepted self-test, and a committed idle configuration');
-  const connection=this.connectionEpoch,data=this.dataGeneration,config=this.configurationGeneration,configGeneration=this.lastControlStatus.config_generation;this.clearPair('New pairing challenge');this.usedNonces.add(nonce);this.busy=true;this.cancelled=false;this.onChange();let timer;
-  const pairingGeneration=this.pairGeneration;
-  const check=()=>{if(this.pairGeneration!==pairingGeneration||this.pairPending?.invalidated||!this.connected||!this.dataConnected||connection!==this.connectionEpoch||data!==this.dataGeneration||config!==this.configurationGeneration||this.state!=='idle'||this.unconfirmed||this.cancelled||this.desynced)throw Error('Pairing invalidated by transport/configuration/state change');};
-  let resolve,reject;const echo=new Promise((a,b)=>{resolve=a;reject=b;});echo.catch(()=>{});
-  const pending={nonce,configGeneration,probe:null,sent:false,invalidated:false,resolve,fail:reject};this.pairPending=pending;
-  timer=setTimeout(()=>pending.fail(Error('No matching data-port pairing probe')),this.timeoutMs);
-  try{await this.command('pair '+nonce,()=>{check();pending.sent=true;return true;});await echo;check();await this.command('pairConfirm '+nonce,()=>{check();return true;});check();const result=await this.command('status');check();const r=result.status,p=pending.probe;if(result.statusRevision!==this.stateRevision||!this.configured||r.configured!==true||!r.paired||r.pair_nonce!==nonce||r.config_generation!==p.config_generation||r.session_id!==p.session_id||!this.matchesAcceptedSelftest(r))throw Error('Control status did not confirm exact data-port proof');
-   this.pairing={protocol:PROTOCOL,firmware_version:p.firmware_version,build_id:p.build_id,pair_nonce:nonce,config_generation:p.config_generation,session_id:p.session_id,connection_epoch:connection,data_generation:data};this.pairConsumed=false;this.transportFault=false;this.event('ports_paired',{...this.pairing,correlation_not_authentication:true});
-  }catch(e){this.clearPair(e.message);throw e;}finally{clearTimeout(timer);if(this.pairPending===pending)this.pairPending=null;this.busy=false;this.onChange();}
- }
- dataRawBytes(){if(this.monitoring)return this.dataWindow.bytes();const bytes=new Uint8Array(this.dataBytes);let n=0;for(const c of this.dataRaw){const count=Math.min(c.length,this.dataBytes-n);bytes.set(c.subarray(0,count),n);n+=count;}return bytes;}
- dataBase64(){let binary='';for(const byte of this.dataRawBytes())binary+=String.fromCharCode(byte);return typeof btoa==='function'?btoa(binary):Buffer.from(binary,'binary').toString('base64');}
- record(r,line){
-  if(r.channel!=='control'||!['identity','status','ack'].includes(r.type))return this.controlIssue('Only control records may enter control state',{line});
-  this.controlReplies.push(JSON.parse(JSON.stringify(r)));if(this.controlReplies.length>16)this.controlReplies.shift();
-  if(r.type==='identity'){this.clearPair('Control identity/reset');this.lastControlStatus=null;this.bootGeneration++;this.seconds=null;this.stateRevision++;this.selftestReceipt=null;this.lastSelftestReport=null;this.identity=JSON.parse(JSON.stringify(r));this.configured=false;this.state='unknown';this.uncertain(true);}
-  if(r.type==='status'){
-   this.lastControlStatus=JSON.parse(JSON.stringify(r));
-   if(r.fault||r.state==='fault'||r.control_tx_fault!==false||r.data_tx_fault!==false||((this.pairing||this.activeStream)&&!this.matchesAcceptedSelftest(r))){this.transportFault=true;this.clearPair('Control fault');}
-   if(this.pairing&&(!r.paired||r.pair_nonce!==this.pairing.pair_nonce||r.config_generation!==this.pairing.config_generation||r.session_id!==this.pairing.session_id))this.clearPair('Control pairing state changed');
-   if(r.state==='idle'&&this.pairConsumed)this.clearPair('Session ended; pair again');
-   this.selftestReceipt=null;this.lastSelftestReport={firmware_version:r.firmware_version??null,build_id:r.build_id??null,selftest_version:r.selftest_version??null,selftest_ok:r.selftest_ok??null,selftest_mask:r.selftest_mask??null,fault:r.fault??null,capture_fault:r.capture_fault??null,rf_fault:r.rf_fault??null,rf_error:r.rf_error??null,deadline_misses:r.deadline_misses??null,control_tx_fault:r.control_tx_fault??null,data_tx_fault:r.data_tx_fault??null};this.stateRevision++;this.state=r.state;this.configured=r.configured;
-   if(r.fault||r.state==='fault'){this.issue('Firmware fault',{line,fault:r.fault});this.uncertain(true);}
-   if(['running','starting','stopping'].includes(r.state))this.uncertain(true);
-   // An explicit fresh status request is needed to clear uncertainty, never an unrelated ACK/identity.
-   if(this.pending?.command==='status'&&this.pending.sent){this.pending.status=r;this.pending.statusRevision=this.stateRevision;this.pending.check();}
-   if(r.state==='idle')this.closeTransition(true,'Firmware session ended');
+  function validate(r) {
+    const finite = v => {
+      if (typeof v === 'number' && !Number.isFinite(v)) throw Error('Non-finite JSON number');
+      if (v && typeof v === 'object') for (const x of Object.values(v)) finite(x);
+    };
+    finite(r);
+    if (!r || r.protocol !== PROTOCOL) throw Error('Wrong or missing protocol');
+    if (
+      ['identity', 'status', 'ack'].includes(r.type) &&
+      !(r.channel === 'control' && r.dual_uart === true && r.control_baud === 115200 && r.data_baud === 921600)
+    )
+      throw Error('Missing exact dual-UART control capability');
+    if (
+      r.type === 'status' &&
+      !(
+        typeof r.paired === 'boolean' &&
+        uint(r.config_generation) &&
+        uint(r.session_id) &&
+        (/^[0-9a-f]{32}$/.test(r.pair_nonce) || (!r.paired && (r.pair_nonce === '' || r.pair_nonce === null)))
+      )
+    )
+      throw Error('Invalid pairing status');
+    if (r.type === 'data_probe') {
+      if (
+        r.channel !== 'data' ||
+        typeof r.firmware_version !== 'string' ||
+        typeof r.build_id !== 'string' ||
+        !/^[0-9a-f]{32}$/.test(r.pair_nonce) ||
+        !uint(r.config_generation) ||
+        !uint(r.session_id) ||
+        r.session_id === 0
+      )
+        throw Error('Invalid data probe');
+    } else if (r.type === 'ack') {
+      if (
+        typeof r.command !== 'string' ||
+        !Number.isInteger(r.code) ||
+        !STATES.includes(r.state) ||
+        typeof r.configured !== 'boolean'
+      )
+        throw Error('Invalid ACK');
+    } else if (r.type === 'status') {
+      if (!STATES.includes(r.state) || typeof r.configured !== 'boolean' || !uint(r.fault) || !uint(r.frames))
+        throw Error('Invalid status');
+    } else if (r.type === 'identity') {
+      if (r.baud !== 115200 || typeof r.version !== 'string' || r.classifier !== false)
+        throw Error('Unsupported identity');
+    } else if (r.type === 'frame') {
+      if (
+        r.channel !== 'data' ||
+        !/^[0-9a-f]{32}$/.test(r.pair_nonce) ||
+        !uint(r.config_generation) ||
+        !uint(r.session_id) ||
+        r.session_id === 0
+      )
+        throw Error('Invalid data frame correlation');
+      if (
+        !uint(r.sequence) ||
+        !uint(r.timestamp_us) ||
+        typeof r.complete !== 'boolean' ||
+        !uint(r.capture_fault) ||
+        !uint(r.missed_frames) ||
+        !uint(r.deadline_misses) ||
+        !uint(r.quality) ||
+        !uint(r.count) ||
+        r.count > 3 ||
+        !uint(r.detected_count) ||
+        r.detected_count > 8 ||
+        r.detected_count < r.count ||
+        typeof r.truncated !== 'boolean' ||
+        r.truncated !== r.detected_count > r.count ||
+        !Array.isArray(r.detections) ||
+        r.detections.length !== r.count ||
+        !Array.isArray(r.profile_energy) ||
+        r.profile_energy.length !== 3 ||
+        !r.profile_energy.every(x => Number.isFinite(x) && x >= 0)
+      )
+        throw Error('Invalid frame shape');
+      if (
+        !r.mount ||
+        !Number.isFinite(r.mount.bracket_top_m) ||
+        !Number.isFinite(r.mount.down_tilt_deg) ||
+        ![r.mount.antenna_offset_m, r.mount.antenna_height_m].every(v => v === null || Number.isFinite(v)) ||
+        typeof r.mount.world_height_valid !== 'boolean' ||
+        !uint(r.frame_events) ||
+        !uint(r.processing_us) ||
+        !uint(r.previous_tx_us) ||
+        !Number.isFinite(r.range_bin_m) ||
+        r.range_bin_m <= 0 ||
+        !Number.isFinite(r.velocity_bin_mps) ||
+        r.velocity_bin_mps <= 0
+      )
+        throw Error('Invalid frame metadata');
+      for (const d of r.detections) {
+        if (
+          !d ||
+          !Number.isFinite(d.range_m) ||
+          d.range_m < 0 ||
+          !Number.isFinite(d.velocity_mps) ||
+          !Number.isFinite(d.power) ||
+          d.power < 0 ||
+          !uint(d.spatial_flags) ||
+          d.activity !== null ||
+          !Array.isArray(d.phasors) ||
+          d.phasors.length !== 4 ||
+          !d.phasors.every(p => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite)) ||
+          ![d.sensor_xyz_m, d.world_xyz_m].every(
+            p => p === null || (Array.isArray(p) && p.length === 3 && p.every(Number.isFinite)),
+          )
+        )
+          throw Error('Invalid detection');
+      }
+    } else throw Error('Unknown record type');
+    return r;
   }
-  if(r.type==='ack'){
-   const p=this.pending;if(p&&p.sent&&r.command===p.command){if(r.code!==0){this.selftestReceipt=null;p.finish(Error('Command rejected: '+r.command+' ('+r.code+')'));}else{p.ack=r;p.check();}}
-   else if(r.command==='keepalive'){this.event('unmatched_keepalive_ack',{code:r.code});}
-   else {this.stateRevision++;this.selftestReceipt=null;if(['orConfig','profile','mount','detect','session','commit'].includes(r.command))this.seconds=null;if(['running','starting','stopping','fault'].includes(r.state))this.uncertain(true);this.event('unmatched_ack',{command:r.command,code:r.code});}
+  class Decoder {
+    constructor(onRecord, onIssue) {
+      this.onRecord = onRecord;
+      this.onIssue = onIssue;
+      this.line = [];
+      this.discard = false;
+      this.lines = 0;
+      this.offset = 0;
+      this.lineStart = 0;
+    }
+    push(bytes) {
+      for (const b of bytes) {
+        this.offset++;
+        if (b === 10) {
+          this.lines++;
+          if (!this.discard) {
+            try {
+              const text = new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(this.line));
+              this.onRecord(validate(JSON.parse(text)), this.lines, { start: this.lineStart, end: this.offset });
+            } catch (e) {
+              this.onIssue(e.message, this.lines);
+            }
+          }
+          this.line = [];
+          this.discard = false;
+          this.lineStart = this.offset;
+        } else if (!this.discard) {
+          this.line.push(b);
+          if (this.line.length > 4096) {
+            this.onIssue('Overlong JSONL record', this.lines + 1);
+            this.line = [];
+            this.discard = true;
+          }
+        }
+      }
+    }
+    finish() {
+      if (this.line.length || this.discard) this.onIssue('Incomplete final JSONL record', this.lines + 1);
+      this.line = [];
+      this.discard = false;
+    }
   }
-  this.onChange();
- }
- command(text,dispatchGuard=null){
-  if(!this.connected||!this.write)return Promise.reject(Error('Not connected'));
-  if(this.pending)return Promise.reject(Error('Another command is awaiting acknowledgement'));
-  const command=text.split(' ')[0];
-  if(this.desynced&&!['stop','status'].includes(command))return Promise.reject(Error('Command stream is desynchronized. '+RECOVERY_CONTROL));
-  return new Promise((resolve,reject)=>{
-   const p={command,ack:null,status:null,finish:err=>{if(this.pending!==p)return;clearTimeout(p.timer);this.pending=null;if(err)this.selftestReceipt=null;this.event('command_complete',{command,success:!err,error:err?err.message:null});err?reject(err):resolve(p);this.onChange();},check:()=>{if(p.ack&&(command!=='status'||p.status)){if(command==='status'&&(p.statusRevision!==this.stateRevision||p.ack.state!==p.status.state||p.ack.configured!==p.status.configured)){p.finish(Error('State changed after status; query again'));return;}if(command==='status'&&p.status.state==='idle'&&p.status.fault===0&&!this.desynced){this.uncertain(false);this.closeTransition(true,'Observed idle status');if(this.matchesAcceptedSelftest(p.status))this.selftestReceipt={connection_epoch:this.connectionEpoch,state_revision:this.stateRevision,host_utc_ms:this.now(),firmware_version:p.status.firmware_version,build_id:p.status.build_id,selftest_version:p.status.selftest_version,selftest_ok:true,selftest_mask:0,fault:0,capture_fault:0,rf_fault:0,rf_error:0,deadline_misses:0,control_tx_fault:false,data_tx_fault:false,paired:p.status.paired,pair_nonce:p.status.pair_nonce,config_generation:p.status.config_generation,session_id:p.status.session_id,data_generation:this.dataGeneration,session_mode:p.status.session_mode,session_seconds:p.status.session_seconds,keepalive_lease_ms:p.status.keepalive_lease_ms};}p.finish();}}};
-   this.pending=p;p.timer=setTimeout(()=>{this.desynced=true;this.event('command_timeout',{command,sent:p.sent===true,timeout_ms:this.timeoutMs});p.finish(Error('No matching acknowledged response for '+command+'. '+RECOVERY_CONTROL));},this.timeoutMs);
-   this.event('command',{command:text});Promise.resolve().then(()=>{if(this.pending!==p||!this.connected)throw Error('Command cancelled before write');if(dispatchGuard&&!dispatchGuard())throw Error('Start authorization invalidated before dispatch');p.sent=true;return this.write(new TextEncoder().encode(text+'\n'));}).catch(e=>{if(p.sent){this.desynced=true;this.uncertain(true);}p.finish(e);});
-  });
- }
- async status(){if(this.busy)throw Error('An operation is in progress');this.busy=true;this.cancelled=false;this.onChange();try{const p=await this.command('status');if(this.cancelled)throw Error('Cancelled');if(this.desynced)throw Error('Command stream is desynchronized. '+RECOVERY_CONTROL);return p.status;}finally{this.busy=false;this.onChange();}}
- invalidateConfiguration(){this.clearPair('Configuration edited');this.mountConfiguration=null;this.configurationGeneration++;this.seconds=null;this.onChange();}
- configureBlockReason(){
-  if(this.desynced)return RECOVERY_CONTROL;
-  if(!this.dataConnected)return 'Open the separate data port before Configure';
-  const r=this.selftestReceipt;if(this.rfPolicy.approved!==true||this.busy||!this.connected||this.state!=='idle'||this.unconfirmed||this.desynced||this.overflow||!r||r.connection_epoch!==this.connectionEpoch||r.state_revision!==this.stateRevision||!this.matchesAcceptedSelftest(r))return 'Query accepted repaired firmware status with successful onboard self-test and fault-free idle before Configure';return '';
- }
- async configure(seconds,mount){
-  const blocked=this.configureBlockReason();
-  const continuous=seconds===0;if(continuous&&!this.continuousBuild(this.selftestReceipt))throw Error('Continuous monitoring requires the exact new 0.3.2-rc1 firmware. Timed tests remain available on the previous build.');
-  if(this.monitoring&&!continuous)throw Error('Save the diagnostic window, confirm idle and open a fresh viewer for a bounded recording');
-  if(continuous&&this.frames&&!this.monitoring)throw Error('Save the bounded recording, confirm idle and open a fresh viewer for continuous monitoring');
-  const generation=++this.configurationGeneration,boot=this.bootGeneration,connection=this.connectionEpoch,stagedRevision=this.stateRevision;
-  const check=()=>{if(this.cancelled)throw Error('Cancelled');if(generation!==this.configurationGeneration||boot!==this.bootGeneration||connection!==this.connectionEpoch||!this.connected||this.state!=='idle'||this.unconfirmed)throw Error('Configuration interrupted by connection, identity or state change');};
-  this.seconds=null;
-  if(!Number.isInteger(seconds)||seconds<0||seconds>5)throw Error('Choose a 1–5 second test or explicit continuous monitoring');
-  if(blocked)throw Error(blocked);
-  if(!mount||mount.confirmed!==true||!Number.isInteger(mount.bracket_top_mm)||mount.bracket_top_mm<100||mount.bracket_top_mm>5000||!Number.isInteger(mount.down_tilt_mdeg)||mount.down_tilt_mdeg< -45000||mount.down_tilt_mdeg>45000||!(mount.antenna_offset_mm===null||(Number.isInteger(mount.antenna_offset_mm)&&mount.antenna_offset_mm>=-1000&&mount.antenna_offset_mm<=1000&&mount.bracket_top_mm+mount.antenna_offset_mm>0)))throw Error('Enter and confirm measured bracket-top height/tilt; antenna offset may remain unknown');
-  const stagedMount=Object.freeze({...mount});this.mountConfiguration=null;
-  this.clearPair('Configuration staged');
-  if(this.busy||this.unconfirmed||this.state!=='idle')throw Error('Query status and confirm idle before configuring');
-  this.selftestReceipt=null;this.busy=true;this.cancelled=false;this.configured=false;this.onChange();
-  try{for(const line of ['orConfig 1','profile room64_v1','mount '+stagedMount.bracket_top_mm+' '+stagedMount.down_tilt_mdeg+' '+(stagedMount.antenna_offset_mm??'unknown'),'detect 4 30 64 8','session '+(continuous?'continuous':seconds),'commit']){check();if(this.stateRevision!==stagedRevision)throw Error('Configuration evidence changed while staging');const p=await this.command(line,()=>{try{check();return this.stateRevision===stagedRevision;}catch(_){return false;}});check();if(this.stateRevision!==stagedRevision)throw Error('Configuration evidence changed while staging');if(p.ack.state!=='idle')throw Error('Configuration ACK did not report idle');}check();const p=await this.command('status');check();if(p.statusRevision!==this.stateRevision)throw Error('Configuration status changed before confirmation');if(p.status.state!=='idle'||!p.status.configured||p.status.fault)throw Error('Configuration not confirmed idle/committed');if(continuous&&!this.continuousFields(p.status))throw Error('Firmware did not confirm continuous mode and its lease');if(continuous)this.enableMonitoring();this.seconds=seconds;this.mountConfiguration=stagedMount;this.event('configured',{seconds,mount:stagedMount,mount_source:'user-declared measurement, not calibration'});}finally{this.busy=false;this.onChange();}
- }
- matchesAcceptedSelftest(r){
-  const p=this.rfPolicy;
-  return this.acceptedIdentity(r)&&(this.seconds!==0||this.continuousFields(r))&&p.selftestVersion===2&&Number.isInteger(p.maxSeconds)&&p.maxSeconds>=1&&p.maxSeconds<=5&&r.selftest_version===p.selftestVersion&&r.selftest_ok===true&&r.selftest_mask===0&&r.fault===0&&r.capture_fault===0&&r.rf_fault===0&&r.rf_error===0&&r.deadline_misses===0&&r.control_tx_fault===false&&r.data_tx_fault===false&&(!this.identity||(this.identity.version===r.firmware_version&&this.identity.build_id===r.build_id));
- }
- acceptedIdentity(r){const p=this.rfPolicy;return !!(r&&p.approved===true&&((p.firmwareVersion==='0.3.1-rc1'&&p.buildId&&r.firmware_version===p.firmwareVersion&&r.build_id===p.buildId)||this.continuousBuild(r)));}
- startBlockReason(){
-  if(!this.rfEnabled||this.rfPolicy.approved!==true)return 'RF tests paused: exact dual-UART build review and approval are pending';
-  if(!this.dataConnected||!this.pairing||this.pairConsumed||this.pairing.data_generation!==this.dataGeneration||this.pairing.connection_epoch!==this.connectionEpoch)return 'Pair the two ports with a fresh data-only nonce proof before Start';
-  if(this.busy||!this.connected||!this.configured||this.state!=='idle'||this.unconfirmed||this.overflow||this.desynced)return 'Start requires a confirmed idle, configured device and complete capture';
-  if(!this.validDuration())return 'Configure a timed test or supported continuous session first';
-  const r=this.selftestReceipt;if(!r||r.paired!==true||r.pair_nonce!==this.pairing.pair_nonce||r.config_generation!==this.pairing.config_generation||r.session_id!==this.pairing.session_id||r.data_generation!==this.dataGeneration||r.connection_epoch!==this.connectionEpoch||r.state_revision!==this.stateRevision||!this.matchesAcceptedSelftest(r))return 'Start blocked: query fresh status with the exact accepted repaired build and successful version-2 onboard self-test';
-  return '';
- }
- async start(){
-  const blocked=this.startBlockReason();if(blocked)throw Error(blocked);
-  const proof=this.pairing;this.activeStream=null;this.pairConsumed=true;
-  const receipt=this.selftestReceipt,authorizedRevision=this.stateRevision,authorizedConnection=this.connectionEpoch,authorizedSeconds=this.seconds;this.selftestReceipt=null;this.busy=true;this.cancelled=false;this.epoch++;this.event('selftest_gate_accepted',{receipt,policy:this.rfPolicy,duration_seconds:this.seconds});this.lastSequence=null;this.lastFrame=null;this.uncertain(true);this.event('session_requested',{seconds:this.seconds});
-  try{await this.command('start',()=>{const valid=this.dataConnected&&this.dataGeneration===proof.data_generation&&this.pairing===proof&&this.stateRevision===authorizedRevision&&this.connectionEpoch===authorizedConnection&&this.seconds===authorizedSeconds&&this.state==='idle'&&this.configured&&!this.desynced&&!this.overflow&&!this.cancelled&&this.matchesAcceptedSelftest(receipt);if(valid){this.activeStream={...proof};this.lastHeartbeatSent=null;this.activeStartedAt=this.monotonic();this.firstFrameDeadline=this.activeStartedAt+5000;this.lastDataHost=null;this.lastDataTimestamp=null;}return valid;});if(this.cancelled)throw Error('Cancelled');let p=await this.command('status');if(this.cancelled)throw Error('Cancelled');if(p.statusRevision!==this.stateRevision||!this.connected||!this.dataConnected||this.dataGeneration!==proof.data_generation||this.pairing!==proof||!this.activeStream||this.activeStream.pair_nonce!==proof.pair_nonce||p.status.paired!==true||p.status.pair_nonce!==proof.pair_nonce||p.status.config_generation!==proof.config_generation||p.status.session_id!==proof.session_id||p.status.state!=='running'||p.status.fault||this.connectionEpoch!==authorizedConnection||this.seconds!==authorizedSeconds||!this.matchesAcceptedSelftest(p.status))throw Error('Running state and accepted self-test not confirmed; Stop and query status');if(this.lastDataHost===null)this.firstFrameDeadline=Math.min(this.firstFrameDeadline,this.monotonic()+1000);this.event('running_confirmed');}catch(e){this.transportFault=true;this.clearPair('Start failed or running state unconfirmed');this.uncertain(true);throw e;}finally{this.busy=false;this.onChange();}
- }
- async stop(){
-  this.heartbeatGeneration++;if(this.pending?.command==='keepalive')this.pending.finish(Error('Keepalive superseded by manual Stop'));
-  if(this.busy)throw Error('Cancel the pending operation first');this.drainingStream=this.activeStream;this.recoveringStop=true;this.activeStream=null;this.pairConsumed=true;this.busy=true;this.cancelled=false;this.uncertain(true);this.closeTransition(true,'Stop requested');
-  try{await this.command('stop');if(this.cancelled)throw Error('Cancelled');const p=await this.command('status');if(this.cancelled)throw Error('Cancelled');if(p.status.state!=='idle'||p.status.fault||this.unconfirmed)throw Error('Idle not confirmed; device may still be running');this.event('stopped_confirmed');}finally{this.recoveringStop=false;this.drainingStream=null;this.busy=false;this.onChange();}
- }
- async heartbeat(){
-  if(this.seconds!==0||!this.activeStream||this.state!=='running'||this.recoveringStop||this.busy||this.pending||this.heartbeatPromise||this.desynced||this.transportFault)return;
-  const now=this.monotonic();if(this.lastHeartbeatSent!==null&&now-this.lastHeartbeatSent<1000)return;
-  const proof=this.activeStream,generation=this.heartbeatGeneration;this.lastHeartbeatSent=now;
-  const task=this.command('keepalive '+proof.pair_nonce+' '+proof.config_generation+' '+proof.session_id,()=>this.activeStream===proof&&this.heartbeatGeneration===generation&&!this.recoveringStop);
-  this.heartbeatPromise=task;
-  try{const p=await task;if(generation!==this.heartbeatGeneration)return;const a=p.ack;if(a.state!=='running'||a.pair_nonce!==proof.pair_nonce||a.config_generation!==proof.config_generation||a.session_id!==proof.session_id)throw Error('Keepalive acknowledgement does not match the active session');}
-  catch(e){if(generation===this.heartbeatGeneration&&this.activeStream){this.transportFault=true;this.clearPair('Keepalive failed');this.uncertain(true);this.issue('Continuous keepalive failed: '+e.message);}}
-  finally{if(this.heartbeatPromise===task)this.heartbeatPromise=null;this.onChange();}
- }
- cancel(){this.clearPair('Operation cancelled');this.selftestReceipt=null;this.cancelled=true;this.desynced=true;if(this.pending?.command==='start'||['running','starting','stopping'].includes(this.state))this.uncertain(true);if(this.pending)this.pending.finish(Error('Cancelled; command may already have reached device'));this.event('operation_cancelled');}
- annotate(kind,label){if(this.annotations.length>=10000)throw Error('Annotation limit reached; save this capture');if(!this.connected||this.state!=='running'||this.overflow)throw Error('Annotations require a receiving run');if(!['activity','transition_start','transition_end'].includes(kind)||!['sitting','standing','walking','unknown','sit-to-stand','movement-onset'].includes(label))throw Error('Unsupported annotation');
-  if((kind==='activity'&&!['sitting','standing','walking','unknown'].includes(label))||(kind!=='activity'&&!['sit-to-stand','movement-onset'].includes(label)))throw Error('Annotation kind/label mismatch');
-  if(kind==='transition_start'&&this.openTransition)throw Error('End the open transition first');if(kind==='transition_end'&&(!this.openTransition||this.openTransition.label!==label))throw Error('No matching transition');
-  const a={kind,label,host_utc_ms:this.now(),sensor_timestamp_us:this.lastFrame?.timestamp_us??null,sequence:this.lastFrame?.sequence??null,epoch:this.epoch,connection_epoch:this.connectionEpoch,source:'human-observed',review_status:'unreviewed',observer_latency_ms:null};this.annotations.push(a);if(kind==='transition_start')this.openTransition=a;if(kind==='transition_end')this.openTransition=null;this.onChange();
- }
- closeTransition(incomplete,reason){if(this.openTransition){this.annotations.push({kind:'transition_end',label:this.openTransition.label,epoch:this.openTransition.epoch,connection_epoch:this.openTransition.connection_epoch,host_utc_ms:this.now(),sensor_timestamp_us:this.lastFrame?.timestamp_us??null,source:'system',review_status:'unreviewed',incomplete,reason});this.openTransition=null;}}
- rawBytes(){if(this.monitoring)return this.controlWindow.bytes();const bytes=new Uint8Array(this.bytes);let n=0;for(const c of this.raw){const count=Math.min(c.length,this.bytes-n);bytes.set(c.subarray(0,count),n);n+=count;}return bytes;}
- monitorSnapshot(){
-  const lane=w=>{const bytes=w.bytes();let binary='';for(const b of bytes)binary+=String.fromCharCode(b);return {raw_encoding:'base64',raw_jsonl_bytes:typeof btoa==='function'?btoa(binary):Buffer.from(bytes).toString('base64'),raw_byte_count:bytes.length,global_byte_start:w.start,global_byte_end:w.end,received_byte_count:w.end,evicted_byte_count:w.start,may_begin_inside_record:w.start>0};};
-  return JSON.parse(JSON.stringify({schema:'original-radar-monitor-window',version:1,protocol:PROTOCOL,complete_recording:false,created_utc_ms:this.createdAt,exported_utc_ms:this.now(),mode:'continuous-monitoring',retention_limit_bytes:this.maxBytes,raw_streams:{control:lane(this.controlWindow),data:lane(this.dataWindow)},accepted_data_frames:this.acceptedDataFrames,dropped_accepted_data_frames:this.droppedAcceptedDataFrames,frames_received:this.frames,accepted_data_frames_limit:256,identity:this.identity,last_control_status:this.lastControlStatus,mount_input:this.mountConfiguration??null,mount_input_source:'user-declared measurement, not calibration',rf_acceptance_policy:this.rfPolicy,active_stream:this.activeStream,pairing:this.pairing,state:this.state,stop_unconfirmed:this.unconfirmed,transport_fault:this.transportFault,capture_overflow:false,events:this.events,issues:this.issues,data_issues:this.dataIssues,dropped_event_count:this.droppedEvents,dropped_issue_count:this.droppedIssues,data_dropped_issue_count:this.dataDroppedIssues,annotations:this.annotations,buffered_bytes:this.decoder.line.length,data_buffered_bytes:this.dataDecoder.line.length,limits:{full_recording:false,bounded_capture_replay_compatible:false,training_admissible:false,calibration_and_activity_unverified:true,physical_continuous_operation_verified:false,clock_sync:'host and sensor clocks remain separate'}}));
- }
- snapshot(){if(this.monitoring)return this.monitorSnapshot();let binary='';for(const byte of this.rawBytes())binary+=String.fromCharCode(byte);const base64=typeof btoa==='function'?btoa(binary):Buffer.from(binary,'binary').toString('base64');return JSON.parse(JSON.stringify({schema:'original-radar-capture',version:2,protocol:PROTOCOL,created_utc_ms:this.createdAt,exported_utc_ms:this.now(),serial:{control:{baud:115200,dataBits:8,stopBits:1,parity:'none',flowControl:'none'},data:{baud:921600,dataBits:8,stopBits:1,parity:'none',flowControl:'none'}},raw_streams:{control:{raw_encoding:'base64',raw_jsonl_bytes:base64,raw_byte_count:this.bytes},data:{raw_encoding:'base64',raw_jsonl_bytes:this.dataBase64(),raw_byte_count:this.dataBytes}},accepted_data_frames:this.acceptedDataFrames,dropped_accepted_data_frames:this.droppedAcceptedDataFrames,accepted_data_frames_limit:256,data_issues:this.dataIssues.concat(this.dataDecoder.line.length||this.dataDecoder.discard?[{message:'Incomplete final data JSONL record at export',channel:'data',host_utc_ms:this.now()}]:[]),data_buffered_bytes:this.dataDecoder.line.length,data_dropped_issue_count:this.dataDroppedIssues,data_unsaved_byte_count:this.dataUnsavedBytes,pairing:this.pairing,identity:this.identity,mount_input:this.mountConfiguration??null,mount_input_source:'user-declared measurement, not calibration',rf_acceptance_policy:this.rfPolicy,rf_start_block_reason:this.startBlockReason(),onboard_selftest_report:this.lastSelftestReport,selftest_receipt:this.selftestReceipt,events:this.events,annotations:this.annotations,issues:this.issues.concat(this.decoder.line.length||this.decoder.discard?[{message:'Incomplete final JSONL record at export',host_utc_ms:this.now(),epoch:this.epoch}]:[]),frames:this.frames,state:this.state,stop_unconfirmed:this.unconfirmed,capture_overflow:this.overflow,dropped_issue_count:this.droppedIssues,dropped_event_count:this.droppedEvents,unsaved_byte_count:this.unsavedBytes,buffered_bytes:this.decoder.line.length,open_transition:this.openTransition,limits:{distributed_v020_spatial_defect:true,rf_bringup_only:true,rf_tests_paused:this.rfPolicy.approved!==true,onboard_selftest_is_not_physical_validation:true,activity_inference:false,people_count_inference:false,host_clock:'Date.now, unsynchronized with sensor',annotation_timing:'human click, latency unknown',license_status:'capture rights not granted by source license'}}));}
-}
-return {PROTOCOL,RECOVERY_CONTROL,validate,Decoder,ByteWindow,Session};
+  // Bounded log: keeps the first `head` entries (connection/setup provenance) and the newest after them. Returns 1 when an entry was dropped.
+  function retain(list, item, limit = 2048, head = 256) {
+    if (list.length < limit) {
+      list.push(item);
+      return 0;
+    }
+    list.splice(head, 1);
+    list.push(item);
+    return 1;
+  }
+  class Session {
+    constructor({
+      write,
+      onFrame = () => {},
+      onChange = () => {},
+      setUnconfirmed = () => {},
+      unconfirmed = false,
+      timeoutMs = 5000,
+      rfEnabled = false,
+      rfPolicy = null,
+      now = null,
+      monotonic = null,
+      maxBytes = 8 * 1024 * 1024,
+    } = {}) {
+      // now: wall clock for host_utc_ms record stamps. monotonic: deadlines and spacing, immune to system clock steps.
+      monotonic = monotonic || now || (() => (typeof performance === 'object' ? performance.now() : Date.now()));
+      now = now || (() => Date.now());
+      this.rfPolicy = Object.freeze({ ...rfPolicy });
+      this.selftestReceipt = null;
+      this.lastSelftestReport = null;
+      Object.assign(this, {
+        write,
+        onFrame,
+        onChange,
+        setUnconfirmed,
+        unconfirmed,
+        timeoutMs,
+        rfEnabled,
+        now,
+        monotonic,
+        maxBytes,
+      });
+      this.connected = false;
+      this.state = 'unknown';
+      this.configured = false;
+      this.pending = null;
+      this.busy = false;
+      this.cancelled = false;
+      this.desynced = false;
+      this.raw = [];
+      this.bytes = 0;
+      this.issues = [];
+      this.events = [];
+      this.droppedIssues = 0;
+      this.droppedEvents = 0;
+      this.annotations = [];
+      this.frames = 0;
+      this.lastFrame = null;
+      this.identity = null;
+      this.lastSequence = null;
+      this.epoch = 0;
+      this.connectionEpoch = 0;
+      this.openTransition = null;
+      this.overflow = false;
+      this.unsavedBytes = 0;
+      this.createdAt = now();
+      this.stateRevision = 0;
+      this.bootGeneration = 0;
+      this.configurationGeneration = 0;
+      this.decoder = this.newDecoder();
+      this.acceptedDataFrames = [];
+      this.droppedAcceptedDataFrames = 0;
+      this.recoveringStop = false;
+      this.drainingStream = null;
+      this.dataConnected = false;
+      this.dataGeneration = 0;
+      this.dataRaw = [];
+      this.dataBytes = 0;
+      this.dataUnsavedBytes = 0;
+      this.dataIssues = [];
+      this.dataDroppedIssues = 0;
+      this.pairing = null;
+      this.pairPending = null;
+      this.activeStream = null;
+      this.pairConsumed = false;
+      this.controlReplies = [];
+      this.lastDataReply = null;
+      this.transportFault = false;
+      this.lastControlStatus = null;
+      this.usedNonces = new Set();
+      this.dataDecoder = this.newDataDecoder();
+      this.monitoring = false;
+      this.controlWindow = null;
+      this.dataWindow = null;
+      this.heartbeatGeneration = 0;
+      this.lastHeartbeatSent = null;
+      this.heartbeatPromise = null;
+      this.onRawChunk = null;
+    }
+    continuousBuild(r) {
+      const p = this.rfPolicy.continuous;
+      return !!(
+        p?.approved === true &&
+        p.firmwareVersion === '0.3.2-rc1' &&
+        p.buildId &&
+        r?.firmware_version === p.firmwareVersion &&
+        r.build_id === p.buildId &&
+        p.leaseMs === 5000 &&
+        p.heartbeatMs === 1000
+      );
+    }
+    continuousFields(r) {
+      return (
+        this.continuousBuild(r) &&
+        r.session_mode === 'continuous' &&
+        r.session_seconds === 0 &&
+        r.keepalive_lease_ms === 5000
+      );
+    }
+    validDuration() {
+      return (
+        Number.isInteger(this.seconds) &&
+        ((this.seconds >= 1 && this.seconds <= 5 && this.seconds <= this.rfPolicy.maxSeconds) ||
+          (this.seconds === 0 && this.continuousFields(this.lastControlStatus)))
+      );
+    }
+    enableMonitoring() {
+      if (this.monitoring) return;
+      this.controlWindow = new ByteWindow(Math.floor(this.maxBytes / 2));
+      this.dataWindow = new ByteWindow(Math.floor(this.maxBytes / 2));
+      this.controlWindow.push(this.rawBytes());
+      this.dataWindow.push(this.dataRawBytes());
+      this.raw = [];
+      this.dataRaw = [];
+      this.monitoring = true;
+    }
+    notifyRaw(channel, bytes) {
+      if (this.onRawChunk)
+        this.onRawChunk(channel, bytes, {
+          host_utc_ms: this.now(),
+          host_monotonic_ms: typeof performance === 'object' ? performance.now() : null,
+        });
+    }
+    newDecoder() {
+      return new Decoder(
+        (r, line) => {
+          if (r.channel !== 'control') return this.controlIssue('Data record rejected on control port', { line });
+          this.record(r, line);
+        },
+        (message, line) => this.controlIssue(message, { line }),
+      );
+    }
+    event(type, detail = {}) {
+      const event = {
+        type,
+        host_utc_ms: this.now(),
+        epoch: this.epoch,
+        connection_epoch: this.connectionEpoch,
+        raw_byte_offset: this.bytes,
+        observed_byte_offset: this.bytes + this.unsavedBytes,
+        data_raw_byte_offset: this.dataBytes ?? 0,
+        ...detail,
+      };
+      this.onEvent?.(event);
+      this.droppedEvents += retain(this.events, event);
+      this.onChange();
+    }
+    issue(message, detail = {}) {
+      this.selftestReceipt = null;
+      this.stateRevision++;
+      this.droppedIssues += retain(this.issues, {
+        message,
+        host_utc_ms: this.now(),
+        epoch: this.epoch,
+        connection_epoch: this.connectionEpoch,
+        raw_byte_offset: this.bytes,
+        observed_byte_offset: this.bytes + this.unsavedBytes,
+        data_raw_byte_offset: this.dataBytes ?? 0,
+        ...detail,
+      });
+      this.onChange();
+    }
+    uncertain(value) {
+      if (value) this.selftestReceipt = null;
+      this.unconfirmed = value;
+      this.setUnconfirmed(value);
+      this.onChange();
+    }
+    attach(write) {
+      this.clearPair('Control connected');
+      if (this.connected) throw Error('Already connected');
+      this.controlReplies = [];
+      this.lastDataReply = null;
+      this.write = write;
+      this.connectionEpoch++;
+      this.bootGeneration++;
+      this.seconds = null;
+      this.selftestReceipt = null;
+      this.lastSelftestReport = null;
+      this.identity = null;
+      this.lastSequence = null;
+      this.decoder = this.newDecoder();
+      this.connected = true;
+      this.lastFrame = null;
+      this.state = 'unknown';
+      this.configured = false;
+      this.desynced = false;
+      this.uncertain(true);
+      this.event('connected');
+    }
+    detach(reason = 'disconnected') {
+      this.clearPair(reason);
+      this.bootGeneration++;
+      this.seconds = null;
+      this.selftestReceipt = null;
+      if (
+        ['running', 'starting', 'stopping'].includes(this.state) ||
+        this.pending?.command === 'start' ||
+        this.unconfirmed
+      )
+        this.uncertain(true);
+      this.connected = false;
+      this.configured = false;
+      this.decoder.finish();
+      if (this.pending) this.pending.finish(Error(reason));
+      this.closeTransition(true, reason);
+      this.event('disconnected', { reason });
+      this.state = 'unknown';
+      this.onChange();
+    }
+    ingest(input) {
+      const bytes = Uint8Array.from(input);
+      this.notifyRaw('control', bytes);
+      if (this.monitoring) {
+        this.controlWindow.push(bytes);
+        this.bytes += bytes.length;
+        this.decoder.push(bytes);
+        this.onChange();
+        return;
+      }
+      if (this.overflow || this.bytes + this.dataBytes + bytes.length > this.maxBytes) {
+        if (!this.overflow) {
+          this.overflow = true;
+          this.issue('Capture memory limit reached; incoming bytes are no longer saved');
+          this.uncertain(true);
+          this.cancelled = true;
+        }
+        this.unsavedBytes += bytes.length;
+        this.decoder.push(bytes);
+        this.onChange();
+        return;
+      }
+      let at = 0;
+      while (at < bytes.length) {
+        const index = Math.floor(this.bytes / 65536),
+          offset = this.bytes % 65536;
+        if (!this.raw[index]) this.raw[index] = new Uint8Array(65536);
+        const n = Math.min(65536 - offset, bytes.length - at);
+        this.raw[index].set(bytes.subarray(at, at + n), offset);
+        this.bytes += n;
+        at += n;
+      }
+      this.decoder.push(bytes);
+      this.onChange();
+    }
+    controlIssue(message, detail = {}) {
+      const active = !!this.activeStream || this.pairConsumed;
+      this.transportFault = true;
+      this.clearPair(message);
+      if (active) this.uncertain(true);
+      this.issue(message, { channel: 'control', ...detail });
+    }
+    checkDataFreshness(hostMs = this.monotonic()) {
+      if (!this.activeStream || this.recoveringStop) return;
+      const deadline = this.lastDataHost === null ? this.firstFrameDeadline : this.lastDataHost + 1000;
+      if (
+        !Number.isFinite(hostMs) ||
+        hostMs < this.activeStartedAt ||
+        (this.lastDataHost !== null && hostMs < this.lastDataHost) ||
+        hostMs > deadline
+      )
+        this.dataIssue('Paired data stream stale: Stop required');
+    }
+    newDataDecoder() {
+      const base = this.dataBytes ?? 0;
+      return new Decoder(
+        (r, line, offset) => this.dataRecord(r, line, { start: base + offset.start, end: base + offset.end }),
+        (message, line) => this.dataIssue(message, { line }),
+      );
+    }
+    clearPair(reason) {
+      this.heartbeatGeneration++;
+      this.pairGeneration = (this.pairGeneration ?? 0) + 1;
+      this.pairing = null;
+      this.activeStream = null;
+      this.pairConsumed = false;
+      this.selftestReceipt = null;
+      if (this.pairPending) {
+        this.pairPending.invalidated = true;
+        this.pairPending.fail(Error(reason));
+      }
+    }
+    dataIssue(message, detail = {}) {
+      const active = !!this.activeStream || this.pairConsumed;
+      this.transportFault = true;
+      this.clearPair(message);
+      if (active) this.uncertain(true);
+      this.stateRevision++;
+      this.dataDroppedIssues += retain(this.dataIssues, {
+        message,
+        channel: 'data',
+        host_utc_ms: this.now(),
+        data_generation: this.dataGeneration,
+        raw_byte_offset: this.dataBytes,
+        ...detail,
+      });
+      this.onChange();
+    }
+    attachData() {
+      if (this.dataConnected) throw Error('Data port already connected');
+      this.clearPair('Data connected');
+      this.dataGeneration++;
+      this.dataConnected = true;
+      this.lastDataReply = null;
+      this.dataDecoder = this.newDataDecoder();
+      this.event('data_connected', { channel: 'data', data_generation: this.dataGeneration });
+    }
+    detachData(reason = 'Data disconnected') {
+      const active =
+        !!this.activeStream ||
+        this.pairConsumed ||
+        ['running', 'starting', 'stopping'].includes(this.state) ||
+        this.unconfirmed;
+      this.transportFault = true;
+      this.clearPair(reason);
+      this.dataGeneration++;
+      this.dataConnected = false;
+      this.dataDecoder.finish();
+      this.lastFrame = null;
+      if (active) this.uncertain(true);
+      this.event('data_disconnected', { channel: 'data', data_generation: this.dataGeneration, reason });
+    }
+    ingestData(input) {
+      const bytes = Uint8Array.from(input);
+      this.notifyRaw('data', bytes);
+      if (this.monitoring) {
+        this.dataWindow.push(bytes);
+        this.dataBytes += bytes.length;
+        this.dataDecoder.push(bytes);
+        const retained = this.acceptedDataFrames.filter(
+          f => f.raw_byte_start >= this.dataWindow.start && f.raw_byte_end <= this.dataWindow.end,
+        );
+        this.droppedAcceptedDataFrames += this.acceptedDataFrames.length - retained.length;
+        this.acceptedDataFrames = retained;
+        this.onChange();
+        return;
+      }
+      if (this.overflow || this.bytes + this.dataBytes + bytes.length > this.maxBytes) {
+        this.overflow = true;
+        this.dataUnsavedBytes += bytes.length;
+        this.dataIssue('Combined capture memory limit reached');
+        this.uncertain(true);
+        return;
+      }
+      let at = 0;
+      while (at < bytes.length) {
+        const index = Math.floor(this.dataBytes / 65536),
+          offset = this.dataBytes % 65536;
+        if (!this.dataRaw[index]) this.dataRaw[index] = new Uint8Array(65536);
+        const n = Math.min(65536 - offset, bytes.length - at);
+        this.dataRaw[index].set(bytes.subarray(at, at + n), offset);
+        this.dataBytes += n;
+        at += n;
+      }
+      this.dataDecoder.push(bytes);
+      this.onChange();
+    }
+    dataRecord(r, line, offset = {}) {
+      if (r.channel !== 'data' || !['data_probe', 'frame'].includes(r.type))
+        return this.dataIssue('Control record rejected on data port', { line });
+      if (r.type === 'data_probe') {
+        const p = this.pairPending;
+        if (!p || !p.sent) return this.dataIssue('Unsolicited data probe rejected', { line });
+        if (
+          r.protocol !== PROTOCOL ||
+          !this.acceptedIdentity(r) ||
+          (this.seconds === 0 && !this.continuousFields(r)) ||
+          r.pair_nonce !== p.nonce ||
+          r.config_generation !== p.configGeneration ||
+          !Number.isSafeInteger(r.session_id) ||
+          r.session_id <= 0
+        )
+          return this.dataIssue('Data probe does not match exact pairing challenge', { line });
+        p.probe = JSON.parse(JSON.stringify(r));
+        this.lastDataReply = JSON.parse(JSON.stringify(r));
+        p.resolve();
+        return;
+      }
+      const drain = this.drainingStream;
+      if (
+        this.recoveringStop &&
+        drain &&
+        r.pair_nonce === drain.pair_nonce &&
+        r.config_generation === drain.config_generation &&
+        r.session_id === drain.session_id
+      ) {
+        this.event('data_tail_ignored', { channel: 'data', sequence: r.sequence });
+        return;
+      }
+      const p = this.activeStream;
+      if (
+        !p ||
+        !this.dataConnected ||
+        p.data_generation !== this.dataGeneration ||
+        p.connection_epoch !== this.connectionEpoch ||
+        r.pair_nonce !== p.pair_nonce ||
+        r.config_generation !== p.config_generation ||
+        r.session_id !== p.session_id
+      )
+        return this.dataIssue('Frame rejected: no matching active paired session', { line, sequence: r.sequence });
+      if (
+        this.seconds === 0 &&
+        (r.session_mode !== 'continuous' ||
+          r.session_seconds !== 0 ||
+          r.keepalive_lease_ms !== 5000 ||
+          r.timestamp_basis !== 'session_elapsed')
+      )
+        return this.dataIssue('Continuous frame mode, lease or timestamp basis changed', {
+          line,
+          sequence: r.sequence,
+        });
+      if (this.seconds === 0 && this.lastSequence !== null && r.sequence !== this.lastSequence + 1)
+        return this.dataIssue('Continuous stream sequence gap', { line, sequence: r.sequence });
+      if (
+        (this.lastSequence !== null && r.sequence <= this.lastSequence) ||
+        (this.lastDataTimestamp !== null && r.timestamp_us <= this.lastDataTimestamp) ||
+        (this.lastDataHost !== null && this.monotonic() < this.lastDataHost)
+      )
+        return this.dataIssue('Stale or backward data sample rejected', { line, sequence: r.sequence });
+      this.lastDataTimestamp = r.timestamp_us;
+      this.lastDataHost = this.monotonic();
+      if (this.acceptedDataFrames.length === 256) {
+        this.acceptedDataFrames.shift();
+        this.droppedAcceptedDataFrames++;
+      }
+      this.acceptedDataFrames.push({
+        connection_epoch: this.connectionEpoch,
+        data_generation: this.dataGeneration,
+        host_utc_ms: this.now(),
+        admission: 'matched-active-pair',
+        channel: 'data',
+        raw_byte_start: offset.start ?? null,
+        raw_byte_end: offset.end ?? null,
+        raw_line: line,
+        human_reviewed: false,
+        frame: JSON.parse(JSON.stringify(r)),
+      });
+      this.selftestReceipt = null;
+      this.stateRevision++;
+      this.frames++;
+      this.lastFrame = JSON.parse(JSON.stringify(r));
+      this.lastDataReply = JSON.parse(JSON.stringify(r));
+      if (!r.complete || r.capture_fault || r.missed_frames || r.deadline_misses) {
+        this.dataIssue('Frame acquisition fault/incomplete data', { line, sequence: r.sequence });
+        this.onFrame(JSON.parse(JSON.stringify(r)));
+        return;
+      }
+      if (r.truncated)
+        this.issue('Top-three output truncated; detections omitted', { channel: 'data', line, sequence: r.sequence });
+      if (this.lastSequence !== null && r.sequence !== this.lastSequence + 1)
+        this.issue('Sequence gap/reset/duplicate', {
+          channel: 'data',
+          line,
+          sequence: r.sequence,
+          previous: this.lastSequence,
+        });
+      this.lastSequence = r.sequence;
+      // Data observations never overwrite control-authoritative state/configuration/fault.
+      this.onFrame(JSON.parse(JSON.stringify(r)));
+      this.onChange();
+    }
+    async pair(nonce) {
+      if (!/^[0-9a-f]{32}$/.test(nonce)) throw Error('Pairing nonce must be 32 lowercase hex characters');
+      if (this.usedNonces.has(nonce) || this.usedNonces.size >= 256)
+        throw Error('Pairing requires a new nonce; reload after 256 challenges');
+      if (
+        this.busy ||
+        !this.connected ||
+        !this.dataConnected ||
+        !this.configured ||
+        this.state !== 'idle' ||
+        this.unconfirmed ||
+        this.desynced ||
+        this.overflow ||
+        !this.validDuration() ||
+        !this.lastControlStatus ||
+        !this.matchesAcceptedSelftest(this.lastControlStatus)
+      )
+        throw Error('Pairing requires two open ports, exact accepted self-test, and a committed idle configuration');
+      const connection = this.connectionEpoch,
+        data = this.dataGeneration,
+        config = this.configurationGeneration,
+        configGeneration = this.lastControlStatus.config_generation;
+      this.clearPair('New pairing challenge');
+      this.usedNonces.add(nonce);
+      this.busy = true;
+      this.cancelled = false;
+      this.onChange();
+      let timer;
+      const pairingGeneration = this.pairGeneration;
+      const check = () => {
+        if (
+          this.pairGeneration !== pairingGeneration ||
+          this.pairPending?.invalidated ||
+          !this.connected ||
+          !this.dataConnected ||
+          connection !== this.connectionEpoch ||
+          data !== this.dataGeneration ||
+          config !== this.configurationGeneration ||
+          this.state !== 'idle' ||
+          this.unconfirmed ||
+          this.cancelled ||
+          this.desynced
+        )
+          throw Error('Pairing invalidated by transport/configuration/state change');
+      };
+      let resolve, reject;
+      const echo = new Promise((a, b) => {
+        resolve = a;
+        reject = b;
+      });
+      echo.catch(() => {});
+      const pending = { nonce, configGeneration, probe: null, sent: false, invalidated: false, resolve, fail: reject };
+      this.pairPending = pending;
+      timer = setTimeout(() => pending.fail(Error('No matching data-port pairing probe')), this.timeoutMs);
+      try {
+        await this.command('pair ' + nonce, () => {
+          check();
+          pending.sent = true;
+          return true;
+        });
+        await echo;
+        check();
+        await this.command('pairConfirm ' + nonce, () => {
+          check();
+          return true;
+        });
+        check();
+        const result = await this.command('status');
+        check();
+        const r = result.status,
+          p = pending.probe;
+        if (
+          result.statusRevision !== this.stateRevision ||
+          !this.configured ||
+          r.configured !== true ||
+          !r.paired ||
+          r.pair_nonce !== nonce ||
+          r.config_generation !== p.config_generation ||
+          r.session_id !== p.session_id ||
+          !this.matchesAcceptedSelftest(r)
+        )
+          throw Error('Control status did not confirm exact data-port proof');
+        this.pairing = {
+          protocol: PROTOCOL,
+          firmware_version: p.firmware_version,
+          build_id: p.build_id,
+          pair_nonce: nonce,
+          config_generation: p.config_generation,
+          session_id: p.session_id,
+          connection_epoch: connection,
+          data_generation: data,
+        };
+        this.pairConsumed = false;
+        this.transportFault = false;
+        this.event('ports_paired', { ...this.pairing, correlation_not_authentication: true });
+      } catch (e) {
+        this.clearPair(e.message);
+        throw e;
+      } finally {
+        clearTimeout(timer);
+        if (this.pairPending === pending) this.pairPending = null;
+        this.busy = false;
+        this.onChange();
+      }
+    }
+    dataRawBytes() {
+      if (this.monitoring) return this.dataWindow.bytes();
+      const bytes = new Uint8Array(this.dataBytes);
+      let n = 0;
+      for (const c of this.dataRaw) {
+        const count = Math.min(c.length, this.dataBytes - n);
+        bytes.set(c.subarray(0, count), n);
+        n += count;
+      }
+      return bytes;
+    }
+    dataBase64() {
+      let binary = '';
+      for (const byte of this.dataRawBytes()) binary += String.fromCharCode(byte);
+      return typeof btoa === 'function' ? btoa(binary) : Buffer.from(binary, 'binary').toString('base64');
+    }
+    record(r, line) {
+      if (r.channel !== 'control' || !['identity', 'status', 'ack'].includes(r.type))
+        return this.controlIssue('Only control records may enter control state', { line });
+      this.controlReplies.push(JSON.parse(JSON.stringify(r)));
+      if (this.controlReplies.length > 16) this.controlReplies.shift();
+      if (r.type === 'identity') {
+        this.clearPair('Control identity/reset');
+        this.lastControlStatus = null;
+        this.bootGeneration++;
+        this.seconds = null;
+        this.stateRevision++;
+        this.selftestReceipt = null;
+        this.lastSelftestReport = null;
+        this.identity = JSON.parse(JSON.stringify(r));
+        this.configured = false;
+        this.state = 'unknown';
+        this.uncertain(true);
+      }
+      if (r.type === 'status') {
+        this.lastControlStatus = JSON.parse(JSON.stringify(r));
+        if (
+          r.fault ||
+          r.state === 'fault' ||
+          r.control_tx_fault !== false ||
+          r.data_tx_fault !== false ||
+          ((this.pairing || this.activeStream) && !this.matchesAcceptedSelftest(r))
+        ) {
+          this.transportFault = true;
+          this.clearPair('Control fault');
+        }
+        if (
+          this.pairing &&
+          (!r.paired ||
+            r.pair_nonce !== this.pairing.pair_nonce ||
+            r.config_generation !== this.pairing.config_generation ||
+            r.session_id !== this.pairing.session_id)
+        )
+          this.clearPair('Control pairing state changed');
+        if (r.state === 'idle' && this.pairConsumed) this.clearPair('Session ended; pair again');
+        this.selftestReceipt = null;
+        this.lastSelftestReport = {
+          firmware_version: r.firmware_version ?? null,
+          build_id: r.build_id ?? null,
+          selftest_version: r.selftest_version ?? null,
+          selftest_ok: r.selftest_ok ?? null,
+          selftest_mask: r.selftest_mask ?? null,
+          fault: r.fault ?? null,
+          capture_fault: r.capture_fault ?? null,
+          rf_fault: r.rf_fault ?? null,
+          rf_error: r.rf_error ?? null,
+          deadline_misses: r.deadline_misses ?? null,
+          control_tx_fault: r.control_tx_fault ?? null,
+          data_tx_fault: r.data_tx_fault ?? null,
+        };
+        this.stateRevision++;
+        this.state = r.state;
+        this.configured = r.configured;
+        if (r.fault || r.state === 'fault') {
+          this.issue('Firmware fault', { line, fault: r.fault });
+          this.uncertain(true);
+        }
+        if (['running', 'starting', 'stopping'].includes(r.state)) this.uncertain(true);
+        // An explicit fresh status request is needed to clear uncertainty, never an unrelated ACK/identity.
+        if (this.pending?.command === 'status' && this.pending.sent) {
+          this.pending.status = r;
+          this.pending.statusRevision = this.stateRevision;
+          this.pending.check();
+        }
+        if (r.state === 'idle') this.closeTransition(true, 'Firmware session ended');
+      }
+      if (r.type === 'ack') {
+        const p = this.pending;
+        if (p && p.sent && r.command === p.command) {
+          if (r.code !== 0) {
+            this.selftestReceipt = null;
+            p.finish(Error('Command rejected: ' + r.command + ' (' + r.code + ')'));
+          } else {
+            p.ack = r;
+            p.check();
+          }
+        } else if (r.command === 'keepalive') {
+          this.event('unmatched_keepalive_ack', { code: r.code });
+        } else {
+          this.stateRevision++;
+          this.selftestReceipt = null;
+          if (['orConfig', 'profile', 'mount', 'detect', 'session', 'commit'].includes(r.command)) this.seconds = null;
+          if (['running', 'starting', 'stopping', 'fault'].includes(r.state)) this.uncertain(true);
+          this.event('unmatched_ack', { command: r.command, code: r.code });
+        }
+      }
+      this.onChange();
+    }
+    command(text, dispatchGuard = null) {
+      if (!this.connected || !this.write) return Promise.reject(Error('Not connected'));
+      if (this.pending) return Promise.reject(Error('Another command is awaiting acknowledgement'));
+      const command = text.split(' ')[0];
+      if (this.desynced && !['stop', 'status'].includes(command))
+        return Promise.reject(Error('Command stream is desynchronized. ' + RECOVERY_CONTROL));
+      return new Promise((resolve, reject) => {
+        const p = {
+          command,
+          ack: null,
+          status: null,
+          finish: err => {
+            if (this.pending !== p) return;
+            clearTimeout(p.timer);
+            this.pending = null;
+            if (err) this.selftestReceipt = null;
+            this.event('command_complete', { command, success: !err, error: err ? err.message : null });
+            err ? reject(err) : resolve(p);
+            this.onChange();
+          },
+          check: () => {
+            if (p.ack && (command !== 'status' || p.status)) {
+              if (
+                command === 'status' &&
+                (p.statusRevision !== this.stateRevision ||
+                  p.ack.state !== p.status.state ||
+                  p.ack.configured !== p.status.configured)
+              ) {
+                p.finish(Error('State changed after status; query again'));
+                return;
+              }
+              if (command === 'status' && p.status.state === 'idle' && p.status.fault === 0 && !this.desynced) {
+                this.uncertain(false);
+                this.closeTransition(true, 'Observed idle status');
+                if (this.matchesAcceptedSelftest(p.status))
+                  this.selftestReceipt = {
+                    connection_epoch: this.connectionEpoch,
+                    state_revision: this.stateRevision,
+                    host_utc_ms: this.now(),
+                    firmware_version: p.status.firmware_version,
+                    build_id: p.status.build_id,
+                    selftest_version: p.status.selftest_version,
+                    selftest_ok: true,
+                    selftest_mask: 0,
+                    fault: 0,
+                    capture_fault: 0,
+                    rf_fault: 0,
+                    rf_error: 0,
+                    deadline_misses: 0,
+                    control_tx_fault: false,
+                    data_tx_fault: false,
+                    paired: p.status.paired,
+                    pair_nonce: p.status.pair_nonce,
+                    config_generation: p.status.config_generation,
+                    session_id: p.status.session_id,
+                    data_generation: this.dataGeneration,
+                    session_mode: p.status.session_mode,
+                    session_seconds: p.status.session_seconds,
+                    keepalive_lease_ms: p.status.keepalive_lease_ms,
+                  };
+              }
+              p.finish();
+            }
+          },
+        };
+        this.pending = p;
+        p.timer = setTimeout(() => {
+          this.desynced = true;
+          this.event('command_timeout', { command, sent: p.sent === true, timeout_ms: this.timeoutMs });
+          p.finish(Error('No matching acknowledged response for ' + command + '. ' + RECOVERY_CONTROL));
+        }, this.timeoutMs);
+        this.event('command', { command: text });
+        Promise.resolve()
+          .then(() => {
+            if (this.pending !== p || !this.connected) throw Error('Command cancelled before write');
+            if (dispatchGuard && !dispatchGuard()) throw Error('Start authorization invalidated before dispatch');
+            p.sent = true;
+            return this.write(new TextEncoder().encode(text + '\n'));
+          })
+          .catch(e => {
+            if (p.sent) {
+              this.desynced = true;
+              this.uncertain(true);
+            }
+            p.finish(e);
+          });
+      });
+    }
+    async status() {
+      if (this.busy) throw Error('An operation is in progress');
+      this.busy = true;
+      this.cancelled = false;
+      this.onChange();
+      try {
+        const p = await this.command('status');
+        if (this.cancelled) throw Error('Cancelled');
+        if (this.desynced) throw Error('Command stream is desynchronized. ' + RECOVERY_CONTROL);
+        return p.status;
+      } finally {
+        this.busy = false;
+        this.onChange();
+      }
+    }
+    invalidateConfiguration() {
+      this.clearPair('Configuration edited');
+      this.mountConfiguration = null;
+      this.configurationGeneration++;
+      this.seconds = null;
+      this.onChange();
+    }
+    configureBlockReason() {
+      if (this.desynced) return RECOVERY_CONTROL;
+      if (!this.dataConnected) return 'Open the separate data port before Configure';
+      const r = this.selftestReceipt;
+      if (
+        this.rfPolicy.approved !== true ||
+        this.busy ||
+        !this.connected ||
+        this.state !== 'idle' ||
+        this.unconfirmed ||
+        this.desynced ||
+        this.overflow ||
+        !r ||
+        r.connection_epoch !== this.connectionEpoch ||
+        r.state_revision !== this.stateRevision ||
+        !this.matchesAcceptedSelftest(r)
+      )
+        return 'Query accepted repaired firmware status with successful onboard self-test and fault-free idle before Configure';
+      return '';
+    }
+    async configure(seconds, mount) {
+      const blocked = this.configureBlockReason();
+      const continuous = seconds === 0;
+      if (continuous && !this.continuousBuild(this.selftestReceipt))
+        throw Error(
+          'Continuous monitoring requires the exact new 0.3.2-rc1 firmware. Timed tests remain available on the previous build.',
+        );
+      if (this.monitoring && !continuous)
+        throw Error('Save the diagnostic window, confirm idle and open a fresh viewer for a bounded recording');
+      if (continuous && this.frames && !this.monitoring)
+        throw Error('Save the bounded recording, confirm idle and open a fresh viewer for continuous monitoring');
+      const generation = ++this.configurationGeneration,
+        boot = this.bootGeneration,
+        connection = this.connectionEpoch,
+        stagedRevision = this.stateRevision;
+      const check = () => {
+        if (this.cancelled) throw Error('Cancelled');
+        if (
+          generation !== this.configurationGeneration ||
+          boot !== this.bootGeneration ||
+          connection !== this.connectionEpoch ||
+          !this.connected ||
+          this.state !== 'idle' ||
+          this.unconfirmed
+        )
+          throw Error('Configuration interrupted by connection, identity or state change');
+      };
+      this.seconds = null;
+      if (!Number.isInteger(seconds) || seconds < 0 || seconds > 5)
+        throw Error('Choose a 1–5 second test or explicit continuous monitoring');
+      if (blocked) throw Error(blocked);
+      if (
+        !mount ||
+        mount.confirmed !== true ||
+        !Number.isInteger(mount.bracket_top_mm) ||
+        mount.bracket_top_mm < 100 ||
+        mount.bracket_top_mm > 5000 ||
+        !Number.isInteger(mount.down_tilt_mdeg) ||
+        mount.down_tilt_mdeg < -45000 ||
+        mount.down_tilt_mdeg > 45000 ||
+        !(
+          mount.antenna_offset_mm === null ||
+          (Number.isInteger(mount.antenna_offset_mm) &&
+            mount.antenna_offset_mm >= -1000 &&
+            mount.antenna_offset_mm <= 1000 &&
+            mount.bracket_top_mm + mount.antenna_offset_mm > 0)
+        )
+      )
+        throw Error('Enter and confirm measured bracket-top height/tilt; antenna offset may remain unknown');
+      const stagedMount = Object.freeze({ ...mount });
+      this.mountConfiguration = null;
+      this.clearPair('Configuration staged');
+      if (this.busy || this.unconfirmed || this.state !== 'idle')
+        throw Error('Query status and confirm idle before configuring');
+      this.selftestReceipt = null;
+      this.busy = true;
+      this.cancelled = false;
+      this.configured = false;
+      this.onChange();
+      try {
+        for (const line of [
+          'orConfig 1',
+          'profile room64_v1',
+          'mount ' +
+            stagedMount.bracket_top_mm +
+            ' ' +
+            stagedMount.down_tilt_mdeg +
+            ' ' +
+            (stagedMount.antenna_offset_mm ?? 'unknown'),
+          'detect 4 30 64 8',
+          'session ' + (continuous ? 'continuous' : seconds),
+          'commit',
+        ]) {
+          check();
+          if (this.stateRevision !== stagedRevision) throw Error('Configuration evidence changed while staging');
+          const p = await this.command(line, () => {
+            try {
+              check();
+              return this.stateRevision === stagedRevision;
+            } catch (_) {
+              return false;
+            }
+          });
+          check();
+          if (this.stateRevision !== stagedRevision) throw Error('Configuration evidence changed while staging');
+          if (p.ack.state !== 'idle') throw Error('Configuration ACK did not report idle');
+        }
+        check();
+        const p = await this.command('status');
+        check();
+        if (p.statusRevision !== this.stateRevision) throw Error('Configuration status changed before confirmation');
+        if (p.status.state !== 'idle' || !p.status.configured || p.status.fault)
+          throw Error('Configuration not confirmed idle/committed');
+        if (continuous && !this.continuousFields(p.status))
+          throw Error('Firmware did not confirm continuous mode and its lease');
+        if (continuous) this.enableMonitoring();
+        this.seconds = seconds;
+        this.mountConfiguration = stagedMount;
+        this.event('configured', {
+          seconds,
+          mount: stagedMount,
+          mount_source: 'user-declared measurement, not calibration',
+        });
+      } finally {
+        this.busy = false;
+        this.onChange();
+      }
+    }
+    matchesAcceptedSelftest(r) {
+      const p = this.rfPolicy;
+      return (
+        this.acceptedIdentity(r) &&
+        (this.seconds !== 0 || this.continuousFields(r)) &&
+        p.selftestVersion === 2 &&
+        Number.isInteger(p.maxSeconds) &&
+        p.maxSeconds >= 1 &&
+        p.maxSeconds <= 5 &&
+        r.selftest_version === p.selftestVersion &&
+        r.selftest_ok === true &&
+        r.selftest_mask === 0 &&
+        r.fault === 0 &&
+        r.capture_fault === 0 &&
+        r.rf_fault === 0 &&
+        r.rf_error === 0 &&
+        r.deadline_misses === 0 &&
+        r.control_tx_fault === false &&
+        r.data_tx_fault === false &&
+        (!this.identity || (this.identity.version === r.firmware_version && this.identity.build_id === r.build_id))
+      );
+    }
+    acceptedIdentity(r) {
+      const p = this.rfPolicy;
+      return !!(
+        r &&
+        p.approved === true &&
+        ((p.firmwareVersion === '0.3.1-rc1' &&
+          p.buildId &&
+          r.firmware_version === p.firmwareVersion &&
+          r.build_id === p.buildId) ||
+          this.continuousBuild(r))
+      );
+    }
+    startBlockReason() {
+      if (!this.rfEnabled || this.rfPolicy.approved !== true)
+        return 'RF tests paused: exact dual-UART build review and approval are pending';
+      if (
+        !this.dataConnected ||
+        !this.pairing ||
+        this.pairConsumed ||
+        this.pairing.data_generation !== this.dataGeneration ||
+        this.pairing.connection_epoch !== this.connectionEpoch
+      )
+        return 'Pair the two ports with a fresh data-only nonce proof before Start';
+      if (
+        this.busy ||
+        !this.connected ||
+        !this.configured ||
+        this.state !== 'idle' ||
+        this.unconfirmed ||
+        this.overflow ||
+        this.desynced
+      )
+        return 'Start requires a confirmed idle, configured device and complete capture';
+      if (!this.validDuration()) return 'Configure a timed test or supported continuous session first';
+      const r = this.selftestReceipt;
+      if (
+        !r ||
+        r.paired !== true ||
+        r.pair_nonce !== this.pairing.pair_nonce ||
+        r.config_generation !== this.pairing.config_generation ||
+        r.session_id !== this.pairing.session_id ||
+        r.data_generation !== this.dataGeneration ||
+        r.connection_epoch !== this.connectionEpoch ||
+        r.state_revision !== this.stateRevision ||
+        !this.matchesAcceptedSelftest(r)
+      )
+        return 'Start blocked: query fresh status with the exact accepted repaired build and successful version-2 onboard self-test';
+      return '';
+    }
+    async start() {
+      const blocked = this.startBlockReason();
+      if (blocked) throw Error(blocked);
+      const proof = this.pairing;
+      this.activeStream = null;
+      this.pairConsumed = true;
+      const receipt = this.selftestReceipt,
+        authorizedRevision = this.stateRevision,
+        authorizedConnection = this.connectionEpoch,
+        authorizedSeconds = this.seconds;
+      this.selftestReceipt = null;
+      this.busy = true;
+      this.cancelled = false;
+      this.epoch++;
+      this.event('selftest_gate_accepted', { receipt, policy: this.rfPolicy, duration_seconds: this.seconds });
+      this.lastSequence = null;
+      this.lastFrame = null;
+      this.uncertain(true);
+      this.event('session_requested', { seconds: this.seconds });
+      try {
+        await this.command('start', () => {
+          const valid =
+            this.dataConnected &&
+            this.dataGeneration === proof.data_generation &&
+            this.pairing === proof &&
+            this.stateRevision === authorizedRevision &&
+            this.connectionEpoch === authorizedConnection &&
+            this.seconds === authorizedSeconds &&
+            this.state === 'idle' &&
+            this.configured &&
+            !this.desynced &&
+            !this.overflow &&
+            !this.cancelled &&
+            this.matchesAcceptedSelftest(receipt);
+          if (valid) {
+            this.activeStream = { ...proof };
+            this.lastHeartbeatSent = null;
+            this.activeStartedAt = this.monotonic();
+            this.firstFrameDeadline = this.activeStartedAt + 5000;
+            this.lastDataHost = null;
+            this.lastDataTimestamp = null;
+          }
+          return valid;
+        });
+        if (this.cancelled) throw Error('Cancelled');
+        let p = await this.command('status');
+        if (this.cancelled) throw Error('Cancelled');
+        if (
+          p.statusRevision !== this.stateRevision ||
+          !this.connected ||
+          !this.dataConnected ||
+          this.dataGeneration !== proof.data_generation ||
+          this.pairing !== proof ||
+          !this.activeStream ||
+          this.activeStream.pair_nonce !== proof.pair_nonce ||
+          p.status.paired !== true ||
+          p.status.pair_nonce !== proof.pair_nonce ||
+          p.status.config_generation !== proof.config_generation ||
+          p.status.session_id !== proof.session_id ||
+          p.status.state !== 'running' ||
+          p.status.fault ||
+          this.connectionEpoch !== authorizedConnection ||
+          this.seconds !== authorizedSeconds ||
+          !this.matchesAcceptedSelftest(p.status)
+        )
+          throw Error('Running state and accepted self-test not confirmed; Stop and query status');
+        if (this.lastDataHost === null)
+          this.firstFrameDeadline = Math.min(this.firstFrameDeadline, this.monotonic() + 1000);
+        this.event('running_confirmed');
+      } catch (e) {
+        this.transportFault = true;
+        this.clearPair('Start failed or running state unconfirmed');
+        this.uncertain(true);
+        throw e;
+      } finally {
+        this.busy = false;
+        this.onChange();
+      }
+    }
+    async stop() {
+      this.heartbeatGeneration++;
+      if (this.pending?.command === 'keepalive') this.pending.finish(Error('Keepalive superseded by manual Stop'));
+      if (this.busy) throw Error('Cancel the pending operation first');
+      this.drainingStream = this.activeStream;
+      this.recoveringStop = true;
+      this.activeStream = null;
+      this.pairConsumed = true;
+      this.busy = true;
+      this.cancelled = false;
+      this.uncertain(true);
+      this.closeTransition(true, 'Stop requested');
+      try {
+        await this.command('stop');
+        if (this.cancelled) throw Error('Cancelled');
+        const p = await this.command('status');
+        if (this.cancelled) throw Error('Cancelled');
+        if (p.status.state !== 'idle' || p.status.fault || this.unconfirmed)
+          throw Error('Idle not confirmed; device may still be running');
+        this.event('stopped_confirmed');
+      } finally {
+        this.recoveringStop = false;
+        this.drainingStream = null;
+        this.busy = false;
+        this.onChange();
+      }
+    }
+    async heartbeat() {
+      if (
+        this.seconds !== 0 ||
+        !this.activeStream ||
+        this.state !== 'running' ||
+        this.recoveringStop ||
+        this.busy ||
+        this.pending ||
+        this.heartbeatPromise ||
+        this.desynced ||
+        this.transportFault
+      )
+        return;
+      const now = this.monotonic();
+      if (this.lastHeartbeatSent !== null && now - this.lastHeartbeatSent < 1000) return;
+      const proof = this.activeStream,
+        generation = this.heartbeatGeneration;
+      this.lastHeartbeatSent = now;
+      const task = this.command(
+        'keepalive ' + proof.pair_nonce + ' ' + proof.config_generation + ' ' + proof.session_id,
+        () => this.activeStream === proof && this.heartbeatGeneration === generation && !this.recoveringStop,
+      );
+      this.heartbeatPromise = task;
+      try {
+        const p = await task;
+        if (generation !== this.heartbeatGeneration) return;
+        const a = p.ack;
+        if (
+          a.state !== 'running' ||
+          a.pair_nonce !== proof.pair_nonce ||
+          a.config_generation !== proof.config_generation ||
+          a.session_id !== proof.session_id
+        )
+          throw Error('Keepalive acknowledgement does not match the active session');
+      } catch (e) {
+        if (generation === this.heartbeatGeneration && this.activeStream) {
+          this.transportFault = true;
+          this.clearPair('Keepalive failed');
+          this.uncertain(true);
+          this.issue('Continuous keepalive failed: ' + e.message);
+        }
+      } finally {
+        if (this.heartbeatPromise === task) this.heartbeatPromise = null;
+        this.onChange();
+      }
+    }
+    cancel() {
+      this.clearPair('Operation cancelled');
+      this.selftestReceipt = null;
+      this.cancelled = true;
+      this.desynced = true;
+      if (this.pending?.command === 'start' || ['running', 'starting', 'stopping'].includes(this.state))
+        this.uncertain(true);
+      if (this.pending) this.pending.finish(Error('Cancelled; command may already have reached device'));
+      this.event('operation_cancelled');
+    }
+    annotate(kind, label) {
+      if (this.annotations.length >= 10000) throw Error('Annotation limit reached; save this capture');
+      if (!this.connected || this.state !== 'running' || this.overflow)
+        throw Error('Annotations require a receiving run');
+      if (
+        !['activity', 'transition_start', 'transition_end'].includes(kind) ||
+        !['sitting', 'standing', 'walking', 'unknown', 'sit-to-stand', 'movement-onset'].includes(label)
+      )
+        throw Error('Unsupported annotation');
+      if (
+        (kind === 'activity' && !['sitting', 'standing', 'walking', 'unknown'].includes(label)) ||
+        (kind !== 'activity' && !['sit-to-stand', 'movement-onset'].includes(label))
+      )
+        throw Error('Annotation kind/label mismatch');
+      if (kind === 'transition_start' && this.openTransition) throw Error('End the open transition first');
+      if (kind === 'transition_end' && (!this.openTransition || this.openTransition.label !== label))
+        throw Error('No matching transition');
+      const a = {
+        kind,
+        label,
+        host_utc_ms: this.now(),
+        sensor_timestamp_us: this.lastFrame?.timestamp_us ?? null,
+        sequence: this.lastFrame?.sequence ?? null,
+        epoch: this.epoch,
+        connection_epoch: this.connectionEpoch,
+        source: 'human-observed',
+        review_status: 'unreviewed',
+        observer_latency_ms: null,
+      };
+      this.annotations.push(a);
+      if (kind === 'transition_start') this.openTransition = a;
+      if (kind === 'transition_end') this.openTransition = null;
+      this.onChange();
+    }
+    closeTransition(incomplete, reason) {
+      if (this.openTransition) {
+        this.annotations.push({
+          kind: 'transition_end',
+          label: this.openTransition.label,
+          epoch: this.openTransition.epoch,
+          connection_epoch: this.openTransition.connection_epoch,
+          host_utc_ms: this.now(),
+          sensor_timestamp_us: this.lastFrame?.timestamp_us ?? null,
+          source: 'system',
+          review_status: 'unreviewed',
+          incomplete,
+          reason,
+        });
+        this.openTransition = null;
+      }
+    }
+    rawBytes() {
+      if (this.monitoring) return this.controlWindow.bytes();
+      const bytes = new Uint8Array(this.bytes);
+      let n = 0;
+      for (const c of this.raw) {
+        const count = Math.min(c.length, this.bytes - n);
+        bytes.set(c.subarray(0, count), n);
+        n += count;
+      }
+      return bytes;
+    }
+    monitorSnapshot() {
+      const lane = w => {
+        const bytes = w.bytes();
+        let binary = '';
+        for (const b of bytes) binary += String.fromCharCode(b);
+        return {
+          raw_encoding: 'base64',
+          raw_jsonl_bytes: typeof btoa === 'function' ? btoa(binary) : Buffer.from(bytes).toString('base64'),
+          raw_byte_count: bytes.length,
+          global_byte_start: w.start,
+          global_byte_end: w.end,
+          received_byte_count: w.end,
+          evicted_byte_count: w.start,
+          may_begin_inside_record: w.start > 0,
+        };
+      };
+      return JSON.parse(
+        JSON.stringify({
+          schema: 'original-radar-monitor-window',
+          version: 1,
+          protocol: PROTOCOL,
+          complete_recording: false,
+          created_utc_ms: this.createdAt,
+          exported_utc_ms: this.now(),
+          mode: 'continuous-monitoring',
+          retention_limit_bytes: this.maxBytes,
+          raw_streams: { control: lane(this.controlWindow), data: lane(this.dataWindow) },
+          accepted_data_frames: this.acceptedDataFrames,
+          dropped_accepted_data_frames: this.droppedAcceptedDataFrames,
+          frames_received: this.frames,
+          accepted_data_frames_limit: 256,
+          identity: this.identity,
+          last_control_status: this.lastControlStatus,
+          mount_input: this.mountConfiguration ?? null,
+          mount_input_source: 'user-declared measurement, not calibration',
+          rf_acceptance_policy: this.rfPolicy,
+          active_stream: this.activeStream,
+          pairing: this.pairing,
+          state: this.state,
+          stop_unconfirmed: this.unconfirmed,
+          transport_fault: this.transportFault,
+          capture_overflow: false,
+          events: this.events,
+          issues: this.issues,
+          data_issues: this.dataIssues,
+          dropped_event_count: this.droppedEvents,
+          dropped_issue_count: this.droppedIssues,
+          data_dropped_issue_count: this.dataDroppedIssues,
+          annotations: this.annotations,
+          buffered_bytes: this.decoder.line.length,
+          data_buffered_bytes: this.dataDecoder.line.length,
+          limits: {
+            full_recording: false,
+            bounded_capture_replay_compatible: false,
+            training_admissible: false,
+            calibration_and_activity_unverified: true,
+            physical_continuous_operation_verified: false,
+            clock_sync: 'host and sensor clocks remain separate',
+          },
+        }),
+      );
+    }
+    snapshot() {
+      if (this.monitoring) return this.monitorSnapshot();
+      let binary = '';
+      for (const byte of this.rawBytes()) binary += String.fromCharCode(byte);
+      const base64 = typeof btoa === 'function' ? btoa(binary) : Buffer.from(binary, 'binary').toString('base64');
+      return JSON.parse(
+        JSON.stringify({
+          schema: 'original-radar-capture',
+          version: 2,
+          protocol: PROTOCOL,
+          created_utc_ms: this.createdAt,
+          exported_utc_ms: this.now(),
+          serial: {
+            control: { baud: 115200, dataBits: 8, stopBits: 1, parity: 'none', flowControl: 'none' },
+            data: { baud: 921600, dataBits: 8, stopBits: 1, parity: 'none', flowControl: 'none' },
+          },
+          raw_streams: {
+            control: { raw_encoding: 'base64', raw_jsonl_bytes: base64, raw_byte_count: this.bytes },
+            data: { raw_encoding: 'base64', raw_jsonl_bytes: this.dataBase64(), raw_byte_count: this.dataBytes },
+          },
+          accepted_data_frames: this.acceptedDataFrames,
+          dropped_accepted_data_frames: this.droppedAcceptedDataFrames,
+          accepted_data_frames_limit: 256,
+          data_issues: this.dataIssues.concat(
+            this.dataDecoder.line.length || this.dataDecoder.discard
+              ? [{ message: 'Incomplete final data JSONL record at export', channel: 'data', host_utc_ms: this.now() }]
+              : [],
+          ),
+          data_buffered_bytes: this.dataDecoder.line.length,
+          data_dropped_issue_count: this.dataDroppedIssues,
+          data_unsaved_byte_count: this.dataUnsavedBytes,
+          pairing: this.pairing,
+          identity: this.identity,
+          mount_input: this.mountConfiguration ?? null,
+          mount_input_source: 'user-declared measurement, not calibration',
+          rf_acceptance_policy: this.rfPolicy,
+          rf_start_block_reason: this.startBlockReason(),
+          onboard_selftest_report: this.lastSelftestReport,
+          selftest_receipt: this.selftestReceipt,
+          events: this.events,
+          annotations: this.annotations,
+          issues: this.issues.concat(
+            this.decoder.line.length || this.decoder.discard
+              ? [{ message: 'Incomplete final JSONL record at export', host_utc_ms: this.now(), epoch: this.epoch }]
+              : [],
+          ),
+          frames: this.frames,
+          state: this.state,
+          stop_unconfirmed: this.unconfirmed,
+          capture_overflow: this.overflow,
+          dropped_issue_count: this.droppedIssues,
+          dropped_event_count: this.droppedEvents,
+          unsaved_byte_count: this.unsavedBytes,
+          buffered_bytes: this.decoder.line.length,
+          open_transition: this.openTransition,
+          limits: {
+            distributed_v020_spatial_defect: true,
+            rf_bringup_only: true,
+            rf_tests_paused: this.rfPolicy.approved !== true,
+            onboard_selftest_is_not_physical_validation: true,
+            activity_inference: false,
+            people_count_inference: false,
+            host_clock: 'Date.now, unsynchronized with sensor',
+            annotation_timing: 'human click, latency unknown',
+            license_status: 'capture rights not granted by source license',
+          },
+        }),
+      );
+    }
+  }
+  return { PROTOCOL, RECOVERY_CONTROL, validate, Decoder, ByteWindow, Session };
 });

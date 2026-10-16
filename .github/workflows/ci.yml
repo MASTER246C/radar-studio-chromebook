@@ -20,6 +20,8 @@ jobs:
         run: |
           for builder in tests/build_*.py; do python3 -B "$builder"; done
           git diff --exit-code -- tests/
+      - name: JavaScript formatting (Prettier 3.8.1, .prettierrc.json)
+        run: git ls-files -z '*.js' '*.mjs' | grep -zv '^vendor/' | xargs -0 npx --yes prettier@3.8.1 --check
       - name: Deterministic test suites
         run: node tests/run-all.js
       - name: Shared files match SHARED_MODULES.json

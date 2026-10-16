@@ -6,27 +6,27 @@
   "files": [
     {
       "path": "capture_recorder.js",
-      "sha256": "dd069d43e2d17947fb32202c72779b33d14890d90914771cd59012bc9a3af74e"
+      "sha256": "3265ff8c2e6138de55acceacecfc4163ed9f9c259e93ab9359c8df2828448da3"
     },
     {
       "path": "motion_core.js",
-      "sha256": "7d072f95297df2da165584d3eb795631c1810f55d78ea4c004d9be877be9a406"
+      "sha256": "dfe0c761c0415d2d70c0f43000cdd488af383888f485567a6a1339fa10445f88"
     },
     {
       "path": "radar_protocol.js",
-      "sha256": "7a2a2e96e151069ccd9bcce1ca6f243fa52bbddae922c0a954203b59bacc2bd4"
+      "sha256": "8a6ffa61ed1459f1fb4d010dbce7f3eb7eddef7cfb4be010319c51558c8e04f0"
     },
     {
       "path": "cpd_protocol.js",
-      "sha256": "1057b69a3fba3376b867bfe591aeb0a136ea13cb30ef9b4a97af469520c02f6b"
+      "sha256": "10b66db1442a547876b991ad683346ef3f9f39db544fe3e5770007ab78a88f0d"
     },
     {
       "path": "tests/motion.test.js",
-      "sha256": "70be51dc12f4583fd6a155ed9c4d4236517fca190d55df28dc372b0fc3ad65d2"
+      "sha256": "094cd457ceb27f73248afa011bc04543f385a262bd0d5cded12c5bb61ab37fca"
     },
     {
       "path": "tests/capture.test.js",
-      "sha256": "f0195a8b2c57e4b737205611f6eabdb6f72ea86f712efd9943389b0f53249d34"
+      "sha256": "bb9cc094544143d08b3a50463d3a4c8edf35d55a06dddab1bf0c1177614d92ed"
     },
     {
       "path": "tests/fixtures.json",
@@ -62,47 +62,47 @@
     },
     {
       "path": "offline_features.js",
-      "sha256": "349d9cf4ba932b646a7968c348072eda0a7a3fbd405545240a13be48071aa6c0"
+      "sha256": "ec3b6920eb1950be4fdc2ad2ef9137a1d8eabe854ac3efb2d5ee5685a857be4c"
     },
     {
       "path": "offline_model.js",
-      "sha256": "9bf2a399fb9c485c73a50a69675ee67d6e09ab85de58ed55e210ca458e698797"
+      "sha256": "106138e049bf0d522728dffc65d396d96153f5705ae9feac09306af5839dbd43"
     },
     {
       "path": "offline_review.js",
-      "sha256": "e9e975dd929a40876fd24455ed1f5ebeae82251ab4b746a6f9fffa4329c515b3"
+      "sha256": "7a3d1bdd17aa013f8e8e086be740fc38ed2131bfd8f4e3dd027d6c3a569e9f57"
     },
     {
       "path": "tools/offline-ml.js",
-      "sha256": "f8144a22238234e31ef655b46193dfb483417070ab68707b8ec9005eedeeacf8"
+      "sha256": "6dbcf00f80dd9c5f32ffa1e9ace1463541aa23a66bed3ca219933bfb305e89f9"
     },
     {
       "path": "tests/offline_features.test.js",
-      "sha256": "711fd3554a7da5f31829a0c3282d2194115f1e1cb8bd2de309be5a8cf47c4954"
+      "sha256": "9ab75a54e56b493efc443ec97e4f500b9339efb8bd28c29e5ad3a36d5a9b1b4a"
     },
     {
       "path": "tests/offline_model.test.js",
-      "sha256": "29fe7d36d5469c7ac20fc31e7ceb54cceb299effb940fe5783d8d9bd4e2697d8"
+      "sha256": "2361671c2c3a0a35c994eeb9781b6566378da1fb955a636c90fee216516e89d0"
     },
     {
       "path": "tests/offline_review.test.js",
-      "sha256": "6798a526cdd9114f18c2c755558526829558a5069c065e33b56ba7aa187138b3"
+      "sha256": "31fca10fc070963b3b4cfd1168ba7a30e9866330e6da955cdf1b25e9aa651315"
     },
     {
       "path": "tests/offline_cli.test.js",
-      "sha256": "2be8a89e10386154541ae1a82b62f765ee088cb38497eefdd63ac08347f08735"
+      "sha256": "b2fb76ebe6ebdd66bf03ebccda7251816189b7ed83435c18441fdb8500e58936"
     },
     {
       "path": "tests/offline_fixture.js",
-      "sha256": "a7636a66edf89242d2d6c8ea95639b36e5d79b3cd056dce282f1dd51f023a6f0"
+      "sha256": "3b500d3a7679a3bc5c51a987adb5c17ac9611d9721fab751ea0c674e9eb57ffc"
     },
     {
       "path": "tools/check-shared-modules.js",
-      "sha256": "887b41163fe7ff2f22319bea0588d15cff92c17bba915d540b69fde9f28bb6f1"
+      "sha256": "f02b30106fba0c8ffda21270a5e700defbd18ba24719e6e7b46de584d89218af"
     },
     {
       "path": "tests/protocol.test.js",
-      "sha256": "8f3cf769496e8ff2f43c9c4e1f8040cba17e8bbc0356afc999fc0358d28d80c4"
+      "sha256": "a4a5183be70b61561931a9faafd7bd9033107cabeff57491dede3c12863ba12e"
     },
     {
       "path": "schemas/original-radar-dataset.v1.schema.json",

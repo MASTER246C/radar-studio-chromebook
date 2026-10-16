@@ -1,2 +1,22 @@
 /* Reviewed narrow bring-up policy. This is not general hardware or sensing validation. */
-(function(root){'use strict';const policy=Object.freeze({approved:true,firmwareVersion:'0.3.1-rc1',buildId:'abb27b48c1bdb956c0de704b',selftestVersion:2,maxSeconds:5,continuous:Object.freeze({approved:true,firmwareVersion:'0.3.2-rc1',buildId:'87589b2c32638ae119334c72',leaseMs:5000,heartbeatMs:1000}),approvalScope:'Exact reviewed dual-UART build; no-RF status/pairing first, separate manual timed tests or continuous operation with exact-session lease; physical validation pending'});if(typeof module==='object'&&module.exports)module.exports=policy;else root.OriginalDualAcceptance=policy;})(typeof globalThis!=='undefined'?globalThis:this);
+(function (root) {
+  'use strict';
+  const policy = Object.freeze({
+    approved: true,
+    firmwareVersion: '0.3.1-rc1',
+    buildId: 'abb27b48c1bdb956c0de704b',
+    selftestVersion: 2,
+    maxSeconds: 5,
+    continuous: Object.freeze({
+      approved: true,
+      firmwareVersion: '0.3.2-rc1',
+      buildId: '87589b2c32638ae119334c72',
+      leaseMs: 5000,
+      heartbeatMs: 1000,
+    }),
+    approvalScope:
+      'Exact reviewed dual-UART build; no-RF status/pairing first, separate manual timed tests or continuous operation with exact-session lease; physical validation pending',
+  });
+  if (typeof module === 'object' && module.exports) module.exports = policy;
+  else root.OriginalDualAcceptance = policy;
+})(typeof globalThis !== 'undefined' ? globalThis : this);

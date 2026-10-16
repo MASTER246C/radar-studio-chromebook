@@ -1,14 +1,190 @@
 /* Original review overlays. Model proposals are never labels without a human action. */
-(function(root,factory){const api=factory(typeof module==='object'&&module.exports?require('./offline_features.js'):root.OfflineFeatures);if(typeof module==='object'&&module.exports)module.exports=api;else root.OfflineReview=api;})(typeof globalThis!=='undefined'?globalThis:this,function(Features){
-'use strict';
-const LABELS={activity:['sitting','standing','walking'],event:['stand_up','sit_down','motion_onset','none']};
-const clone=x=>JSON.parse(JSON.stringify(x));
-function validateDataset(data){if(!data||data.schema!=='radar-offline-features'||data.version!==1||!Array.isArray(data.sources)||!Array.isArray(data.records)||data.records.length>Features.MAX_RECORDS||!data.featureSchemas)throw Error('Invalid prepared feature dataset.');const sources=new Set(),records=new Set();for(const s of data.sources){if(!s||typeof s.id!=='string'||sources.has(s.id)||!/^[a-f0-9]{64}$/.test(s.sha256))throw Error('Invalid or duplicate capture source.');sources.add(s.id);}for(const r of data.records){if(!r||typeof r.id!=='string'||records.has(r.id)||!sources.has(r.captureId)||!LABELS[r.task]||!Number.isFinite(r.start)||!Number.isFinite(r.end)||r.end<=r.start||!r.quality||typeof r.quality.ok!=='boolean'||typeof r.configSignature!=='string'||typeof r.profile!=='string')throw Error('Invalid prepared record.');records.add(r.id);const schema=data.featureSchemas[r.task];if(!schema||!Array.isArray(schema.names)||schema.names.length<1||schema.names.length>64||!Number.isFinite(schema.windowMs))throw Error('Invalid feature schema.');if(r.quality.ok&&(!Array.isArray(r.features)||r.features.length!==schema.names.length||r.features.some(x=>!Number.isFinite(x))))throw Error('Invalid admitted feature vector.');if(r.label!==null&&!LABELS[r.task].includes(r.label))throw Error('Unsupported activity/event label.');}return data;}
-async function fingerprint(data){validateDataset(data);return Features.sha256(data);}
-function decision(recordId,action,label,reviewer,proposalModelHash=null){if(typeof recordId!=='string'||!['label','exclude'].includes(action)||typeof reviewer!=='string'||!reviewer.trim()||reviewer.length>100)throw Error('A record, label/exclude action and explicit reviewer name are required.');if(proposalModelHash!==null&&!/^[a-f0-9]{64}$/.test(proposalModelHash))throw Error('Invalid model provenance hash.');return{recordId,action,label:action==='exclude'?null:label,reviewer:reviewer.trim(),reviewedAt:new Date().toISOString(),proposalModelHash};}
-async function createOverlay(base,decisions){validateDataset(base);const overlay={schema:'radar-review-overlay',version:1,license_status:'pending; no publication authorized',baseHash:await fingerprint(base),createdAt:new Date().toISOString(),decisions:clone(decisions)};await applyOverlay(base,overlay);return overlay;}
-async function applyOverlay(base,overlay){validateDataset(base);if(!overlay||overlay.schema!=='radar-review-overlay'||overlay.version!==1||overlay.baseHash!==await fingerprint(base)||!Array.isArray(overlay.decisions)||overlay.decisions.length>Features.MAX_RECORDS)throw Error('Review overlay does not match this exact prepared dataset, or exceeds limits.');const out=clone(base),map=new Map(out.records.map(r=>[r.id,r])),seen=new Set();for(const d of overlay.decisions){const r=map.get(d.recordId);if(!r||seen.has(d.recordId)||!['label','exclude'].includes(d.action)||typeof d.reviewer!=='string'||!d.reviewer.trim()||d.reviewer.length>100||typeof d.reviewedAt!=='string'||!Number.isFinite(Date.parse(d.reviewedAt))||(d.proposalModelHash!==null&&!/^[a-f0-9]{64}$/.test(d.proposalModelHash)))throw Error('Invalid, duplicate or stale human review decision.');seen.add(d.recordId);if(d.action==='label'){if(!LABELS[r.task].includes(d.label))throw Error('Unsupported reviewed task label.');if(!r.quality.ok)throw Error('Quality-rejected windows cannot be made trainable by a label override.');r.label=d.label;r.annotation={source:'human_review',status:'human_reviewed',reviewer:d.reviewer,reviewedAt:d.reviewedAt,proposalModelHash:d.proposalModelHash};}else{if(d.label!==null)throw Error('Excluded records must have null label.');r.label=null;r.annotation={source:'human_review',status:'excluded',reviewer:d.reviewer,reviewedAt:d.reviewedAt};r.quality={ok:false,reason:'Human review exclusion. Original quality: '+r.quality.reason};}}
-out.review={baseHash:overlay.baseHash,overlayHash:await Features.sha256(overlay),decisions:overlay.decisions.length,warning:'Derived review view only. Original captures and original labels are unchanged.'};return out;}
-async function proposals(dataset,model,Model){validateDataset(dataset);Model.validateModel(model);const modelHash=await Features.sha256(Model.serializeModel(model));return{schema:'radar-model-proposals',version:1,license_status:'pending; no publication authorized',datasetHash:await fingerprint(dataset),modelHash,task:model.task,createdAt:new Date().toISOString(),groundTruth:false,warning:'Machine proposals only. Never auto-accepted as observed or reviewed truth.',records:dataset.records.filter(r=>r.task===model.task).map(r=>({recordId:r.id,captureId:r.captureId,start:r.start,end:r.end,originalLabel:r.label,quality:clone(r.quality),prediction:Model.predict(model,{...r,featureNames:dataset.featureSchemas[r.task].names})}))};}
-return{LABELS,validateDataset,fingerprint,decision,createOverlay,applyOverlay,proposals};
+(function (root, factory) {
+  const api = factory(
+    typeof module === 'object' && module.exports ? require('./offline_features.js') : root.OfflineFeatures,
+  );
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.OfflineReview = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (Features) {
+  'use strict';
+  const LABELS = {
+    activity: ['sitting', 'standing', 'walking'],
+    event: ['stand_up', 'sit_down', 'motion_onset', 'none'],
+  };
+  const clone = x => JSON.parse(JSON.stringify(x));
+  function validateDataset(data) {
+    if (
+      !data ||
+      data.schema !== 'radar-offline-features' ||
+      data.version !== 1 ||
+      !Array.isArray(data.sources) ||
+      !Array.isArray(data.records) ||
+      data.records.length > Features.MAX_RECORDS ||
+      !data.featureSchemas
+    )
+      throw Error('Invalid prepared feature dataset.');
+    const sources = new Set(),
+      records = new Set();
+    for (const s of data.sources) {
+      if (!s || typeof s.id !== 'string' || sources.has(s.id) || !/^[a-f0-9]{64}$/.test(s.sha256))
+        throw Error('Invalid or duplicate capture source.');
+      sources.add(s.id);
+    }
+    for (const r of data.records) {
+      if (
+        !r ||
+        typeof r.id !== 'string' ||
+        records.has(r.id) ||
+        !sources.has(r.captureId) ||
+        !LABELS[r.task] ||
+        !Number.isFinite(r.start) ||
+        !Number.isFinite(r.end) ||
+        r.end <= r.start ||
+        !r.quality ||
+        typeof r.quality.ok !== 'boolean' ||
+        typeof r.configSignature !== 'string' ||
+        typeof r.profile !== 'string'
+      )
+        throw Error('Invalid prepared record.');
+      records.add(r.id);
+      const schema = data.featureSchemas[r.task];
+      if (
+        !schema ||
+        !Array.isArray(schema.names) ||
+        schema.names.length < 1 ||
+        schema.names.length > 64 ||
+        !Number.isFinite(schema.windowMs)
+      )
+        throw Error('Invalid feature schema.');
+      if (
+        r.quality.ok &&
+        (!Array.isArray(r.features) ||
+          r.features.length !== schema.names.length ||
+          r.features.some(x => !Number.isFinite(x)))
+      )
+        throw Error('Invalid admitted feature vector.');
+      if (r.label !== null && !LABELS[r.task].includes(r.label)) throw Error('Unsupported activity/event label.');
+    }
+    return data;
+  }
+  async function fingerprint(data) {
+    validateDataset(data);
+    return Features.sha256(data);
+  }
+  function decision(recordId, action, label, reviewer, proposalModelHash = null) {
+    if (
+      typeof recordId !== 'string' ||
+      !['label', 'exclude'].includes(action) ||
+      typeof reviewer !== 'string' ||
+      !reviewer.trim() ||
+      reviewer.length > 100
+    )
+      throw Error('A record, label/exclude action and explicit reviewer name are required.');
+    if (proposalModelHash !== null && !/^[a-f0-9]{64}$/.test(proposalModelHash))
+      throw Error('Invalid model provenance hash.');
+    return {
+      recordId,
+      action,
+      label: action === 'exclude' ? null : label,
+      reviewer: reviewer.trim(),
+      reviewedAt: new Date().toISOString(),
+      proposalModelHash,
+    };
+  }
+  async function createOverlay(base, decisions) {
+    validateDataset(base);
+    const overlay = {
+      schema: 'radar-review-overlay',
+      version: 1,
+      license_status: 'pending; no publication authorized',
+      baseHash: await fingerprint(base),
+      createdAt: new Date().toISOString(),
+      decisions: clone(decisions),
+    };
+    await applyOverlay(base, overlay);
+    return overlay;
+  }
+  async function applyOverlay(base, overlay) {
+    validateDataset(base);
+    if (
+      !overlay ||
+      overlay.schema !== 'radar-review-overlay' ||
+      overlay.version !== 1 ||
+      overlay.baseHash !== (await fingerprint(base)) ||
+      !Array.isArray(overlay.decisions) ||
+      overlay.decisions.length > Features.MAX_RECORDS
+    )
+      throw Error('Review overlay does not match this exact prepared dataset, or exceeds limits.');
+    const out = clone(base),
+      map = new Map(out.records.map(r => [r.id, r])),
+      seen = new Set();
+    for (const d of overlay.decisions) {
+      const r = map.get(d.recordId);
+      if (
+        !r ||
+        seen.has(d.recordId) ||
+        !['label', 'exclude'].includes(d.action) ||
+        typeof d.reviewer !== 'string' ||
+        !d.reviewer.trim() ||
+        d.reviewer.length > 100 ||
+        typeof d.reviewedAt !== 'string' ||
+        !Number.isFinite(Date.parse(d.reviewedAt)) ||
+        (d.proposalModelHash !== null && !/^[a-f0-9]{64}$/.test(d.proposalModelHash))
+      )
+        throw Error('Invalid, duplicate or stale human review decision.');
+      seen.add(d.recordId);
+      if (d.action === 'label') {
+        if (!LABELS[r.task].includes(d.label)) throw Error('Unsupported reviewed task label.');
+        if (!r.quality.ok) throw Error('Quality-rejected windows cannot be made trainable by a label override.');
+        r.label = d.label;
+        r.annotation = {
+          source: 'human_review',
+          status: 'human_reviewed',
+          reviewer: d.reviewer,
+          reviewedAt: d.reviewedAt,
+          proposalModelHash: d.proposalModelHash,
+        };
+      } else {
+        if (d.label !== null) throw Error('Excluded records must have null label.');
+        r.label = null;
+        r.annotation = { source: 'human_review', status: 'excluded', reviewer: d.reviewer, reviewedAt: d.reviewedAt };
+        r.quality = { ok: false, reason: 'Human review exclusion. Original quality: ' + r.quality.reason };
+      }
+    }
+    out.review = {
+      baseHash: overlay.baseHash,
+      overlayHash: await Features.sha256(overlay),
+      decisions: overlay.decisions.length,
+      warning: 'Derived review view only. Original captures and original labels are unchanged.',
+    };
+    return out;
+  }
+  async function proposals(dataset, model, Model) {
+    validateDataset(dataset);
+    Model.validateModel(model);
+    const modelHash = await Features.sha256(Model.serializeModel(model));
+    return {
+      schema: 'radar-model-proposals',
+      version: 1,
+      license_status: 'pending; no publication authorized',
+      datasetHash: await fingerprint(dataset),
+      modelHash,
+      task: model.task,
+      createdAt: new Date().toISOString(),
+      groundTruth: false,
+      warning: 'Machine proposals only. Never auto-accepted as observed or reviewed truth.',
+      records: dataset.records
+        .filter(r => r.task === model.task)
+        .map(r => ({
+          recordId: r.id,
+          captureId: r.captureId,
+          start: r.start,
+          end: r.end,
+          originalLabel: r.label,
+          quality: clone(r.quality),
+          prediction: Model.predict(model, { ...r, featureNames: dataset.featureSchemas[r.task].names }),
+        })),
+    };
+  }
+  return { LABELS, validateDataset, fingerprint, decision, createOverlay, applyOverlay, proposals };
 });
