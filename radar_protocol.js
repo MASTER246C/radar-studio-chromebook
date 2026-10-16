@@ -122,6 +122,7 @@ function parseFrame(bytes,profile="people") {
   // Expose raw indexes; do not silently assign them to current points.
   return out;
 }
+function findMagic(bytes,from,end=bytes.length){outer: for(let i=from;i<=end-8;i++){for(let j=0;j<8;j++)if(bytes[i+j]!==MAGIC[j])continue outer;return i;}return -1;}
 class StreamDecoder {
   constructor(profile="people"){requireProfile(profile);this.profile=profile;this.buffer=new Uint8Array(0);this.errors=0;this.discardedBytes=0;this.lastError='';}
   reset(){this.buffer=new Uint8Array(0);this.errors=0;this.discardedBytes=0;this.lastError='';}
@@ -133,8 +134,7 @@ class StreamDecoder {
       const part=chunk.subarray(base,base+65536), joined=new Uint8Array(this.buffer.length+part.length);
       joined.set(this.buffer);joined.set(part,this.buffer.length);this.buffer=joined;
       while(this.buffer.length>=8){
-        let at=-1;
-        outer: for(let i=0;i<=this.buffer.length-8;i++){for(let j=0;j<8;j++)if(this.buffer[i+j]!==MAGIC[j])continue outer;at=i;break;}
+        const at=findMagic(this.buffer,0);
         if(at<0){this.discardedBytes+=this.buffer.length-7;this.buffer=this.buffer.slice(-7);break;}
         if(at){this.discardedBytes+=at;this.buffer=this.buffer.slice(at);}
         const framing=requireProfile(this.profile);
@@ -147,6 +147,9 @@ class StreamDecoder {
             if(total<framing.headerBytes || total>MAX_PACKET || nt>1024 || framing.headerBytes+nt*8>total)throw Error('Invalid frame header');
           }
         }catch(e){this.errors++;this.lastError=e.message;this.buffer=this.buffer.slice(1);continue;}
+        // A corrupt length must not hold back later frames: a magic word inside the claimed span means resync there.
+        const next=findMagic(this.buffer,8,Math.min(total,this.buffer.length));
+        if(next>0){this.errors++;this.lastError='Frame length overruns the next magic word; resynchronizing';this.discardedBytes+=next;this.buffer=this.buffer.slice(next);continue;}
         if(this.buffer.length<total)break;
         try{frames.push(parseFrame(this.buffer.subarray(0,total),this.profile));this.buffer=this.buffer.slice(total);}
         catch(e){this.errors++;this.lastError=e.message;this.buffer=this.buffer.slice(1);}

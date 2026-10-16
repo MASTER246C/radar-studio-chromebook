@@ -14,7 +14,7 @@
     },
     {
       "path": "radar_protocol.js",
-      "sha256": "f1e6a76d2396709002e815813ca8f827e8d7b0cd01265f7a47a09e7dde3ba365"
+      "sha256": "7a2a2e96e151069ccd9bcce1ca6f243fa52bbddae922c0a954203b59bacc2bd4"
     },
     {
       "path": "cpd_protocol.js",
@@ -95,6 +95,10 @@
     {
       "path": "tests/offline_fixture.js",
       "sha256": "a7636a66edf89242d2d6c8ea95639b36e5d79b3cd056dce282f1dd51f023a6f0"
+    },
+    {
+      "path": "tools/check-shared-modules.js",
+      "sha256": "887b41163fe7ff2f22319bea0588d15cff92c17bba915d540b69fde9f28bb6f1"
     }
   ],
   "integration_viewer_version": "v0.9.0-preview.3",

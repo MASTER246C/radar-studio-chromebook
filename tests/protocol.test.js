@@ -20,4 +20,8 @@ test('Malformed fixed record rejected',()=>{let b=Uint8Array.from(fixtures.spher
 test('Non-finite coordinates rejected',()=>{let b=Uint8Array.from(fixtures.spherical);new DataView(b.buffer).setFloat32(48,NaN,true);assert.throws(()=>P.parseFrame(b),/Non-finite/);});
 test('Noise retention bounded',()=>{const s=new P.StreamDecoder();s.push(new Uint8Array(3*P.MAX_PACKET));assert.ok(s.buffer.length<=7);});
 test('Synthetic frame is valid only as explicitly labeled demo',()=>{const f=P.parseFrame(P.makeSyntheticFrame(99));assert.equal(f.frameNumber,99);assert.equal(f.points.length,36);assert.equal(f.tracks.length,1);assert.equal(f.vitals.length,1);});
+test('Corrupt oversized length resynchronizes at the next magic word',()=>{const bad=P.makeSyntheticFrame(1);new DataView(bad.buffer,bad.byteOffset).setUint32(12,500000,true);const good=[P.makeSyntheticFrame(2),P.makeSyntheticFrame(3)];
+ const s=new P.StreamDecoder();assert.deepEqual(s.push(cat(bad,...good)).map(f=>f.frameNumber),[2,3]);assert.ok(s.errors>=1);assert.match(s.lastError,/next magic word/);
+ const t=new P.StreamDecoder(),all=cat(bad,...good),got=[];for(let i=0;i<all.length;i+=97)got.push(...t.push(all.subarray(i,i+97)).map(f=>f.frameNumber));assert.deepEqual(got,[2,3]);
+ const u=new P.StreamDecoder();assert.deepEqual(u.push(cat(bad,good[0])).map(f=>f.frameNumber),[2]);assert.deepEqual(u.push(good[1]).map(f=>f.frameNumber),[3]);});
 console.log(`${n} tests passed`);
