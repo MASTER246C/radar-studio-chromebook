@@ -27,7 +27,8 @@ Modules, grouped by area:
 - Motion Lab and capture: `motion_core.js`, `motion_panel.js`, `capture_recorder.js`.
 - Offline ML: `offline_features.js`, `offline_model.js`, `offline_review.js`, `offline_ui.js`,
   `tools/offline-ml.js` (CLI).
-- Original firmware: `original_dual.js` (dual-UART v2 session state machine, pairing, continuous lease
+- Original firmware: `original_common.js` (JSON Lines framing and session methods shared by v1 and v2;
+  load it first), `original_dual.js` (dual-UART v2 session state machine, pairing, continuous lease
   keepalives, bounded logs), `original_dual_panel.js`, `original_dual_acceptance.js` (exact accepted
   builds), `original_tracker.js`, `session_guide.js`, `local_capture.js` (folder recording),
   `original_sessions.js` + `session_replay.js` (replay, review, dataset export). One-port v1:

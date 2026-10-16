@@ -1,13 +1,14 @@
 /* Original project code; governed by the unchanged project LICENSE. */
 (function (root, factory) {
-  const api = factory();
+  const api = factory(typeof require === 'function' ? require('./original_common.js') : root.OriginalCommon);
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.OriginalRadar = api;
-})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (Common) {
   'use strict';
+  if (!Common) throw Error('Load original_common.js before original_radar.js');
   const PROTOCOL = 'original-radar-v1',
     STATES = ['idle', 'starting', 'running', 'stopping', 'fault'];
-  const uint = x => Number.isSafeInteger(x) && x >= 0;
+  const { uint } = Common;
   function validate(r) {
     const finite = v => {
       if (typeof v === 'number' && !Number.isFinite(v)) throw Error('Non-finite JSON number');
@@ -89,42 +90,9 @@
     } else throw Error('Unknown record type');
     return r;
   }
-  class Decoder {
+  class Decoder extends Common.JsonlDecoder {
     constructor(onRecord, onIssue) {
-      this.onRecord = onRecord;
-      this.onIssue = onIssue;
-      this.line = [];
-      this.discard = false;
-      this.lines = 0;
-    }
-    push(bytes) {
-      for (const b of bytes) {
-        if (b === 10) {
-          this.lines++;
-          if (!this.discard) {
-            try {
-              const text = new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(this.line));
-              this.onRecord(validate(JSON.parse(text)), this.lines);
-            } catch (e) {
-              this.onIssue(e.message, this.lines);
-            }
-          }
-          this.line = [];
-          this.discard = false;
-        } else if (!this.discard) {
-          this.line.push(b);
-          if (this.line.length > 4096) {
-            this.onIssue('Overlong JSONL record', this.lines + 1);
-            this.line = [];
-            this.discard = true;
-          }
-        }
-      }
-    }
-    finish() {
-      if (this.line.length || this.discard) this.onIssue('Incomplete final JSONL record', this.lines + 1);
-      this.line = [];
-      this.discard = false;
+      super(validate, onRecord, onIssue);
     }
   }
   class Session {
@@ -223,12 +191,6 @@
         observed_byte_offset: this.bytes + this.unsavedBytes,
         ...detail,
       });
-      this.onChange();
-    }
-    uncertain(value) {
-      if (value) this.selftestReceipt = null;
-      this.unconfirmed = value;
-      this.setUnconfirmed(value);
       this.onChange();
     }
     attach(write) {
@@ -687,57 +649,6 @@
       if (this.pending) this.pending.finish(Error('Cancelled; command may already have reached device'));
       this.event('operation_cancelled');
     }
-    annotate(kind, label) {
-      if (this.annotations.length >= 10000) throw Error('Annotation limit reached; save this capture');
-      if (!this.connected || this.state !== 'running' || this.overflow)
-        throw Error('Annotations require a receiving run');
-      if (
-        !['activity', 'transition_start', 'transition_end'].includes(kind) ||
-        !['sitting', 'standing', 'walking', 'unknown', 'sit-to-stand', 'movement-onset'].includes(label)
-      )
-        throw Error('Unsupported annotation');
-      if (
-        (kind === 'activity' && !['sitting', 'standing', 'walking', 'unknown'].includes(label)) ||
-        (kind !== 'activity' && !['sit-to-stand', 'movement-onset'].includes(label))
-      )
-        throw Error('Annotation kind/label mismatch');
-      if (kind === 'transition_start' && this.openTransition) throw Error('End the open transition first');
-      if (kind === 'transition_end' && (!this.openTransition || this.openTransition.label !== label))
-        throw Error('No matching transition');
-      const a = {
-        kind,
-        label,
-        host_utc_ms: this.now(),
-        sensor_timestamp_us: this.lastFrame?.timestamp_us ?? null,
-        sequence: this.lastFrame?.sequence ?? null,
-        epoch: this.epoch,
-        connection_epoch: this.connectionEpoch,
-        source: 'human-observed',
-        review_status: 'unreviewed',
-        observer_latency_ms: null,
-      };
-      this.annotations.push(a);
-      if (kind === 'transition_start') this.openTransition = a;
-      if (kind === 'transition_end') this.openTransition = null;
-      this.onChange();
-    }
-    closeTransition(incomplete, reason) {
-      if (this.openTransition) {
-        this.annotations.push({
-          kind: 'transition_end',
-          label: this.openTransition.label,
-          epoch: this.openTransition.epoch,
-          connection_epoch: this.openTransition.connection_epoch,
-          host_utc_ms: this.now(),
-          sensor_timestamp_us: this.lastFrame?.timestamp_us ?? null,
-          source: 'system',
-          review_status: 'unreviewed',
-          incomplete,
-          reason,
-        });
-        this.openTransition = null;
-      }
-    }
     rawBytes() {
       const bytes = new Uint8Array(this.bytes);
       let n = 0;
@@ -799,5 +710,6 @@
       );
     }
   }
+  Common.mixin(Session.prototype, Common.sessionMethods);
   return { PROTOCOL, validate, Decoder, Session };
 });

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 const context = { module: { exports: {} }, TextEncoder, TextDecoder, Uint8Array, Buffer, setTimeout, clearTimeout };
+vm.runInNewContext(fs.readFileSync(new URL('../original_common.js', import.meta.url), 'utf8'), context);
 vm.runInNewContext(fs.readFileSync(new URL('../original_dual.js', import.meta.url), 'utf8'), context);
 const { Session, ByteWindow } = context.module.exports;
 const policy = {

@@ -6,6 +6,7 @@ const assert = require('node:assert/strict'),
   fs = require('node:fs'),
   vm = require('node:vm');
 const source = fs.readFileSync(require.resolve('../original_radar.js'), 'utf8');
+const commonSource = fs.readFileSync(require.resolve('../original_common.js'), 'utf8');
 const PROTOCOL = 'original-radar-v1';
 const POLICY = Object.freeze({
   approved: true,
@@ -87,6 +88,7 @@ function mock(options = {}) {
       timers.delete(id);
     },
   };
+  vm.runInNewContext(commonSource, context, { filename: 'original_common.js' });
   vm.runInNewContext(source, context, { filename: 'original_radar.js' });
   const s = new context.module.exports.Session({
     now: () => time,

@@ -6,6 +6,7 @@ const assert = require('node:assert/strict'),
   fs = require('node:fs'),
   vm = require('node:vm');
 const source = fs.readFileSync(require.resolve('../original_radar.js'), 'utf8');
+const commonSource = fs.readFileSync(require.resolve('../original_common.js'), 'utf8');
 const { PROTOCOL, validate, Decoder, Session } = require('../original_radar.js');
 const tests = [];
 const test = (name, run) => tests.push({ name, run });
@@ -143,6 +144,7 @@ function mock(options = {}) {
       timers.delete(id);
     },
   };
+  vm.runInNewContext(commonSource, context, { filename: 'original_common.js' });
   vm.runInNewContext(source, context, { filename: 'original_radar.js' });
   const s = new context.module.exports.Session({
     now: () => time,
@@ -1302,6 +1304,8 @@ test('Browser global export works with no CommonJS, Buffer, network or serial AP
     setTimeout,
     clearTimeout,
   };
+  assert.throws(() => vm.runInNewContext(source, { ...c }), /Load original_common.js before original_radar.js/);
+  vm.runInNewContext(commonSource, c);
   vm.runInNewContext(source, c);
   assert.equal(typeof c.OriginalRadar.Session, 'function');
   const s = new c.OriginalRadar.Session({ now: () => 1000 });

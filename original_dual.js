@@ -1,15 +1,16 @@
 /* Original project code; governed by the unchanged project LICENSE. */
 (function (root, factory) {
-  const api = factory();
+  const api = factory(typeof require === 'function' ? require('./original_common.js') : root.OriginalCommon);
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.OriginalDual = api;
-})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (Common) {
   'use strict';
+  if (!Common) throw Error('Load original_common.js before original_dual.js');
   const RECOVERY_CONTROL =
     'Save capture first, then disconnect and reconnect the control port and query status. A board reset alone does not clear the browser’s desynchronized command stream. Configure and Verify port pairing again before any separate manual Start.';
   const PROTOCOL = 'original-radar-v2',
     STATES = ['idle', 'starting', 'running', 'stopping', 'fault'];
-  const uint = x => Number.isSafeInteger(x) && x >= 0;
+  const { uint } = Common;
   // A bounded diagnostic window. Offsets count every received byte, including evictions.
   class ByteWindow {
     constructor(capacity) {
@@ -163,46 +164,9 @@
     } else throw Error('Unknown record type');
     return r;
   }
-  class Decoder {
+  class Decoder extends Common.JsonlDecoder {
     constructor(onRecord, onIssue) {
-      this.onRecord = onRecord;
-      this.onIssue = onIssue;
-      this.line = [];
-      this.discard = false;
-      this.lines = 0;
-      this.offset = 0;
-      this.lineStart = 0;
-    }
-    push(bytes) {
-      for (const b of bytes) {
-        this.offset++;
-        if (b === 10) {
-          this.lines++;
-          if (!this.discard) {
-            try {
-              const text = new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(this.line));
-              this.onRecord(validate(JSON.parse(text)), this.lines, { start: this.lineStart, end: this.offset });
-            } catch (e) {
-              this.onIssue(e.message, this.lines);
-            }
-          }
-          this.line = [];
-          this.discard = false;
-          this.lineStart = this.offset;
-        } else if (!this.discard) {
-          this.line.push(b);
-          if (this.line.length > 4096) {
-            this.onIssue('Overlong JSONL record', this.lines + 1);
-            this.line = [];
-            this.discard = true;
-          }
-        }
-      }
-    }
-    finish() {
-      if (this.line.length || this.discard) this.onIssue('Incomplete final JSONL record', this.lines + 1);
-      this.line = [];
-      this.discard = false;
+      super(validate, onRecord, onIssue);
     }
   }
   // Bounded log: keeps the first `head` entries (connection/setup provenance) and the newest after them. Returns 1 when an entry was dropped.
@@ -385,12 +349,6 @@
         data_raw_byte_offset: this.dataBytes ?? 0,
         ...detail,
       });
-      this.onChange();
-    }
-    uncertain(value) {
-      if (value) this.selftestReceipt = null;
-      this.unconfirmed = value;
-      this.setUnconfirmed(value);
       this.onChange();
     }
     attach(write) {
@@ -1370,57 +1328,6 @@
       if (this.pending) this.pending.finish(Error('Cancelled; command may already have reached device'));
       this.event('operation_cancelled');
     }
-    annotate(kind, label) {
-      if (this.annotations.length >= 10000) throw Error('Annotation limit reached; save this capture');
-      if (!this.connected || this.state !== 'running' || this.overflow)
-        throw Error('Annotations require a receiving run');
-      if (
-        !['activity', 'transition_start', 'transition_end'].includes(kind) ||
-        !['sitting', 'standing', 'walking', 'unknown', 'sit-to-stand', 'movement-onset'].includes(label)
-      )
-        throw Error('Unsupported annotation');
-      if (
-        (kind === 'activity' && !['sitting', 'standing', 'walking', 'unknown'].includes(label)) ||
-        (kind !== 'activity' && !['sit-to-stand', 'movement-onset'].includes(label))
-      )
-        throw Error('Annotation kind/label mismatch');
-      if (kind === 'transition_start' && this.openTransition) throw Error('End the open transition first');
-      if (kind === 'transition_end' && (!this.openTransition || this.openTransition.label !== label))
-        throw Error('No matching transition');
-      const a = {
-        kind,
-        label,
-        host_utc_ms: this.now(),
-        sensor_timestamp_us: this.lastFrame?.timestamp_us ?? null,
-        sequence: this.lastFrame?.sequence ?? null,
-        epoch: this.epoch,
-        connection_epoch: this.connectionEpoch,
-        source: 'human-observed',
-        review_status: 'unreviewed',
-        observer_latency_ms: null,
-      };
-      this.annotations.push(a);
-      if (kind === 'transition_start') this.openTransition = a;
-      if (kind === 'transition_end') this.openTransition = null;
-      this.onChange();
-    }
-    closeTransition(incomplete, reason) {
-      if (this.openTransition) {
-        this.annotations.push({
-          kind: 'transition_end',
-          label: this.openTransition.label,
-          epoch: this.openTransition.epoch,
-          connection_epoch: this.openTransition.connection_epoch,
-          host_utc_ms: this.now(),
-          sensor_timestamp_us: this.lastFrame?.timestamp_us ?? null,
-          source: 'system',
-          review_status: 'unreviewed',
-          incomplete,
-          reason,
-        });
-        this.openTransition = null;
-      }
-    }
     rawBytes() {
       if (this.monitoring) return this.controlWindow.bytes();
       const bytes = new Uint8Array(this.bytes);
@@ -1564,5 +1471,6 @@
       );
     }
   }
+  Common.mixin(Session.prototype, Common.sessionMethods);
   return { PROTOCOL, RECOVERY_CONTROL, validate, Decoder, ByteWindow, Session };
 });

@@ -138,8 +138,8 @@
     },
     {
       "path": "DEVELOPING.md",
-      "bytes": 22818,
-      "sha256": "36ebfe276d9cc9160fb5b2a30fe0203098d4f24ee39a9247890f934a1abe08ee"
+      "bytes": 22918,
+      "sha256": "a6eeb6c7d5b39bd23e4096d47d99f4b6a59757ee63c8ff16061752c3607e3d0e"
     },
     {
       "path": "DOWNLOADS.md",
@@ -158,8 +158,8 @@
     },
     {
       "path": "index.html",
-      "bytes": 31134,
-      "sha256": "335f9bceb4df53e7ffd690e6f2026f42274e7f85da161cb41b7c1f17a25751d5"
+      "bytes": 31176,
+      "sha256": "7c352d47cff7c761d7e63b4bd4464ffd6ed533f1839dba4beda12657e54c81df"
     },
     {
       "path": "legacy_panels.js",
@@ -257,9 +257,14 @@
       "sha256": "6760a0671176f122f68a4f01f3a9f853f2d7b61956d49a80cd91f7bae27c9fe0"
     },
     {
+      "path": "original_common.js",
+      "bytes": 5021,
+      "sha256": "86f0696f541efcb033ebf6bd9ee0ff767922c115aca86ff10f3caa2c22a43c66"
+    },
+    {
       "path": "original_dual.js",
-      "bytes": 60248,
-      "sha256": "b808a25848a4cf8c91057a8cac4b1f148e7fe4473a6523beab39995f2aafe14f"
+      "bytes": 56959,
+      "sha256": "4d2df9829d1dfa44d8c20f9ba9fb0b2d82f8e22b6a31ad5131122eab4e14f367"
     },
     {
       "path": "original_dual_acceptance.js",
@@ -273,8 +278,8 @@
     },
     {
       "path": "original_oneport.html",
-      "bytes": 21225,
-      "sha256": "e74f107493b127df83440db2ad756ceec71b583429c99cc3fabc0d4cc1d1eb75"
+      "bytes": 21267,
+      "sha256": "feb4a94f071b9dd62d14994b0127bb7bf42387d2292722c101d360d8b068bfc5"
     },
     {
       "path": "original_panel.js",
@@ -283,8 +288,8 @@
     },
     {
       "path": "original_radar.js",
-      "bytes": 29602,
-      "sha256": "b4c2ef2160709a36777e3dea0ff461003cb74c69497333d221d27acf3febc7ee"
+      "bytes": 26471,
+      "sha256": "db0473b9298186025abc87d53be168a79e515418eb12d28b38a3a171e131adbb"
     },
     {
       "path": "ORIGINAL_RADAR.md",
@@ -413,8 +418,8 @@
     },
     {
       "path": "sessions.html",
-      "bytes": 3943,
-      "sha256": "3531dd608e6868622ea5dcbd0f697f8c68151680ec87baf326f480bdde2cbb84"
+      "bytes": 3985,
+      "sha256": "bcd69d27795533d97ade55c96ef1ba2241dd61e1ce8e2ba372c48b9899c767dc"
     },
     {
       "path": "SESSIONS.md",
@@ -503,8 +508,8 @@
     },
     {
       "path": "tests/continuous-viewer.test.mjs",
-      "bytes": 11583,
-      "sha256": "28e59f7d559ba33e47b2290428deb1c4aeed0a7d9f241748f825ab9e48f88982"
+      "bytes": 11688,
+      "sha256": "31aaa2b5f81b0677b240c5ec37faa00eb59744a7bccb5c202ef0b9fa05abf7d2"
     },
     {
       "path": "tests/cpd-fixtures.json",
@@ -613,8 +618,8 @@
     },
     {
       "path": "tests/original_gate.test.js",
-      "bytes": 29734,
-      "sha256": "a3eb12fe5a5d47f204427ae695f37f1209312609b05eb3b8d160ee83727cd512"
+      "bytes": 29903,
+      "sha256": "f6c8dc32241c1a136664fb137161cb30a224592d1685c53fbe9800e35772d840"
     },
     {
       "path": "tests/original_panel.test.js",
@@ -623,8 +628,8 @@
     },
     {
       "path": "tests/original_radar.test.js",
-      "bytes": 46401,
-      "sha256": "e0b2babe79d58eacb1bd7ef2fbe696ea4495ed203887561322edc3aa3e9fbe62"
+      "bytes": 46722,
+      "sha256": "fab090171fe2f36d9513e7e3055f3fe66f8b9c1ae7b5b9e0b0a76b34c76cfd59"
     },
     {
       "path": "tests/original_sessions.test.js",
