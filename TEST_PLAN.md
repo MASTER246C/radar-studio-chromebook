@@ -1,4 +1,43 @@
-# Reproducible v0.5 test plan
+# Test plan
+
+## Current checks (v0.9.0-preview.6)
+
+Everything below runs in CI on every push (`.github/workflows/ci.yml`). Commands, from this folder:
+
+```sh
+for builder in tests/build_*.py; do python3 "$builder"; done   # regenerate fixtures; git diff must stay empty
+node tests/run-all.js                 # every deterministic suite: tests/*.test.js and tests/*.test.mjs
+node tools/check-shared-modules.js    # shared files match SHARED_MODULES.json
+python3 tools/release_manifest.py RELEASE_MANIFEST.json
+python3 tools/check_links.py
+```
+
+`tests/run-all.js` discovers suites by file name, so a new `*.test.js` or `*.test.mjs` file runs
+automatically; it reports every failing suite. Deterministic suites by area:
+
+- TI protocol and panels: `protocol`, `expansion`, `legacy`, `cpd`, `legacy_panels`, `vitals`, `trails`,
+  `scene`, `telemetry`, `catalog`, `ui` (mocked two-port lifecycle, including recoverable read errors).
+- Motion Lab and capture: `motion`, `capture`, `motion_panel`.
+- Offline ML: `offline_features`, `offline_model`, `offline_review`, `offline_cli`, `offline_ui`.
+- Original firmware: `original_radar`, `original_panel`, `original_gate`, `original_tracker`,
+  `original_dual`, `original_dual_panel`, `continuous-viewer` (continuous lease, monotonic deadlines,
+  log retention, configure latch), `local-capture`, `original_sessions` (dataset export, sync markers),
+  `session_ui`.
+- Camera: `camera-labels`, `camera-panel`, `camera-review` (worker failure, hash binding, label source).
+- Infrastructure: `serial-read` (recoverable Web Serial errors), `version` (single version source).
+
+Optional real-Chromium suites (`*.optional.test.js`; synthetic data and mocked Web Serial, no hardware)
+also run in CI with Playwright 1.56.1: `browser` (TI demo/live/config/replay workflow), `offline_browser`,
+`original_tracking_browser`, and `pages_browser` (every page at 390 px with default and wide fonts and at
+1365 px: no script errors, no CSP violations, no horizontal scroll). See DEVELOPING.md for how to run them.
+
+Dataset exports are also validated against `schemas/original-radar-dataset.v1.schema.json`.
+
+None of these checks touch a radar board, USB device, camera or RF. Hardware acceptance stays a separate,
+manual step (see below and ORIGINAL_RADAR.md).
+
+## Historical v0.5 test plan
+
 
 The application needs no dependencies. The developer tests use Python 3 and Node.js 20+ built-ins, including Web Crypto/Web Streams. No radar or credentials are used by deterministic tests.
 

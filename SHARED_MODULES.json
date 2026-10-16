@@ -1,5 +1,5 @@
 {
-  "bundle": "v0.6-bundle2",
+  "bundle": "v0.6-bundle3",
   "canonical_repository": "https://github.com/MASTER246C/iwr6843aop-activity-recorder",
   "integration_repository": "https://github.com/MASTER246C/radar-studio-chromebook",
   "pin_type": "exact content SHA-256; no runtime remote loading",
@@ -118,11 +118,11 @@
     },
     {
       "path": "MOTION_LAB.md",
-      "sha256": "888fe80dd0b0b1ed5ab02afebb7ebe277ec64dc93c1b41ee21b0f92a3b78e9f6"
+      "sha256": "6965884ccb9130b9e75a38ebe6eb7c89afba323d8f3d5dae35161b6d436e5626"
     },
     {
       "path": "OFFLINE_ML.md",
-      "sha256": "6fb75ef26b35c6c87b87462580170aeb25194c0055dc648bd26071dec3200240"
+      "sha256": "869c863739a6794837b755a8015f43409584637f36455a241ced2fc487671629"
     },
     {
       "path": "RECORDER_API.md",
@@ -133,7 +133,7 @@
       "sha256": "efe092d66c3c162f94736b72468508f8be1983bc024976f220a725436a12afa5"
     }
   ],
-  "integration_viewer_version": "v0.9.0-preview.3",
+  "integration_viewer_version": "v0.9.0-preview.6",
   "historical_origin": {
     "bundle": "v0.6-bundle1",
     "viewer_release": "v0.6",

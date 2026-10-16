@@ -1,13 +1,15 @@
-# Upgrading to v0.9.0-preview.5
+# Upgrading to v0.9.0-preview.6 (unreleased source)
+
+The latest published release ZIP is still v0.9.0-preview.5; these steps apply to it as well. preview.6 changes no firmware gate, protocol or dataset format.
 
 1. Stop and confirm idle in the old viewer, save both raw UART streams/capture JSON, then disconnect its ports. Keep private recordings separate from public software.
-2. Extract the complete current repository source into a separate folder or reload the hosted viewer after the update is deployed. Verify the v0.9.0-preview.5 heading. Use the named preview.5 ZIP and its checksum. Earlier tagged release ZIPs retain their historical versions.
+2. Extract the complete current repository source into a separate folder or reload the hosted viewer after the update is deployed. Verify the version heading (v0.9.0-preview.6 for current source). For a published release, use the named ZIP and its checksum. Earlier tagged release ZIPs retain their historical versions.
 3. Timed operation accepts firmware 0.3.1-rc1/build abb27b48c1bdb956c0de704b. Timed/continuous operation accepts the new 0.3.2-rc1/build 87589b2c32638ae119334c72 candidate. Both require self-test version 2. Preserve the older BIN for rollback; new firmware physical acceptance is pending. Older 0.3.0 firmware cannot unlock it. Firmware flashing is a separate explicit action; this viewer never flashes automatically.
 4. Re-select Enhanced control 115200 and Standard data 921600. Query fresh control status; confirm exact identity/self-test/zero faults. Re-enter confirmed mounting, Configure only, then Verify port pairing · no RF. Save the capture JSON and both raw UART lanes, then stop for review of the initial no-RF receipts. A later separately authorized manual 1–5 s Start remains separate.
 5. If a command times out, save capture and reconnect the control port. Resetting only the board does not clear the browser's desynchronization.
 6. A 20 m default display is only a viewport: the unchanged current search window is approximately 0.8–5.9 m and physical human range is unvalidated. Use range/zoom controls to inspect nearby points.
 
-See ORIGINAL_RADAR.md and RELEASE_NOTES_v0.9.0-preview.5.md. Historical upgrade notes below apply only to their named old workflows.
+See ORIGINAL_RADAR.md, RELEASE_NOTES_v0.9.0-preview.6.md and RELEASE_NOTES_v0.9.0-preview.5.md. Historical upgrade notes below apply only to their named old workflows.
 
 After initial timed checks, see CAMERA_WORKFLOW.md for continuous acquisition and optional cameras. Continuous firmware has a 5000 ms rolling exact-session lease; timed mode retains its 1–5 second cap. Camera-reviewed Original radar datasets use the separate Python trainer, while the browser trainer accepts earlier TI-format data.
 

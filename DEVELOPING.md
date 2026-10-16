@@ -4,39 +4,66 @@
 
 Radar Studio is a static, dependency-free Web Serial browser viewer. `index.html` loads local scripts; no build step, cloud processing, account, extension installation or telemetry is implemented.
 
-- `app.js`: UI state, explicit CLI/data port selection, Web Serial lifecycle, buffered CLI acknowledgements, configuration review/send, live ingest, synthetic demo and raw replay. Source/session transitions reset stores. Configuration load and connection do not implicitly send commands.
-- `radar_protocol.js`: little-endian packet framing and TLV decoding, malformed-input limits and synthetic frame generation. Unknown TLVs are skipped. Header/TLV layouts are documented in `TECHNICAL_NOTES.md`.
-- `vitals_store.js` (v0.2): per-subject latest values, independent receipt ages and bounded waveform history. Every decoded frame updates this store, even when a later frame in the same chunk has no vitals. Missing vitals do not overwrite prior readings with zeros.
-- `trail_store.js` (v0.2): bounded, arrival-timestamped track paths; breaks segments on observable absence, frame/time gaps and session reset. Track IDs are not person identities.
-- `radar_scene.js` (v0.2): orthographic sensor-coordinate projection, orbit/pinch/wheel/keyboard controls, presets and drawing. No floor-plan registration or mounting transformation is implied.
-- `styles.css`, `index.html`, local favicons: presentation. v0.1 instead has top/front canvases and its earlier state handling.
-- `start-local.sh`: serves this folder only on loopback port 8000. It does not touch USB, install dependencies or flash firmware.
+Pages and the scripts they load (each page lists its own `<script src>` tags; tests load the same lists):
+
+| Page | Purpose |
+| --- | --- |
+| `index.html` | Live viewer: TI demo profiles (two ports) and the original dual-UART firmware workflow, Motion Lab, camera and local disk capture |
+| `sessions.html` | Original-radar saved-capture replay, labelling and `original-radar-dataset` export/resume |
+| `camera-review.html` | Experimental pose-assisted camera label review (MediaPipe in a worker) |
+| `offline.html` | Local offline ML for TI-format captures |
+| `original_oneport.html` | Historical one-port original-radar-v1 viewer (0.8.0-preview.1 heading, kept for old firmware) |
+
+Modules, grouped by area:
+
+- Shared infrastructure: `viewer_version.js` (single version source for exports; `tests/version.test.js`
+  checks page headings match), `serial_read.js` (Web Serial read loop that resumes after recoverable
+  errors), `styles.css`.
+- TI demo path: `app.js` (UI state, explicit CLI/data port selection, buffered CLI acknowledgements,
+  configuration review/send, live ingest, synthetic demo and raw replay), `radar_protocol.js` and
+  `cpd_protocol.js` (framing/TLV decoding, malformed-input limits, resync), `demo_catalog.js` +
+  `catalog_ui.js` (official metadata and local hashing only), `telemetry_panels.js`, `legacy_panels.js`,
+  `vitals_store.js`, `trail_store.js`, `radar_scene.js`.
+- Motion Lab and capture: `motion_core.js`, `motion_panel.js`, `capture_recorder.js`.
+- Offline ML: `offline_features.js`, `offline_model.js`, `offline_review.js`, `offline_ui.js`,
+  `tools/offline-ml.js` (CLI).
+- Original firmware: `original_dual.js` (dual-UART v2 session state machine, pairing, continuous lease
+  keepalives, bounded logs), `original_dual_panel.js`, `original_dual_acceptance.js` (exact accepted
+  builds), `original_tracker.js`, `session_guide.js`, `local_capture.js` (folder recording),
+  `original_sessions.js` + `session_replay.js` (replay, review, dataset export). One-port v1:
+  `original_radar.js`, `original_panel.js`, `original_acceptance.js`.
+- Camera: `camera_panel.js`, `camera_labels.js`, `camera_review.js`, `camera_pose_worker.mjs`,
+  `vendor/mediapipe/`, `models/`.
+
+Files listed in `SHARED_MODULES.json` (protocol, capture, motion and offline modules, their tests and
+fixtures, the dataset schema, the shared docs and tools) are byte-identical copies of the canonical
+[recorder repository](https://github.com/MASTER246C/iwr6843aop-activity-recorder). Change them there,
+copy them byte for byte, and run `node tools/check-shared-modules.js --update` in both repositories.
 
 Protocol interpretation was informed by TI visualizer sources, but this release contains newly written browser code and independent synthetic fixtures. Read `PROVENANCE.txt` and `LICENSE`; the source-available no-resale grant covers only original material the licensor has authority to license, excluding TI and other third-party material.
 
-## Reproduce checks
+## Checks before pushing
 
-Python 3 and Node.js are optional development tools, not app runtime dependencies.
-
-```sh
-python3 tests/build_fixtures.py
-node tests/protocol.test.js
-node tests/ui.test.js
-```
-
-For v0.2 also run:
+Python 3 and Node.js 20+ are development tools only, not runtime dependencies. CI runs exactly these
+(`.github/workflows/ci.yml`):
 
 ```sh
-node tests/vitals.test.js
-node tests/trails.test.js
-node tests/scene.test.js
+for builder in tests/build_*.py; do python3 "$builder"; done   # then: git diff --exit-code -- tests/
+node tests/run-all.js                                   # every *.test.js and *.test.mjs suite
+node tools/check-shared-modules.js                      # shared files match their pins
+python3 tools/release_manifest.py RELEASE_MANIFEST.json # manifest lists every tracked file
+python3 tools/check_links.py                            # relative Markdown links and anchors
+node tests/make_dataset_samples.js /tmp/samples && \
+  python3 schemas/check_schema.py schemas/original-radar-dataset.v1.schema.json /tmp/samples/*.json
 ```
 
-The independent Python fixtures use `struct`; they do not execute TI source. Protocol tests include two vital-sign subjects, Cartesian/spherical/compressed records, fragmented streams, noise, malformed lengths, unknown TLVs and non-finite values. UI tests use a fake DOM, real Web Streams and mock serial devices. Store and scene checks test logic and mock-canvas paths.
+After an intended file change, run `python3 tools/release_manifest.py RELEASE_MANIFEST.json --update`.
+The optional real-browser checks need Playwright (`npm install playwright@1.56.1` outside this folder,
+then `NODE_PATH=<that>/node_modules node tests/<name>.optional.test.js`); set `CHROMIUM_PATH` to use a
+specific browser. They use synthetic data and mocked Web Serial: they check rendering, layout, CSP and
+workflows, not hardware.
 
-`tests/browser.optional.test.js` is a separate Playwright/Chromium smoke test. It needs those optional tools and has **not** been counted as a passed browser check. Mocked canvas tests do not verify appearance or touch behavior on actual hardware.
-
-## Evidence and acceptance boundary
+## Evidence and acceptance boundary (v0.1–v0.2, historical)
 
 - v0.1: project owner reported live radar operation on a Chromebook. Included synthetic protocol and mocked UI tests pass. One report is not a supported-device matrix.
 - v0.2: protocol, vitals retention, trajectory store, scene math/mock-canvas and mocked UI tests pass. Sparse and batched vitals regressions are covered. Updated rendered-browser and live-hardware acceptance remain pending.
@@ -44,7 +71,10 @@ The independent Python fixtures use `struct`; they do not execute TI source. Pro
 
 Before claiming a hardware configuration supported, record board/revision, firmware/toolbox version, config identity, ChromeOS/browser version and port mapping. Test both port opens, CLI success/error/timeout, sustained advancing real frames, known moving targets, sparse vitals, disconnect/reconnect and comparison with the known-working TI setup. Keep raw recordings and identifying logs private unless sharing is explicitly approved.
 
-## Known limitations
+## Known limitations as of v0.2 (historical)
+
+Later releases lifted several of these (raw UART capture, camera review, scene calibration for the
+Motion Lab); see CHANGELOG.md, ORIGINAL_RADAR.md and CAMERA_WORKFLOW.md for current limits.
 
 - Explicit inspected IWR6843AOPEVM profiles only: 36/40/44/48-byte layouts with selected TLVs. Unlisted firmware or other device families are not established.
 - No flashing, raw serial recording/export, TI JSON replay, scene calibration, point-to-track association, heatmaps, classifier/fall-detection parity or all TI demos.
@@ -60,11 +90,14 @@ Start with a separately licensed official protocol description and a specific bo
 
 ## Release checklist
 
-1. Update `CHANGELOG.txt` for every version with behavior changes and remaining limitations.
-2. Re-run all tests applicable to that version and record what was not run in `VERIFICATION.txt`.
-3. Review public contents: no firmware, vendor configs/source, credentials, private manifests, recordings or logs.
-4. Freeze the corresponding source commit, tag and named ZIP; include beginner guides, developer notes and provenance.
-5. Verify release asset download and checksums. Keep prior releases available and distinguish user reports from tested compatibility.
+1. Add the version to `CHANGELOG.md` (newest first) with behavior changes and remaining limitations, and
+   write `RELEASE_NOTES_v<version>.md`. `CHANGELOG.txt` is frozen at v0.6.
+2. Change the version in `viewer_version.js` and the page headings (`tests/version.test.js` checks them),
+   update `RELEASE_MANIFEST.json` metadata, then run `python3 tools/release_manifest.py RELEASE_MANIFEST.json --update`.
+3. Confirm CI is green, re-run any hardware checks applicable to that version, and record what was not run in `VERIFICATION.txt`.
+4. Review public contents: no firmware, vendor configs/source, credentials, private manifests, recordings or logs.
+5. Freeze the corresponding source commit, tag and named ZIP; include beginner guides, developer notes and provenance.
+6. Verify release asset download and checksums. Keep prior releases available and distinguish user reports from tested compatibility.
 
 ## v0.3 additions
 
@@ -72,7 +105,7 @@ Use `node tests/run-all.js` for the complete deterministic suite; regenerate the
 
 Changing a parser profile is explicit and clears session state. Unknown profiles cannot construct a decoder. Gesture's built-in configuration disables the command sender. New profile acceptance needs real hardware/capture checks; do not rename fixture success as end-to-end compatibility.
 
-For v0.3 and later, CHANGELOG.md is the primary structured changelog; CHANGELOG.txt retains earlier notes. Preserve the exact LICENSE. Public release files must exclude all vendor BIN/CFG bytes, TI source trees and personal captures while retaining official metadata/source attribution.
+CHANGELOG.md is the primary changelog; CHANGELOG.txt is a frozen record of earlier notes. Preserve the exact LICENSE. Public release files must exclude all vendor BIN/CFG bytes, TI source trees and personal captures while retaining official metadata/source attribution.
 
 ## v0.4 additions
 

@@ -1,6 +1,6 @@
 # Camera recording and reviewed radar labels
 
-Radar Studio 0.9.0-preview.5 supports camera selection through the browser. Built-in, USB and virtual cameras work only when the browser exposes and permits them. Logitech C920e is the project test device, not a required model. Resolution and frame rate are requested as preferences; the preview reports actual settings. Audio is disabled. A network/RTSP camera needs a separate browser-compatible input; entering a camera URL is not supported.
+Radar Studio 0.9.0-preview.4 and later support camera selection through the browser. Built-in, USB and virtual cameras work only when the browser exposes and permits them. Logitech C920e is the project test device, not a required model. Resolution and frame rate are requested as preferences; the preview reports actual settings. Audio is disabled. A network/RTSP camera needs a separate browser-compatible input; entering a camera URL is not supported.
 
 ## Record locally
 

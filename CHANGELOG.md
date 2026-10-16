@@ -1,11 +1,60 @@
-# v0.9.0-preview.3
+# Changelog
+
+Newest first. `CHANGELOG.txt` is a frozen plain-text record of v0.1–v0.6 kept for
+old release folders; new entries go here only.
+
+## v0.9.0-preview.6 — unreleased source candidate
+
+Software fixes and checks only; firmware gates, protocols and dataset schema
+version are unchanged. No new hardware, camera or accuracy validation.
+
+- Dataset export: an empty or invalid sync-marker note no longer blocks every
+  later export; exports stamp the actual viewer version (preview.5 exports said
+  0.9.0-preview.3). `viewer_version.js` is the single version source.
+- Continuous mode: data deadlines and keepalive spacing use a monotonic clock, so
+  a system clock change cannot stop a healthy run; event and issue logs keep the
+  first 256 entries plus the newest, so long runs keep `stopped_confirmed`; a
+  rejected continuous configuration no longer locks out timed tests.
+- TI decoder resynchronizes at the next magic word when a corrupt length field
+  would otherwise hold back later frames.
+- Serial: recoverable Web Serial read errors (overrun, break, framing, parity) no
+  longer end reading until reconnect; 921600-baud data ports open with a 1 MiB
+  buffer.
+- Camera review: a crashed pose worker no longer locks the page for 2 minutes; a
+  slower earlier video hash cannot attach to a later file; changing the video
+  clears the receipt input; manually added intervals export as human-sourced.
+- Content-Security-Policy on every page; phone-width (390 px) layouts no longer
+  scroll sideways.
+- Checks: `tests/run-all.js` runs every suite (including `.mjs`); the
+  real-browser tests run again; new page, version, serial-read and camera-review
+  tests; shared-file pins, release manifest, Markdown links and the dataset JSON
+  Schema are checked in CI. `MOUNTING.md` is the single mounting reference.
+
+## v0.9.0-preview.5 — 2026-10-12
+
+Cleanup after preview.4. Stop playback clears the synthetic/replay scene and
+counters; camera review validation messages appear beside their actions; setup
+and session guidance distinguish timed firmware 0.3.1-rc1 from timed/continuous
+0.3.2-rc1. Firmware and Python algorithms unchanged. See
+RELEASE_NOTES_v0.9.0-preview.5.md.
+
+## v0.9.0-preview.4 — 2026-10-12
+
+Continuous Original radar sessions with an exact-session firmware lease and
+bounded diagnostic retention (timed tests remain), optional browser camera
+recording to a local folder with timing receipts, and experimental pose-assisted
+label review with explicit human decisions. Firmware 0.3.2-rc1 and C920e
+physical acceptance were pending at release. See
+RELEASE_NOTES_v0.9.0-preview.4.md and CAMERA_WORKFLOW.md.
+
+## v0.9.0-preview.3
 
 - Reject ambiguous TI offline event windows touched by unfinished/incomplete annotations; retain clean event and source-reset behavior. Reconcile both shared-module copies as v0.6-bundle2.
 - Repair the Windows synthetic session export test using an OS temporary directory with readback and cleanup.
 - Require the initial no-RF receipt checkpoint before separately authorized RF tests. Correct current version/project descriptions and preserve historical archives.
 - See RELEASE_NOTES_v0.9.0-preview.3.md for related recorder continuity and Stop-confirmation fixes. Exact firmware gates, schemas and licenses are unchanged.
 
-# v0.9.0-preview.2
+## v0.9.0-preview.2
 
 Layout-only patch for session review and guided recording forms.
 
@@ -15,7 +64,7 @@ Layout-only patch for session review and guided recording forms.
 
 No capture, labeling, dataset, replay or RF behavior changes. Only version metadata changes in JavaScript. Exact firmware acceptance and the separate manual 1–5 second gate remain unchanged. This is a local software preview with no real-world classifier validation.
 
-# v0.9.0-preview.1
+## v0.9.0-preview.1
 
 - Add guided named sessions with intended walking, standing, sitting and transition prompts, local participant aliases, keyboard annotations, undo corrections and explicit unsynchronized markers.
 - Add a separate original-radar saved-capture replay and review page with range/velocity display, segment boundaries and loss, fault, malformed, rejected and truncated-data diagnostics.
@@ -24,7 +73,7 @@ No capture, labeling, dataset, replay or RF behavior changes. Only version metad
 
 See SESSIONS.md for the local workflow and dataset contract. Prompts are intent, human labels require review, and exploratory peak coordinates do not establish people tracking. The optional Python training tools are separate from the browser viewer. No real-world accuracy or camera compatibility is claimed.
 
-# v0.8.0-preview.2
+## v0.8.0-preview.2
 
 - Add separate labelled Control/Data parsed-device terminal panels, neutral browser summaries and official prerequisite links. Exact raw exports are unchanged.
 - Provide editable 1219 mm/0° starting values with offset unknown and confirmation unchecked; initial confirmation follows Query→Configure without an unnecessary extra status query.
@@ -35,7 +84,7 @@ See SESSIONS.md for the local workflow and dataset contract. Prompts are intent,
 - Default the orthographic display to 20 m, with 2/5/10/20 m choices and zoom buttons. This is view-only: room64_v1 search remains approximately 0.8–5.9 m; physical human range is unvalidated.
 - Retain all dual-port, nonce, self-test/fault, current-connection and manual 1–5 s gates. No automatic RF/port/configuration, uploads, private capture fixtures or profile expansion.
 
-# v0.8.0-preview.1
+## v0.8.0-preview.1
 
 - Original-radar-v2 dual-UART workflow: explicit Enhanced control 115200 and Standard data 921600 selection, independent decoders/raw streams, control-only receipts and no-RF cross-port nonce proof.
 - Exact 0.3.0-rc1/build e0ce9b95204dee4ecbf0b9e0 acceptance, mandatory measured mounting inputs, fresh self-test/fault gates and separate manual 1–5 s Start.
@@ -45,15 +94,15 @@ See SESSIONS.md for the local workflow and dataset contract. Prompts are intent,
 
 Older release notes below are historical and do not authorize old firmware in this workflow.
 
-# Hosted viewer documentation — 2026-10-11
+## Hosted viewer documentation — 2026-10-11
 
-## 2026-10-11 — Hosted Radar Studio launch
+### 2026-10-11 — Hosted Radar Studio launch
 
 - Linked the public hosted viewer for desktop/ChromeOS Chrome with Web Serial; local versioned downloads remain available.
 - Clarified matching firmware/configuration, browser-local recording/export and unchanged source-available/no-resale terms.
 - Hosting does not broaden hardware/demo compatibility, firmware acceptance or dataset-publication permission. Existing release tags, artifacts, licenses and notices are unchanged; release manifests continue to describe their frozen packages.
 
-# v0.7.0-preview.2 — accepted-build bring-up gate
+## v0.7.0-preview.2 — accepted-build bring-up gate
 
 - Separate from published preview1. Reviewed policy pins version 0.2.1-rc1/build 846a3ae3184aa5d26e5d0ea3 for manual 1–5 second bring-up only.
 - Query status is the first step: Configure itself requires an exact accepted build/self-test/fault-free idle receipt. Conditional manual Start additionally requires current-connection committed duration and exact accepted 0.2.1-rc1 identity/status, version-1 onboard self-test true/mask0, current-connection coherent status/ACK, and idle/configured/fault-free state.
@@ -61,15 +110,13 @@ Older release notes below are historical and do not authorize old firmware in th
 - Self-test receipts invalidate on connection/identity reset, errors, configuration changes and consumption; exports retain gate provenance separately from immutable raw bytes.
 - Onboard code self-test is not physical sensing or RF acceptance. No hardware test performed for this candidate.
 
-# v0.7.0-preview.1 — original-radar-v1 manual controls (2026-10-10)
+## v0.7.0-preview.1 — original-radar-v1 manual controls (2026-10-10)
 
 - Separate one-port JSON Lines workflow; original TI demos and offline ML remain available.
 - Explicit Configure/Start/Stop/Save controller, matching ACKs plus fresh status, finite 1–600 second sessions, cancellation/disconnect/reconnect safety warning.
 - RF Start intentionally disabled pending fixed-firmware acceptance of the confirmed spatial-estimator defect.
 - Byte-exact raw JSONL and capture/metadata exports, timestamped human activity/transition annotations, explicit malformed/fault/truncation flags.
 - No hardware/RF tests, flashing, automatic starts, private captures or vendor artifacts included.
-
-# Changelog
 
 ## v0.6 — 2026-10-10 — Experimental local-ML foundation
 
@@ -80,6 +127,61 @@ Older release notes below are historical and do not authorize old firmware in th
 - Guarded incremental/cross-format take duplication, target changes, late annotation boundaries, loaded-model heldout review and bounded model JSON.
 - Current TI fallback remains separate from original JSON Lines sensing work. Browser rendering, hardware throughput and real-data accuracy remain unverified.
 
+## v0.5 — 2026-10-10 — Experimental motion-signature prerelease
+
+### Added
+- Original browser-local sitting/standing/walking experiment using observed,
+  non-overlapping three-second windows and a standardized nearest-centroid CPU
+  classifier. It consumes supported people-tracking/vitals points/tracks from
+  the existing firmware; it is not a copied TI activity-classification demo.
+- Measured motion calibration: bracket-top reference height, signed antenna-
+  center offset, downward-positive tilt, orientation, tolerance and explicit
+  verification. Point and track sensor/world coordinate modes are separate.
+- Explicit target ROI, separate training/evaluation acquisition sessions,
+  training-only feature standardization, held-out evaluation, unknown/missing-
+  data handling and local motion dataset export/import.
+- Independent bounded-memory capture of received UART chunks before decoding,
+  decoded frames and experiment events, with explicit local export and limit
+  stopping. Classifier rejection does not discard the raw recorder's evidence.
+- MOTION_LAB.md: practical real-capture plan, leakage prevention, label rules,
+  calibration checks, capture privacy, provenance and future firmware roadmap.
+
+### Boundaries and remaining work
+- Minimum experiment gates require two training sessions per class and a
+  separately recorded held-out session per class; gates do not prove independence
+  if a user renames/copies the same acquisition data. Mixed calibration signatures
+  are rejected for training.
+- Missing/ambiguous data is not evidence of a stationary activity or an empty room.
+  Model scores are not calibrated probabilities. No real-data accuracy claim.
+- No original radar firmware, raw ADC, full micro-Doppler pipeline, validated
+  on-board classifier, medical use or safety-critical control is delivered.
+- This release adds motion-only mounting calibration and explicit UART recording;
+  older blanket limitations on those two features apply to the earlier versions.
+  Other viewer coverage limitations remain. Check VERIFICATION.txt for actual
+  test results and hardware/browser gaps; older releases remain unchanged.
+- Capture is local until explicit export, with no default upload. Dataset license
+  status remains pending; future publication requires separate rights/consent
+  decisions. The source-available project LICENSE is unchanged.
+
+### Future annotation work, not included in v0.5
+- Camera/radar synchronization, AI-proposed labels and a human final-review queue
+  are documented as a future pipeline. Current labels are human-observed;
+  annotation source/status metadata must not turn an unreviewed AI proposal into
+  ground truth. No camera capture or video annotation implementation is claimed.
+
+### Final capture safeguards
+- Measured calibration fields start null/unverified; firmware/CFG identity is
+  included in the signature. Decoder warnings and mixed parser profiles are
+  excluded from motion admission/fitting as applicable.
+- Distinct capture timelines, rather than session-name counts, enforce minimum
+  coverage. A continuous take cannot span training and held-out roles; stop and
+  restart listening between independent takes.
+- Manual sit-to-stand and movement-onset interval annotations require active UART
+  capture and pause stable labels. They retain unreviewed human click timestamps
+  with unknown physical timing latency, not automatic transition detections.
+- Feature annotations remain human-observed/human-labelled; imported AI proposal
+  states are rejected. Camera synchronization and reviewed AI annotation remain
+  future work. Browser rendering and physical-hardware checks remain unverified.
 
 ## v0.4 — 2026-10-10 — Experimental prerelease
 
@@ -138,59 +240,3 @@ Older release notes below are historical and do not authorize old firmware in th
 - Early user reported live tracking/vitals on IWR6843AOPEVM Rev G. Sparse-vitals display bug subsequently identified.
 
 Released v0.1/v0.2 tags and assets remain unchanged. Use one complete release folder at a time.
-
-## v0.5 — 2026-10-10 — Experimental motion-signature prerelease
-
-### Added
-- Original browser-local sitting/standing/walking experiment using observed,
-  non-overlapping three-second windows and a standardized nearest-centroid CPU
-  classifier. It consumes supported people-tracking/vitals points/tracks from
-  the existing firmware; it is not a copied TI activity-classification demo.
-- Measured motion calibration: bracket-top reference height, signed antenna-
-  center offset, downward-positive tilt, orientation, tolerance and explicit
-  verification. Point and track sensor/world coordinate modes are separate.
-- Explicit target ROI, separate training/evaluation acquisition sessions,
-  training-only feature standardization, held-out evaluation, unknown/missing-
-  data handling and local motion dataset export/import.
-- Independent bounded-memory capture of received UART chunks before decoding,
-  decoded frames and experiment events, with explicit local export and limit
-  stopping. Classifier rejection does not discard the raw recorder's evidence.
-- MOTION_LAB.md: practical real-capture plan, leakage prevention, label rules,
-  calibration checks, capture privacy, provenance and future firmware roadmap.
-
-### Boundaries and remaining work
-- Minimum experiment gates require two training sessions per class and a
-  separately recorded held-out session per class; gates do not prove independence
-  if a user renames/copies the same acquisition data. Mixed calibration signatures
-  are rejected for training.
-- Missing/ambiguous data is not evidence of a stationary activity or an empty room.
-  Model scores are not calibrated probabilities. No real-data accuracy claim.
-- No original radar firmware, raw ADC, full micro-Doppler pipeline, validated
-  on-board classifier, medical use or safety-critical control is delivered.
-- This release adds motion-only mounting calibration and explicit UART recording;
-  older blanket limitations on those two features apply to the earlier versions.
-  Other viewer coverage limitations remain. Check VERIFICATION.txt for actual
-  test results and hardware/browser gaps; older releases remain unchanged.
-- Capture is local until explicit export, with no default upload. Dataset license
-  status remains pending; future publication requires separate rights/consent
-  decisions. The source-available project LICENSE is unchanged.
-
-### Future annotation work, not included in v0.5
-- Camera/radar synchronization, AI-proposed labels and a human final-review queue
-  are documented as a future pipeline. Current labels are human-observed;
-  annotation source/status metadata must not turn an unreviewed AI proposal into
-  ground truth. No camera capture or video annotation implementation is claimed.
-
-### Final capture safeguards
-- Measured calibration fields start null/unverified; firmware/CFG identity is
-  included in the signature. Decoder warnings and mixed parser profiles are
-  excluded from motion admission/fitting as applicable.
-- Distinct capture timelines, rather than session-name counts, enforce minimum
-  coverage. A continuous take cannot span training and held-out roles; stop and
-  restart listening between independent takes.
-- Manual sit-to-stand and movement-onset interval annotations require active UART
-  capture and pause stable labels. They retain unreviewed human click timestamps
-  with unknown physical timing latency, not automatic transition detections.
-- Feature annotations remain human-observed/human-labelled; imported AI proposal
-  states are rejected. Camera synchronization and reviewed AI annotation remain
-  future work. Browser rendering and physical-hardware checks remain unverified.

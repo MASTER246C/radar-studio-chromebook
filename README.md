@@ -1,16 +1,37 @@
+# Radar Studio Chromebook
+
+**Built specifically for the Texas Instruments IWR6843AOPEVM (IWR6843AOP) radar board.** The user-reported live setup is **Rev G**. This is not a generic viewer for all xWR or xWRL devices. A dependency-free browser application using Web Serial, served from the hosted site or a local file server.
+
+**[Open Radar Studio](https://radar-studio.master246c.chatgpt.site)** · [Hosted help](https://radar-studio.master246c.chatgpt.site/help) · [Local offline ML](https://radar-studio.master246c.chatgpt.site/offline) · [Versioned viewer downloads](https://github.com/MASTER246C/radar-studio-chromebook/releases)
+
+## Start here
+
+1. [Open Radar Studio](https://radar-studio.master246c.chatgpt.site) in a full desktop/ChromeOS Chrome tab. No Linux server is needed for this hosted option.
+2. Read [QUICKSTART.md](QUICKSTART.md) and select the workflow matching the firmware already on your board. Read the catalogue coverage and limitations before using a TI profile. For original firmware, complete no-RF status/configuration/pairing, save the receipts and stop for review before any later separately authorized sensing test.
+3. Select serial ports only when you intend to connect. Do not mix TI configuration with the original JSON protocol. Opening the site does not flash firmware or start RF.
+4. Save recordings explicitly to your own device. Nothing is submitted to the dataset automatically.
+5. For a version-pinned local copy, download a ZIP from **Releases**, keep versions in separate folders, and follow the local-server instructions in [QUICKSTART.md](QUICKSTART.md). For local TI artifact checks, see [LOCAL_IMPORT.md](LOCAL_IMPORT.md).
+
+For the optional local route, Linux/Python serves files only; Chrome owns USB serial. Developer Mode, Node.js and the TI Python visualizer are not viewer prerequisites.
+
+The main page keeps connection/configuration controls, the 3D view, vitals and
+recording status available. Less-used catalogue, playback and debug controls are
+inside expandable sections. In the Motion Signature Lab, open **1 · Verify
+coordinates and repeatable mounting** before collecting labelled features; model
+training/evaluation and saving features also have expandable sections. Observed
+labels and complete UART capture are immediately accessible.
+
+## Current status
+
+The current repository source is the unreleased **v0.9.0-preview.6** candidate; see [RELEASE_NOTES_v0.9.0-preview.6.md](RELEASE_NOTES_v0.9.0-preview.6.md). Tagged release ZIPs remain unchanged historical archives, and the hosted viewer serves the version shown in its heading. Use one complete source folder or release folder at a time and verify its version heading.
+
 > **First combined physical run, 2026-10-12:** [results and remaining checks](https://github.com/MASTER246C/iwr6843aop-activity-recorder/blob/main/docs/FIRST_COMBINED_RUN_2026-10-12.md). Firmware 0.3.2-rc1 with Radar Studio v0.9.0-preview.5 recorded 283 consecutive radar frames over 56.4 seconds, acknowledged manual Stop and returned to fault-free idle. The C920e recording passed file-integrity and video-decoding checks. The tested camera-label segment stayed unknown; timing alignment and radar training eligibility remain unresolved. No recordings or dataset samples were published.
 
 > Current source: [continuous monitoring and optional camera recording/review](CAMERA_WORKFLOW.md). Any browser-supported camera can be selected; Logitech C920e is the test device. Camera access and recording require explicit user actions.
 
-> v0.9.0-preview.5 adds run-until-stopped support for exact firmware 0.3.2-rc1 / 87589b2c32638ae119334c72, retaining timed 0.3.1 tests. A brief physical continuous run and manual Stop passed; lease-loss/disconnect and endurance checks remain pending. See [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
+> v0.9.0-preview.4 and later add run-until-stopped support for exact firmware 0.3.2-rc1 / 87589b2c32638ae119334c72, retaining timed 0.3.1 tests. A brief physical continuous run and manual Stop passed; lease-loss/disconnect and endurance checks remain pending. See [ORIGINAL_RADAR.md](ORIGINAL_RADAR.md).
 
-The current repository source contains the v0.9.0-preview.5 continuous and camera candidate. Use the complete source folder or the [hosted viewer](https://radar-studio.master246c.chatgpt.site) and verify its version heading. Existing tagged release ZIPs remain unchanged historical archives; see [current release notes](RELEASE_NOTES_v0.9.0-preview.5.md).
-
-# Radar Studio Chromebook
-
-## Hosted viewer
-
-**[Open Radar Studio](https://radar-studio.master246c.chatgpt.site)** · [Hosted help](https://radar-studio.master246c.chatgpt.site/help) · [Local offline ML](https://radar-studio.master246c.chatgpt.site/offline) · [Versioned viewer downloads](https://github.com/MASTER246C/radar-studio-chromebook/releases)
+## Browser and privacy requirements
 
 Use a full tab in **Chrome on desktop or ChromeOS**, with Web Serial available and permitted by your browser/device administrator. USB access requires your explicit browser port selection. The hosted viewer does not need a Linux file server, Python, Node.js or Developer Mode.
 
@@ -18,18 +39,15 @@ Use only the viewer workflow matching the firmware already on your IWR6843AOP bo
 
 Recordings are handled in your browser and saved through explicit local downloads; opening the site does not submit recordings to GitHub or the dataset. Review consent and privacy before sharing any export. The software remains **source-available under its existing no-resale license**; required notices and separate third-party terms still apply.
 
+## Original firmware workflow
+
 For original firmware, first perform control status/ACK and no-RF port-pairing checks. Timed tests accept **0.3.1-rc1 / abb27b48c1bdb956c0de704b**; continuous sessions require **0.3.2-rc1 / 87589b2c32638ae119334c72**. Choose Enhanced control at 115200 and Standard data at 921600, enter and confirm measured mounting values, Configure, and Verify port pairing. Save and review the no-RF receipts before manually starting sensing. Continuous mode runs until Stop while its exact-session heartbeat remains healthy; firmware stops on lease expiry or faults. Local diagnostic memory is bounded; select a recording folder to preserve the full received stream and optional camera video. Candidate IDs represent peaks, not people. Physical acceptance is partial as documented in the first-run report; activity accuracy remains unvalidated. See [CAMERA_WORKFLOW.md](CAMERA_WORKFLOW.md).
 
+## Mounting
 
-**Mount height is configurable; the UI offers editable 1219 mm/0° starting values but requires explicit measurement confirmation; other users must enter their own measurements. Historical project reference (not a default or calibration): 4 feet (1.2192 m) from floor to the flat TOP of the bracket, excluding screws.**
+Mount height is configurable: enter and confirm your own measured values. [MOUNTING.md](MOUNTING.md) is the single reference for the historical 4 ft (1.2192 m) project reference, the antenna-height formula and its uncertainty. The earlier 2.00 m / 15° arrangement is historical only.
 
-The chip center is above that reference in the photographed arrangement. Its signed vertical offset is **estimated at +0.003175 to +0.00635 m**, giving an **estimated antenna-height interval of 1.222375–1.22555 m**. The midpoint is about **1.224 m**; it is not a calibrated measurement. **Actual downward tilt is unconfirmed.** Measure the final geometry after setting the physical tilt, and preserve the uncertainty in capture metadata.
-
-**Antenna-center height = measured mount-top reference height + measured signed vertical chip-center offset after final tilt.** The mount reference is not the chip height. Do not guess the offset, replace it with zero, or apply an extra cosine to an already vertical offset. Verify point and track coordinate conventions separately before applying a transform; do not infer a firmware `sensorPosition` or claim calibrated angles from these estimates.
-
-The earlier **2.00 m / 15-degree** arrangement was a planned experimental reference and remains in historical examples and frozen releases. It is **not the current setup, a mandatory height, a universal optimum or a proven most-accurate setting**. Earlier underside-to-board-bottom measurements are not used for the chip-center offset. Physical calibration remains unverified.
-
-**Built specifically for the Texas Instruments IWR6843AOPEVM (IWR6843AOP) radar board.** The user-reported live setup is **Rev G**. This is not a generic viewer for all xWR or xWRL devices.
+## Features by version
 
 A dependency-free browser application using Web Serial, served from the hosted site or a local file server. **v0.6** introduced [local offline ML](OFFLINE_ML.md), retained in the current viewer: train/save/load your own models, sort recordings into proposals, and human-review them in separate overlays. Open **Local offline ML** from the viewer. No account, upload, pretrained model or paid service is required.
 
@@ -56,23 +74,6 @@ External TI/Silicon Labs downloads retain their own terms. This viewer does not 
 - **Custom firmware builds / optional Windows drivers:** [SDK, CCS and Silicon Labs links](DOWNLOADS.md). These are not blanket viewer prerequisites.
 
 Vendor downloads remain at their official sources; they are not bundled or relicensed here.
-
-## Start here
-
-1. [Open Radar Studio](https://radar-studio.master246c.chatgpt.site) in a full desktop/ChromeOS Chrome tab. No Linux server is needed for this hosted option.
-2. Read [QUICKSTART.md](QUICKSTART.md) and select the workflow matching the firmware already on your board. Read the catalogue coverage and limitations before using a TI profile. For original firmware, complete no-RF status/configuration/pairing, save the receipts and stop for review before any later separately authorized sensing test.
-3. Select serial ports only when you intend to connect. Do not mix TI configuration with the original JSON protocol. Opening the site does not flash firmware or start RF.
-4. Save recordings explicitly to your own device. Nothing is submitted to the dataset automatically.
-5. For a version-pinned local copy, download a ZIP from **Releases**, keep versions in separate folders, and follow the local-server instructions in [QUICKSTART.md](QUICKSTART.md). For local TI artifact checks, see [LOCAL_IMPORT.md](LOCAL_IMPORT.md).
-
-For the optional local route, Linux/Python serves files only; Chrome owns USB serial. Developer Mode, Node.js and the TI Python visualizer are not viewer prerequisites.
-
-The main page keeps connection/configuration controls, the 3D view, vitals and
-recording status available. Less-used catalogue, playback and debug controls are
-inside expandable sections. In the Motion Signature Lab, open **1 · Verify
-coordinates and repeatable mounting** before collecting labelled features; model
-training/evaluation and saving features also have expandable sections. Observed
-labels and complete UART capture are immediately accessible.
 
 ## Demo coverage is deliberately explicit
 
@@ -110,6 +111,8 @@ Download TI Radar Toolbox **4.00.00.05** from [TI](https://www.ti.com/tool/downl
   strict live/session quality gates, complete UART capture and manual observed
   transition annotations. Rendered-browser and live-hardware validation remain
   unverified; see [MOTION_LAB.md](MOTION_LAB.md) and [VERIFICATION.txt](VERIFICATION.txt).
+- **v0.6 and later:** see [CHANGELOG.md](CHANGELOG.md). CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs every
+  deterministic suite and the real-Chromium checks on each push; hardware behaviour still needs separate physical tests.
 
 Run the dependency-free developer test suite with Node.js and Python 3 using [TEST_PLAN.md](TEST_PLAN.md). Source provenance and protocol decisions are documented in [PROTOCOL_EVIDENCE.md](PROTOCOL_EVIDENCE.md). See [CHANGELOG.md](CHANGELOG.md) for additions, changes and known limitations.
 

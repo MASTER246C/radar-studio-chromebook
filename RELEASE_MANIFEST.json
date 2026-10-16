@@ -1,8 +1,8 @@
 {
-  "release": "v0.9.0-preview.5",
-  "date_utc": "2026-10-12",
-  "base_commit": "75fd41cede47ae5b4484f7db403645a8694d7f4b",
-  "status": "Software-tested cleanup; physical firmware and camera acceptance pending",
+  "release": "v0.9.0-preview.6",
+  "date_utc": "2026-10-16",
+  "base_commit": "2011fff30b48f06c8b13b00874a57784c1b46caa",
+  "status": "Unreleased source candidate: synthetic and mocked-serial software tests plus real-Chromium checks pass; physical firmware, serial-recovery and camera acceptance pending",
   "firmware_protocol": "original-radar-v2",
   "accepted_firmware": [
     {
@@ -27,14 +27,19 @@
       "sha256": "3df6947bba919230667524549841334b516dd7b483b7bf48f294dd4b136293a5"
     },
     {
+      "path": ".github/workflows/ci.yml",
+      "bytes": 1963,
+      "sha256": "078896290ca70e474411946eedd41fc0ee9f42554ab020481500bdc6462f0bc4"
+    },
+    {
       "path": ".gitignore",
-      "bytes": 101,
-      "sha256": "e428fcc8c201b5806eb8edff0e6071bdedaf6ddafbe0dcc0f4560deb28ef4dec"
+      "bytes": 98,
+      "sha256": "76c084cdc2118fb976d556da6d889256cf1cac52687fb24c56580dc7522d2082"
     },
     {
       "path": "app.js",
-      "bytes": 24486,
-      "sha256": "7b837bdbedb5d123b5c9d28c0d4555f6620f0884d29e2d6e453dbef325017406"
+      "bytes": 24664,
+      "sha256": "bba1ddb9e47880e2418061717ee55df88f78b852cf9c8d6008f85695767e0248"
     },
     {
       "path": "camera-review.html",
@@ -53,8 +58,8 @@
     },
     {
       "path": "camera_panel.js",
-      "bytes": 9415,
-      "sha256": "8c7923247a9fef0daae10ce557a8bf731c641d7b09bde769a4daff6dbcb1e1c5"
+      "bytes": 9528,
+      "sha256": "f381a9800b962b6b9a9d6bea35398c3239623d09682dd8cec3bcd35d5fc4cf06"
     },
     {
       "path": "camera_pose_worker.mjs",
@@ -63,13 +68,13 @@
     },
     {
       "path": "camera_review.js",
-      "bytes": 12811,
-      "sha256": "3f7eb673b0ddecc023709f31b6fec6ddabd1e1187b820dd27f1051d6be4583db"
+      "bytes": 13174,
+      "sha256": "2194cbbe56954658d05f9f7890c8a2703816da3636899b73c21a246f9c6934ed"
     },
     {
       "path": "CAMERA_WORKFLOW.md",
-      "bytes": 7332,
-      "sha256": "66e22619b5eb528ee79372ec63a3ec288031ae7a2428ee3b8bec58a077eb15d6"
+      "bytes": 7655,
+      "sha256": "7c6dd95a28ed78ddf597ada811f3948edab175c39e103abcbd6eb8e48e82e5d8"
     },
     {
       "path": "capture_recorder.js",
@@ -83,13 +88,13 @@
     },
     {
       "path": "CHANGELOG.md",
-      "bytes": 17549,
-      "sha256": "3805623b840682724275b84e3eaf78a97b768ad0b834a4f3c41d9aa0bce78bf5"
+      "bytes": 20180,
+      "sha256": "3b7311d6f9fee080969be02813bb9fd7cb898a152d021499216539128d0d08fe"
     },
     {
       "path": "CHANGELOG.txt",
-      "bytes": 5150,
-      "sha256": "4081ba4bf2be405a59751f779f443f9e0a6995dd97f965a295c6c30f743c5d64"
+      "bytes": 5202,
+      "sha256": "73d1d4d5dfc25be3e11c3c0f8a621bc82e3915740935f8f2e09605c3cc514126"
     },
     {
       "path": "CONFIG_GUIDE.txt",
@@ -118,8 +123,8 @@
     },
     {
       "path": "DEVELOPING.md",
-      "bytes": 20621,
-      "sha256": "61cc6bb2df98575b651a8ca4e0f40fd3536e122d3632a3543ef5d9a1a2d2e191"
+      "bytes": 22708,
+      "sha256": "b06a781598422af7e60e21893c280ac7b703aba24bb0339075352fe09fd9d3e9"
     },
     {
       "path": "DOWNLOADS.md",
@@ -138,8 +143,8 @@
     },
     {
       "path": "index.html",
-      "bytes": 31055,
-      "sha256": "fac95fa58ec93c44f9caf00cd30c1aac0ec00e392711628b554954ed4225521a"
+      "bytes": 31134,
+      "sha256": "335f9bceb4df53e7ffd690e6f2026f42274e7f85da161cb41b7c1f17a25751d5"
     },
     {
       "path": "legacy_panels.js",
@@ -188,8 +193,8 @@
     },
     {
       "path": "MOTION_LAB.md",
-      "bytes": 41690,
-      "sha256": "a15c9a73cb471ac7ba6b1083ffb44473dff19206a7a40eeb8ea578c3fb15f3ce"
+      "bytes": 40954,
+      "sha256": "6965884ccb9130b9e75a38ebe6eb7c89afba323d8f3d5dae35161b6d436e5626"
     },
     {
       "path": "motion_panel.js",
@@ -197,9 +202,14 @@
       "sha256": "2be87c971f1c727bc534c7f4f93c16b9ff27b8db8112a749525e003fe09c3f5e"
     },
     {
+      "path": "MOUNTING.md",
+      "bytes": 2124,
+      "sha256": "9aca2423c30728dfb8ada40304b18db3278ed179c7b06afb7e623cb92a088395"
+    },
+    {
       "path": "offline.html",
-      "bytes": 5073,
-      "sha256": "e0ab3cc65798ea226b403434f465c661ede4d1e4d05c422d8c1eb18ff9d4084b"
+      "bytes": 5302,
+      "sha256": "24b14b0e5ff867ac49cadc2671a6f93ced47b7a86dacd8b99377e176b511f29a"
     },
     {
       "path": "offline_features.js",
@@ -208,8 +218,8 @@
     },
     {
       "path": "OFFLINE_ML.md",
-      "bytes": 30411,
-      "sha256": "3f64d19c8854caa1123a8d959cbd50b28f54b23af3dd07d0e785d0161577b353"
+      "bytes": 29487,
+      "sha256": "869c863739a6794837b755a8015f43409584637f36455a241ced2fc487671629"
     },
     {
       "path": "offline_model.js",
@@ -233,8 +243,8 @@
     },
     {
       "path": "original_dual.js",
-      "bytes": 43554,
-      "sha256": "d983c4c4e6da14bfffedd3e20d96b33573695d19f806e2b866122e779bf80c90"
+      "bytes": 44007,
+      "sha256": "d7629bb8a9d994d67aa36962417752135ad1942411b282f665688cfe291e8603"
     },
     {
       "path": "original_dual_acceptance.js",
@@ -243,18 +253,18 @@
     },
     {
       "path": "original_dual_panel.js",
-      "bytes": 17397,
-      "sha256": "f775f26d3b5c35b45ff7899e0f477304f7b97168f20b461aff036953f313a8b9"
+      "bytes": 17776,
+      "sha256": "10b4c93620dd0ea79f2dedddef388238faf77b1589e6e783e192537c9ba1027c"
     },
     {
       "path": "original_oneport.html",
-      "bytes": 20958,
-      "sha256": "b39e956d314d66e45b324ef3758d21535c7270d36ba0498537daa9e53ad7fd31"
+      "bytes": 21225,
+      "sha256": "e74f107493b127df83440db2ad756ceec71b583429c99cc3fabc0d4cc1d1eb75"
     },
     {
       "path": "original_panel.js",
-      "bytes": 10773,
-      "sha256": "fd5b620c006472bc439eb9f8a828dbd9b5f7299f4997923df1af25895048212b"
+      "bytes": 10968,
+      "sha256": "7d9430fd69f993fc9b33f88f595b69b72ef760811d984263b956a63024a91091"
     },
     {
       "path": "original_radar.js",
@@ -263,13 +273,13 @@
     },
     {
       "path": "ORIGINAL_RADAR.md",
-      "bytes": 12698,
-      "sha256": "6cbf6977e1d80da1e6dab2ed9924dc8c3e9ee5526b36f7aefcce88b3a0e4f078"
+      "bytes": 12983,
+      "sha256": "fe5f662493af04043f04860f61e54e6c9fdbbf030d1b12a239dd077233c81174"
     },
     {
       "path": "original_sessions.js",
-      "bytes": 19024,
-      "sha256": "d6907a5fde81cfb2fc9c48e3d6b11a9b00cf2978a581a53880b5312a38a66a17"
+      "bytes": 19311,
+      "sha256": "adacf064156618d42131b8da0b4feb1b7bb25d66f4940c12cb61d88fc2d7532d"
     },
     {
       "path": "original_tracker.js",
@@ -288,13 +298,13 @@
     },
     {
       "path": "QUICKSTART.md",
-      "bytes": 19095,
-      "sha256": "5bc19ec12189947f023bee874dc062648c5759a50622fbb472a3ea26d2efa231"
+      "bytes": 19196,
+      "sha256": "0e83b02a1414368b09b80529ebacf759e2e4afc1adf75b2a699b8e6e4196bfb4"
     },
     {
       "path": "radar_protocol.js",
-      "bytes": 17836,
-      "sha256": "f1e6a76d2396709002e815813ca8f827e8d7b0cd01265f7a47a09e7dde3ba365"
+      "bytes": 18271,
+      "sha256": "7a2a2e96e151069ccd9bcce1ca6f243fa52bbddae922c0a954203b59bacc2bd4"
     },
     {
       "path": "radar_scene.js",
@@ -303,13 +313,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 21155,
-      "sha256": "7325ed35ed0192991d6c3907bffd8903270d62375a0f5cc80c5756670cd3dbbc"
+      "bytes": 21035,
+      "sha256": "303fdd435dbcf7e9bc7964d294ec5ca55724e1bebc3912baac29f4aa404595ea"
     },
     {
       "path": "RECORDER_API.md",
-      "bytes": 6660,
-      "sha256": "47f4f00c2ae131f9444a3683860c0dc60b28973ef835c412fdc3898da58b0144"
+      "bytes": 6672,
+      "sha256": "d4e9374f5fd29f03ba615cb7c49547902f98488fe76ed216b965163cd1de3ffa"
     },
     {
       "path": "RELEASE_NOTES_v0.7.0-preview.1.md",
@@ -357,9 +367,29 @@
       "sha256": "ac5bb889143ec624155fea2a79ecf3240eff42b37e71c274a749c4486d944de6"
     },
     {
+      "path": "RELEASE_NOTES_v0.9.0-preview.6.md",
+      "bytes": 1770,
+      "sha256": "44cdf3eb2c93cc58a3794f671907818049eb05580b582293bcb7b7a309358d40"
+    },
+    {
+      "path": "schemas/check_schema.py",
+      "bytes": 4551,
+      "sha256": "bce7eb693c38248743b421a43efb0c607b89072b83d7cc82df3d45306eca465a"
+    },
+    {
+      "path": "schemas/original-radar-dataset.v1.schema.json",
+      "bytes": 47201,
+      "sha256": "488a6fe6c85be655202e4f6bb64e2246f64e6704869fb1538d17caec6d5dcf20"
+    },
+    {
+      "path": "serial_read.js",
+      "bytes": 1162,
+      "sha256": "6387e08ea081efdbe770b58b90b8d27c2c9a92af72d4bf84bf2d8b530e21c355"
+    },
+    {
       "path": "session_guide.js",
-      "bytes": 3324,
-      "sha256": "14a3f14b37558160d95c37fcc2b927419ba1e9d677601d5d35e54fc94fa6d3db"
+      "bytes": 3437,
+      "sha256": "2a5543013c6eb92d78483b98929cbbf8e231f69c08577124bcbfd922ccfc65ab"
     },
     {
       "path": "session_replay.js",
@@ -368,18 +398,18 @@
     },
     {
       "path": "sessions.html",
-      "bytes": 3673,
-      "sha256": "d5f7a7de3eb62bda1e756b4fcf5bf66136d871e07fda4459c12df80127af9bb0"
+      "bytes": 3943,
+      "sha256": "3531dd608e6868622ea5dcbd0f697f8c68151680ec87baf326f480bdde2cbb84"
     },
     {
       "path": "SESSIONS.md",
-      "bytes": 6623,
-      "sha256": "a3b6c28bc7d2ff17437e32f96a535ae1da1c2e95e1bf7a49a34e20e5fa1c84db"
+      "bytes": 6632,
+      "sha256": "929112290c77c20ebc4d942a4e9ea21d58f3092a7706fb4b82fa654d02772848"
     },
     {
       "path": "SHARED_MODULES.json",
-      "bytes": 3750,
-      "sha256": "9e206b13bc48a43e4d869e5ed24d8d5d5d517aebdb87d8da3e9a4cd3ef0134c6"
+      "bytes": 4981,
+      "sha256": "fd564a1fdf6f21581e695d87e864414af99c1266f2543af846b6c245257563f7"
     },
     {
       "path": "start-local.sh",
@@ -388,8 +418,8 @@
     },
     {
       "path": "styles.css",
-      "bytes": 13682,
-      "sha256": "7fe26cd88306ed10bf3fadaf4dec7a3fcfb7b6aaef491caaf50699010f7c20d1"
+      "bytes": 13737,
+      "sha256": "22b5341ffe21a4d423959a704c2b144fb2a755e2f4de2e3b65ee25a2d0ad0f6b"
     },
     {
       "path": "TECHNICAL_NOTES.md",
@@ -403,13 +433,13 @@
     },
     {
       "path": "TEST_PLAN.md",
-      "bytes": 8289,
-      "sha256": "7814f164de4c4e1fbd9602d4d93d63ac8732725de2857a9dce593da704d95f00"
+      "bytes": 10571,
+      "sha256": "971036df5b868b96beb8749ee19d41353d591fa9205a0eb26ae7bf34464400eb"
     },
     {
       "path": "tests/browser.optional.test.js",
-      "bytes": 5247,
-      "sha256": "41c58c5877841cfa4c981d6134c0925b1096c93132187ccce5edc6b7e3cf63ea"
+      "bytes": 5716,
+      "sha256": "5d67a48deb222998b566ac7d887c56a2ec26888a39106429ca727e7f40867380"
     },
     {
       "path": "tests/build_cpd_fixtures.py",
@@ -438,8 +468,13 @@
     },
     {
       "path": "tests/camera-panel.test.mjs",
-      "bytes": 2660,
-      "sha256": "9a279e01973b60828f32014c29f8c8308771f5f8bd92bca9c9845d6be79e2219"
+      "bytes": 2780,
+      "sha256": "11fcecd72b707e04f6bccb77ed2de977641777eba92ed7d364b869e8c8906e57"
+    },
+    {
+      "path": "tests/camera-review.test.mjs",
+      "bytes": 4472,
+      "sha256": "006bb5e318438a43db4d9c24d1cd6d6d84d81042abbc3d8a777801a119fe166e"
     },
     {
       "path": "tests/capture.test.js",
@@ -453,8 +488,8 @@
     },
     {
       "path": "tests/continuous-viewer.test.mjs",
-      "bytes": 7607,
-      "sha256": "615cf4f448d347839e22f2c82b0ff6c0523ff63e14727dc8a7a97158d924e202"
+      "bytes": 9455,
+      "sha256": "f74018c64f609cc42068063c4999f6eb4d85aeae12231f52aff47989c54830a0"
     },
     {
       "path": "tests/cpd-fixtures.json",
@@ -502,6 +537,11 @@
       "sha256": "a6a6389dc99a26cba8b0a94c6e3da315e450b5fc93a7cd5dc111806d0780b7ab"
     },
     {
+      "path": "tests/make_dataset_samples.js",
+      "bytes": 4350,
+      "sha256": "03774b6bf49a7ab29aab188f642e207a942cc7317692b9a24f203872d2c6ea66"
+    },
+    {
       "path": "tests/motion.test.js",
       "bytes": 14768,
       "sha256": "70be51dc12f4583fd6a155ed9c4d4236517fca190d55df28dc372b0fc3ad65d2"
@@ -513,8 +553,8 @@
     },
     {
       "path": "tests/offline_browser.optional.test.js",
-      "bytes": 3131,
-      "sha256": "44c85344ff22a32671963f36f8e4496234b935b678ef6ac5774758e345fe503d"
+      "bytes": 3121,
+      "sha256": "941bb7cf11b547ca817bde556a3e3ff9fe06977a95d82a6e65ea4da57cd7a424"
     },
     {
       "path": "tests/offline_cli.test.js",
@@ -548,13 +588,13 @@
     },
     {
       "path": "tests/original_dual.test.js",
-      "bytes": 15367,
-      "sha256": "a11c2cb67c42bb5741cfd90032ef9298615a93980c4d9ba3ae0c159cae86a3d6"
+      "bytes": 15409,
+      "sha256": "e00568cbcb64d336e84e36cc463656b8a04763e6a89c98ee0d838c260a2c4b3a"
     },
     {
       "path": "tests/original_dual_panel.test.js",
-      "bytes": 23147,
-      "sha256": "2d4aed4315ec7411678961112a5a07403bb16747eef68e4e14c90b6731c2caf4"
+      "bytes": 24042,
+      "sha256": "ecf77131723658cb88b0654baeae51560d70824f2afd27eb2193897f94819630"
     },
     {
       "path": "tests/original_gate.test.js",
@@ -563,8 +603,8 @@
     },
     {
       "path": "tests/original_panel.test.js",
-      "bytes": 43974,
-      "sha256": "f50c42ffaf31ffa37ab7b15693c2078c1deb9c17bf7985ac065720d2bc9791d9"
+      "bytes": 44607,
+      "sha256": "ac79c22508d1100f3b9cfbf497f03420a4e0caad640e33ae44201522a8202abe"
     },
     {
       "path": "tests/original_radar.test.js",
@@ -573,8 +613,8 @@
     },
     {
       "path": "tests/original_sessions.test.js",
-      "bytes": 8618,
-      "sha256": "dddef77ee69c84903af4040cf7870858dfa13befb9d767ee91f350d48c00a42a"
+      "bytes": 9282,
+      "sha256": "e2b9c1ac460d9c69a85670d27e89ee61c2fb65ca03985a039aa6bf6ea4d1b39c"
     },
     {
       "path": "tests/original_tracker.test.js",
@@ -583,18 +623,23 @@
     },
     {
       "path": "tests/original_tracking_browser.optional.test.js",
-      "bytes": 3409,
-      "sha256": "af5735c9af86461538ce7297a87ac2dcd3a2c2d86c2bab5a80028f87c94c9636"
+      "bytes": 3426,
+      "sha256": "9f1ec21f321d27794ecee186288637ff6f14b8e395745e057bccdf8e8328f718"
+    },
+    {
+      "path": "tests/pages_browser.optional.test.js",
+      "bytes": 3050,
+      "sha256": "78016a436075f4f793e216056d74b05294f2913f10961153fa41a886fdb9bbe6"
     },
     {
       "path": "tests/protocol.test.js",
-      "bytes": 3448,
-      "sha256": "e04054a47024f300ae157cb7b6e8939bbd51c86f0b59caee76f6d799a1a05bf6"
+      "bytes": 4202,
+      "sha256": "8f3cf769496e8ff2f43c9c4e1f8040cba17e8bbc0356afc999fc0358d28d80c4"
     },
     {
       "path": "tests/run-all.js",
-      "bytes": 788,
-      "sha256": "1121641cf612e15538fd700ba350420a9bfc79cf59c7b9e01b3c7d5cd81f2bc2"
+      "bytes": 865,
+      "sha256": "98adf0ba0e0c9bd785a0774aefc9e9ea99e50a09e6494154e6a27d1844f645ec"
     },
     {
       "path": "tests/scene.test.js",
@@ -602,9 +647,14 @@
       "sha256": "28cf3d77cfe0e49fef3e9d98d30006d7d952c6e75a4f217919e845b8b01b9872"
     },
     {
+      "path": "tests/serial-read.test.js",
+      "bytes": 1919,
+      "sha256": "0cce2f87fe5a24c07df03baa6ef0db6350124e21cb134233c981103db21a9f2b"
+    },
+    {
       "path": "tests/session_ui.test.js",
-      "bytes": 6000,
-      "sha256": "243189474e7da808cf63797653e2b5a12c0e352d03c23391ea95aae5779eda65"
+      "bytes": 6091,
+      "sha256": "9fc52beac38d13b689a748ce48d76886d67e52e821183195c1abe63c2e683284"
     },
     {
       "path": "tests/telemetry.test.js",
@@ -618,8 +668,13 @@
     },
     {
       "path": "tests/ui.test.js",
-      "bytes": 12165,
-      "sha256": "71356dca0d038c5aead14b36a1d1937a505c13fbfb1b4a523a45fe18ee25a753"
+      "bytes": 12922,
+      "sha256": "f1ede3d1bcea093518dcfa1307da9a70ecac106106bd5425a88a7836d5dca62b"
+    },
+    {
+      "path": "tests/version.test.js",
+      "bytes": 1496,
+      "sha256": "5eb04f496c8be1b4887604662ba1c1621fff8de6f2ca001fccf07cd8c8a3780d"
     },
     {
       "path": "tests/vitals.test.js",
@@ -627,9 +682,24 @@
       "sha256": "4c851c1feffd2e607908f4f749d8d5d3192f7c6f1224db9bdc0e56474250010c"
     },
     {
+      "path": "tools/check-shared-modules.js",
+      "bytes": 1389,
+      "sha256": "887b41163fe7ff2f22319bea0588d15cff92c17bba915d540b69fde9f28bb6f1"
+    },
+    {
+      "path": "tools/check_links.py",
+      "bytes": 2973,
+      "sha256": "efe092d66c3c162f94736b72468508f8be1983bc024976f220a725436a12afa5"
+    },
+    {
       "path": "tools/offline-ml.js",
       "bytes": 5432,
       "sha256": "f8144a22238234e31ef655b46193dfb483417070ab68707b8ec9005eedeeacf8"
+    },
+    {
+      "path": "tools/release_manifest.py",
+      "bytes": 2233,
+      "sha256": "0c5e38caea12efe44714a4a7852935d671fc4e37bf837af87dadde565e80a4ad"
     },
     {
       "path": "trail_store.js",
@@ -643,8 +713,8 @@
     },
     {
       "path": "UPGRADE.md",
-      "bytes": 4019,
-      "sha256": "f8146ee99e5748d422be07de938369a35d21d83e7324f6cdef43e0fc096151b0"
+      "bytes": 4276,
+      "sha256": "824b8f85c9aca7872710ae4bf819434df2172b575c8b844969ce5deb5891cdd2"
     },
     {
       "path": "vendor/mediapipe/LICENSE",
@@ -698,8 +768,13 @@
     },
     {
       "path": "VERIFICATION.txt",
-      "bytes": 1817,
-      "sha256": "b453d76338b8b8eae003528d222ee7c52d987aa3aa07fa8a0bd7f281c2a530c7"
+      "bytes": 2496,
+      "sha256": "01432c23816048413d03244e829613b2a00c4ea7d8e2fecbfe11cdd191a242cf"
+    },
+    {
+      "path": "viewer_version.js",
+      "bytes": 338,
+      "sha256": "378e13f7cf360c87cdf535e09816fa0a531d12b04c11683267c7d5a4a8930e43"
     },
     {
       "path": "vitals_store.js",

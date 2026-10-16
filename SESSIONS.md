@@ -1,6 +1,6 @@
 # Guided sessions, replay and reviewed datasets
 
-Radar Studio v0.9.0-preview.5 supports timed captures and continuous local recording. This page describes the timed capture review workflow; see [Camera recording and review](CAMERA_WORKFLOW.md) for full continuous recording folders. It does not train or validate a person detector. Existing TI offline tools remain separate.
+Radar Studio v0.9.0-preview.4 and later support timed captures and continuous local recording. This page describes the timed capture review workflow; see [Camera recording and review](CAMERA_WORKFLOW.md) for full continuous recording folders. It does not train or validate a person detector. Existing TI offline tools remain separate.
 
 ## Record a named session
 

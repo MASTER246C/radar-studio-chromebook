@@ -1,4 +1,16 @@
-HISTORICAL RECEIPT: the checks below describe preview.3 only. For current preview.5 scope and checks, see RELEASE_NOTES_v0.9.0-preview.5.md.
+v0.9.0-preview.6 software verification (unreleased source, 2026-10-16)
+
+PASS: all deterministic suites with tests/run-all.js (34 suites, Linux, Node 22), including the four
+.mjs suites that the earlier runner skipped.
+PASS: the four optional real-Chromium suites (Playwright 1.56.1, Chromium 141) with synthetic data and
+mocked Web Serial, including every page at 390 px with a wide font: no script errors, CSP violations or
+horizontal scroll.
+PASS: shared-module pins, RELEASE_MANIFEST.json, Markdown links and viewer dataset exports against the
+original-radar-dataset v1 JSON Schema.
+NOT RUN: physical radar, USB serial, camera or RF checks for preview.6. The recoverable serial-error path
+and the 1 MiB serial buffer are verified only with mocked ports.
+
+HISTORICAL RECEIPT: the checks below describe preview.3 only.
 
 v0.9.0-preview.3 software verification (2026-10-11)
 

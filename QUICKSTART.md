@@ -1,4 +1,4 @@
-# v0.9.0-preview.5: original dual-UART bring-up and camera recording
+# v0.9.0-preview.6: original dual-UART bring-up and camera recording
 
 ## Hosted option
 
@@ -7,7 +7,7 @@
 ## First acceptance: save no-RF receipts and stop for review
 
 1. Set the board's flashing switch to **I** and reset. For continuous-mode acceptance, flash the distinct 0.3.2-rc1 candidate (build 87589b2c32638ae119334c72) with your supported flashing tool. Preserve the 0.3.1-rc1 image for rollback; it remains supported for timed tests. Then set it to **O** and reset to run. Flashing is separate from the viewer; do not send viewer commands while in flashing mode.
-2. Open v0.9.0-preview.5. Choose **Enhanced control 115200**, then **Standard data 921600**. Click **Query control status** and verify the exact flashed build: 87589b2c32638ae119334c72 for 0.3.2-rc1 or abb27b48c1bdb956c0de704b for 0.3.1-rc1, self-test version 2 passing and zero faults.
+2. Open the viewer and check its version heading (v0.9.0-preview.6 for current source; v0.9.0-preview.5 is the latest published release). Choose **Enhanced control 115200**, then **Standard data 921600**. Click **Query control status** and verify the exact flashed build: 87589b2c32638ae119334c72 for 0.3.2-rc1 or abb27b48c1bdb956c0de704b for 0.3.1-rc1, self-test version 2 passing and zero faults.
 3. Check height **1219 mm**, tilt **0 degrees** and unknown/blank antenna offset against the actual mounting. Other users must replace these editable starting values with their own measurements. Tick the measurement confirmation only after checking.
 4. Click **Configure only**, then **Verify port pairing · no RF**. Both must succeed; neither starts RF.
 5. Save the capture JSON, control JSONL bytes and data JSONL bytes from these no-RF checks. Require fresh matching status confirming **idle**, paired and zero faults. If status times out, save first and reconnect the control port; board reset alone does not clear browser desynchronization.
@@ -40,7 +40,7 @@ To retain the full run, start local folder recording before configuration and pa
 
 ## Optional current local copy
 
-Use the complete current repository source folder (GitHub **Code → Download ZIP**) for v0.9.0-preview.5, or the matching named release ZIP. Earlier tagged ZIPs retain their historical contents. Run `sh start-local.sh` (or `python3 -m http.server 8000 --bind 127.0.0.1`) there and open `http://localhost:8000` in Chrome. No dependency installation is needed.
+Use the complete current repository source folder (GitHub **Code → Download ZIP**) for v0.9.0-preview.6, or a named release ZIP. Earlier tagged ZIPs retain their historical contents. Run `sh start-local.sh` (or `python3 -m http.server 8000 --bind 127.0.0.1`) there and open `http://localhost:8000` in Chrome. No dependency installation is needed.
 
 The older TI workflow instructions below remain applicable only to matching TI
 firmware. Never send TI configuration to the original JSON firmware.
