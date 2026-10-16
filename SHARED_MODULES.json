@@ -99,6 +99,10 @@
     {
       "path": "tools/check-shared-modules.js",
       "sha256": "887b41163fe7ff2f22319bea0588d15cff92c17bba915d540b69fde9f28bb6f1"
+    },
+    {
+      "path": "tests/protocol.test.js",
+      "sha256": "8f3cf769496e8ff2f43c9c4e1f8040cba17e8bbc0356afc999fc0358d28d80c4"
     }
   ],
   "integration_viewer_version": "v0.9.0-preview.3",
