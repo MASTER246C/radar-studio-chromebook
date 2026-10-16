@@ -46,7 +46,7 @@ async function run(fn){if(operation||closing){message='Finish or cancel the pend
 async function connect(){
  if(choosing||port||closing)return;choosing=true;refresh();let candidate=null,opened=false;
  try{candidate=await navigator.serial.requestPort();await candidate.open({baudRate:115200,dataBits:8,stopBits:1,parity:'none',flowControl:'none'});opened=true;writer=candidate.writable.getWriter();port=candidate;session.attach(bytes=>writer.write(bytes));
-  readTask=(async()=>{try{reader=port.readable.getReader();while(port===candidate){const {value,done}=await reader.read();if(done)break;if(value)session.ingest(value);}}catch(e){message='Serial read: '+e.message;}finally{if(reader){reader.releaseLock();reader=null;}session.detach('Serial read ended');refresh();}})();
+  readTask=(async()=>{try{await SerialRead.pump({port:candidate,active:()=>port===candidate,onData:value=>session.ingest(value),onReader:r=>{reader=r;},onRecoverable:e=>{if(session.connected)session.detach('Serial bytes lost: '+e.name);session.attach(bytes=>writer.write(bytes));message='Serial read '+e.name+': bytes were lost and reading resumed. Query status before continuing.';refresh();}});}catch(e){message='Serial read: '+e.message;}finally{reader=null;session.detach('Serial read ended');refresh();}})();
   message='Connected at 115200 8N1. No command was sent. Query status first.';
  }catch(e){if(opened&&!port)await candidate.close().catch(()=>{});message='Connect: '+e.message;}finally{choosing=false;refresh();}
 }

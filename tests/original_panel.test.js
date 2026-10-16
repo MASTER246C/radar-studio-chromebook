@@ -37,7 +37,7 @@ function environment({serialAvailable=true,secure=true,storage=new Map(),storage
   let controller,ended=false;const p={writes:[],received:[],openOptions:[],closeCount:0,state:'idle',configured:false,statusFields:repairedFields(),reply:true,rejectCommand:null,openError:null,writeError:null,onWrite:null,
    async open(options){p.openOptions.push(plain(options));if(p.openError)throw p.openError;ended=false;p.readable=new ReadableStream({start(c){controller=c;},cancel(){ended=true;}});p.writable=new WritableStream({async write(bytes){const copy=Uint8Array.from(bytes),text=dec.decode(copy);p.writes.push(text);if(p.writeError)throw p.writeError;if(p.onWrite){await p.onWrite(text,p);return;}if(!p.reply)return;const token=text.trim().split(' ')[0];if(p.rejectCommand===token){p.emitRecord(ack(token,p.state,p.configured,-1));return;}if(token==='commit')p.configured=true;if(token==='orConfig')p.configured=false;if(token==='stop')p.state='idle';if(token==='start')p.state='running';if(token==='status')p.emitRecord({type:'status',state:p.state,configured:p.configured,fault:0,frames:0,...p.statusFields});p.emitRecord(ack(token,p.state,p.configured));}});},
    async close(){p.closeCount++;assert(!p.readable?.locked,'reader lock released before close');assert(!p.writable?.locked,'writer lock released before close');},
-   emit(bytes){assert(!ended,'emit only while fake stream is open');const copy=Uint8Array.from(bytes);p.received.push(copy);controller.enqueue(copy);},emitRecord(record){p.emit(jsonl(record));},end(){ended=true;controller.close();},fail(){ended=true;controller.error(Error('Mock serial cable failure'));},
+   emit(bytes){assert(!ended,'emit only while fake stream is open');const copy=Uint8Array.from(bytes);p.received.push(copy);controller.enqueue(copy);},failRead(name){const old=controller;p.readable=new ReadableStream({start(c){controller=c;},cancel(){ended=true;}});old.error(Object.assign(new Error(name+' on read'),{name}));},emitRecord(record){p.emit(jsonl(record));},end(){ended=true;controller.close();},fail(){ended=true;controller.error(Error('Mock serial cable failure'));},
   };ports.push(p);return p;
  }
  const serial={async requestPort(...args){requests.push(args);const choice=nextChoice;nextChoice=null;return choice?await choice:makePort();},addEventListener(type,fn){(serialListeners[type]??=[]).push(fn);}};
@@ -78,6 +78,11 @@ test('both protocols reject switches during an open chooser; cancellation is ret
 
 test('active TI connection blocks original protocol until TI disconnect',async()=>{
  const e=environment();try{const u=e.ui;await u.cliConnect.onclick();const p=e.ports[0];assert.deepEqual(p.writes,[]);e.select('original');assert.equal(u.transportProtocol.value,'ti');assert(!u.tiDashboard.hidden);assert(u.originalPanel.hidden);assert.match(u.log.textContent,/Disconnect TI interfaces/);u.disconnect.onclick();await until(()=>u.log.textContent.includes('Disconnected.'),'TI disconnect');e.select('original');assert.equal(u.transportProtocol.value,'original');assert.equal(p.closeCount,1);assert.deepEqual(p.writes,[]);safetyOnly(e);}finally{e.dispose();}
+});
+
+test('a recoverable read error keeps the port usable without reconnecting',async()=>{
+ const e=environment();try{const u=e.ui,p=await e.connect();p.failRead('ParityError');for(let i=0;i<5;i++)await new Promise(r=>setTimeout(r,0));assert.match(u.originalMessage.textContent,/ParityError: bytes were lost/);
+ await u.originalStatus.onclick();assert.deepEqual(p.writes,['status\n']);assert.equal(e.requests.length,1);safetyOnly(e);}finally{e.dispose();}
 });
 
 test('manual status then acknowledged configure sends exact finite non-RF recipe',async()=>{

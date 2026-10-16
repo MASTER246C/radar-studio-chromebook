@@ -60,17 +60,18 @@
     }
   }
   async function readCli(port) {
-    const reader=port.readable.getReader();state.cliReader=reader;const decoder=new TextDecoder();
-    try { while(state.cli===port) {const {value,done}=await reader.read();if(done)break;if(value)cliChunk(decoder.decode(value,{stream:true}));} }
+    let decoder=new TextDecoder();
+    try { await SerialRead.pump({port,active:()=>state.cli===port,onData:value=>cliChunk(decoder.decode(value,{stream:true})),onReader:r=>{state.cliReader=r;},
+      onRecoverable:e=>{decoder=new TextDecoder();state.cliPartial='';if(state.ack)state.ack.finish(new Error(`CLI bytes lost (${e.name}); check the device state before resending.`));log(`CLI read ${e.name}: bytes were lost; reading resumed.`);}}); }
     catch(e){if(!state.closing)log(`CLI read error: ${error(e)}`);}
-    finally {reader.releaseLock();if(state.cliReader===reader)state.cliReader=null;if(state.ack)state.ack.finish(new Error('CLI connection closed.'));if(!state.closing&&state.cli===port){log('CLI stream ended. Disconnect and reconnect before sending commands.');if(state.writer){state.writer.releaseLock();state.writer=null;}refresh();}}
+    finally {state.cliReader=null;if(state.ack)state.ack.finish(new Error('CLI connection closed.'));if(!state.closing&&state.cli===port){log('CLI stream ended. Disconnect and reconnect before sending commands.');if(state.writer){state.writer.releaseLock();state.writer=null;}refresh();}}
   }
   async function connect(kind) {
     if(state.choosing||state.closing)return;state.choosing=true;refresh();let port=null,opened=false;
     try {
       port=await navigator.serial.requestPort();
       if(port===state.cli||port===state.data)throw new Error('That interface is already selected. Choose the other physical serial interface.');
-      await port.open({baudRate:kind==='cli'?115200:921600});opened=true;
+      await port.open(kind==='cli'?{baudRate:115200}:{baudRate:921600,bufferSize:1<<20});opened=true;
       state[kind]=port;
       if(kind==='cli'){state.writer=port.writable.getWriter();state.cliPartial='';state.cliTask=readCli(port);}
       log(`${kind.toUpperCase()} interface connected. No commands were sent.`);
@@ -90,10 +91,10 @@
     if(!profileAllowed()){log('This demo profile has no compatible decoder.');return;}if(!state.data||state.closing||state.profileChanging)return;
     stopPlayback();reset('live');state.listening=true;refresh();
     const port=state.data;
-    state.dataTask=(async()=>{let reader;
-      try{reader=port.readable.getReader();state.dataReader=reader;while(state.listening&&state.data===port){const {value,done}=await reader.read();if(done)break;if(value)ingest(value);}}
+    state.dataTask=(async()=>{
+      try{await SerialRead.pump({port,active:()=>state.listening&&state.data===port,onData:value=>ingest(value),onReader:r=>{state.dataReader=r;},onRecoverable:e=>log(`Data read ${e.name}: bytes were lost; reading resumed.`)});}
       catch(e){if(!state.closing)log(`Data read error: ${error(e)}`);}
-      finally{if(reader)reader.releaseLock();state.dataReader=null;state.listening=false;if(state.source==='live')state.source='offline';if(motion)motion.reset('offline',state.profile);refresh();}
+      finally{state.dataReader=null;state.listening=false;if(state.source==='live')state.source='offline';if(motion)motion.reset('offline',state.profile);refresh();}
     })();
   }
   async function sendCommand(command) {
