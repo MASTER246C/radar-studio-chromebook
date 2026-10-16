@@ -7,18 +7,20 @@ const types={'.js':'text/javascript','.mjs':'text/javascript','.css':'text/css',
 (async()=>{const server=http.createServer((req,res)=>{const file=path.resolve(root,'.'+decodeURIComponent(req.url.split('?')[0]));if(!file.startsWith(root+path.sep)){res.writeHead(403).end();return;}fs.readFile(file,(error,data)=>{res.writeHead(error?404:200,{'Content-Type':types[path.extname(file)]||'application/octet-stream'});res.end(error?'missing':data);});});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));let browser;
  try{browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||undefined,headless:true,args:['--no-sandbox']});
-  for(const name of pages)for(const width of [390,1365]){
+  // Font metrics differ between machines (CI's DejaVu Sans is wider than many defaults), so also check a wide font.
+  for(const name of pages)for(const [width,font] of [[390,null],[390,'DejaVu Sans'],[1365,null]]){
    const page=await browser.newPage({viewport:{width,height:900}}),problems=[];
    page.on('pageerror',e=>problems.push('page error: '+e.message));
    page.on('console',m=>{if(m.type()==='error')problems.push('console error: '+m.text());});
    await page.addInitScript(()=>document.addEventListener('securitypolicyviolation',e=>console.error('CSP violation: '+e.violatedDirective+' '+e.blockedURI)));
    await page.goto(`http://127.0.0.1:${server.address().port}/${name}`);
    assert.ok(await page.$('meta[http-equiv="Content-Security-Policy"]'),name+' declares a CSP');
+   if(font)await page.addStyleTag({content:`*{font-family:"${font}",Verdana,sans-serif !important}`});
    await page.evaluate(()=>document.querySelectorAll('details').forEach(d=>{d.open=true;}));await page.waitForTimeout(300);
-   const {scroll,inner}=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,inner:innerWidth}));
-   assert.ok(scroll<=inner,`${name} at ${width}px scrolls horizontally (${scroll}px)`);assert.deepEqual(problems,[],name);
+   const {scroll,inner,wide}=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,inner:innerWidth,wide:[...document.querySelectorAll('body *')].filter(e=>e.getBoundingClientRect().right>innerWidth+1).slice(-3).map(e=>e.tagName.toLowerCase()+(e.id?'#'+e.id:''))}));
+   assert.ok(scroll<=inner,`${name} at ${width}px${font?' with '+font:''} scrolls horizontally (${scroll}px): ${wide.join(', ')}`);assert.deepEqual(problems,[],name);
    await page.close();
   }
-  console.log(`PASS optional real-browser page checks: ${pages.length} pages at 390/1365 px, CSP declared and unviolated, no errors, no horizontal scroll.`);
+  console.log(`PASS optional real-browser page checks: ${pages.length} pages at 390 px (default and wide font) and 1365 px, CSP declared and unviolated, no errors, no horizontal scroll.`);
  }finally{if(browser)await browser.close();await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e);process.exitCode=1;});
