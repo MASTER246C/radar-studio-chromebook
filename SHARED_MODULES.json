@@ -103,6 +103,18 @@
     {
       "path": "tests/protocol.test.js",
       "sha256": "8f3cf769496e8ff2f43c9c4e1f8040cba17e8bbc0356afc999fc0358d28d80c4"
+    },
+    {
+      "path": "schemas/original-radar-dataset.v1.schema.json",
+      "sha256": "488a6fe6c85be655202e4f6bb64e2246f64e6704869fb1538d17caec6d5dcf20"
+    },
+    {
+      "path": "schemas/check_schema.py",
+      "sha256": "bce7eb693c38248743b421a43efb0c607b89072b83d7cc82df3d45306eca465a"
+    },
+    {
+      "path": "tools/release_manifest.py",
+      "sha256": "0c5e38caea12efe44714a4a7852935d671fc4e37bf837af87dadde565e80a4ad"
     }
   ],
   "integration_viewer_version": "v0.9.0-preview.3",

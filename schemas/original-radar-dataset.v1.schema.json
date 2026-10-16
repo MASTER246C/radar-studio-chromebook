@@ -1,0 +1,590 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/MASTER246C/iwr6843aop-activity-recorder/blob/main/schemas/original-radar-dataset.v1.schema.json",
+  "title": "original-radar-dataset version 1",
+  "description": "Structure of an original-radar-dataset version 1 file. It covers what both producers legitimately emit and what the consumer accepts. Producers: (1) the viewer export Review.dataset() in radar-studio-chromebook/original_sessions.js; (2) the recorder camera importer convert() in iwr6843aop-activity-recorder/original_training/camera_import.py. Consumers: (1) radar_ml.py validate()/prepare() in iwr6843aop-activity-recorder/original_training, the strict training admission described in original_training/INTEGRATION_CONTRACT.md; (2) the viewer's validateDataset(), used by its Resume (Review.restore) feature. The producer is selected by source.kind: a file with source.kind is checked against the camera_import profile and any other file against the viewer profile (see $defs/viewer_profile and $defs/camera_import_profile). Viewer Resume only accepts viewer-produced exports: every label must have source 'human', all viewer-only fields must be present, no camera_import fields may appear, and the file must match the exact source capture loaded in the viewer. A camera_import file with machine-source labels is valid here and in radar_ml, but the viewer will not resume it. Units follow field-name suffixes: *_us microseconds, *_ms milliseconds, *_seconds seconds, *_m metres, *_mps metres per second, *_mm millimetres, *_mdeg millidegrees, *_deg degrees. Integers must be JSON integers written without a fraction or exponent, because radar_ml requires a Python int and rejects 1.0 (schemas/check_schema.py checks this). Some cross-field rules cannot be expressed in JSON Schema. They are stated in descriptions and enforced by the producers' validators and by radar_ml.validate(): unique segment and label ids; label/sync-marker segment_id must name a segment in this file; start_us < end_us; label end_us and sync-marker relative_us must not exceed the last frame's relative_us in that segment; frame relative_us and sequence strictly increase within a segment; a reviewed label requires source 'human', a non-null reviewer and a timezone-qualified reviewed_at. The embedded viewer dataset_sha256 is not verified by radar_ml (JS/Python number serialisation differs).",
+  "type": "object",
+  "required": ["schema", "version", "source", "session", "segments", "labels"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {"const": "original-radar-dataset", "description": "Format tag."},
+    "version": {"type": "integer", "const": 1, "description": "Format version, the JSON integer 1."},
+    "source": {"$ref": "#/$defs/source"},
+    "session": {"$ref": "#/$defs/session"},
+    "segments": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": {"$ref": "#/$defs/segment"},
+      "description": "Sensor-time segments. Each segment has its own timebase: frames[].relative_us counts from that segment's first frame. Segment ids must be unique (not expressible here). The viewer emits at most 256 segments and camera_import exactly one. radar_ml accepts 1 to 2000. minItems 1 is the consumer's rule: the viewer can export a diagnostics-only file with zero segments, and its own Resume accepts that file, but radar_ml.validate rejects it and this schema does too."
+    },
+    "labels": {
+      "type": "array",
+      "maxItems": 20000,
+      "items": {"$ref": "#/$defs/label"},
+      "description": "Interval annotations. radar_ml accepts at most 20000 and the viewer emits at most 10000. Label ids must be unique, and each segment_id must name a segment in this file (not expressible here)."
+    },
+    "annotation_audit": {
+      "type": "array",
+      "maxItems": 20000,
+      "items": {"$ref": "#/$defs/audit_entry"},
+      "description": "Viewer only. Append-only edit log, at most 20000 entries. radar_ml ignores it."
+    },
+    "sync_markers": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {"$ref": "#/$defs/sync_marker"},
+      "description": "Viewer only. Unsynchronised sensor-time notes, at most 1000. radar_ml passes them through untouched."
+    },
+    "diagnostics": {"type": "object", "description": "Producer-specific capture/import diagnostics. The shape depends on the producer profile. radar_ml passes it through as source_diagnostics."},
+    "provenance": {"type": "object", "description": "Producer-specific provenance assertions. The shape depends on the producer profile. Assertions here are not authentication."},
+    "dataset_sha256": {"$ref": "#/$defs/sha256", "description": "Viewer only, and required by Resume. Lowercase hex SHA-256 of the viewer's canonical JSON (sorted keys) of every other top-level field. radar_ml does not verify it."}
+  },
+  "if": {"required": ["source"], "properties": {"source": {"type": "object", "required": ["kind"]}}},
+  "then": {"$ref": "#/$defs/camera_import_profile"},
+  "else": {"$ref": "#/$defs/viewer_profile"},
+
+  "$defs": {
+    "absent": {"not": {}, "description": "The key must be absent: this producer never emits it."},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$", "description": "Lowercase hex SHA-256 (64 characters)."},
+    "nonce32": {"type": "string", "pattern": "^[0-9a-f]{32}$", "description": "Firmware pair nonce: 32 lowercase hex characters."},
+    "uint": {"type": "integer", "minimum": 0, "maximum": 9007199254740991, "description": "Non-negative integer no larger than JavaScript Number.MAX_SAFE_INTEGER."},
+    "time_us": {"type": "integer", "minimum": 0, "maximum": 1000000000000, "description": "Microseconds of sensor time relative to the segment origin (integer, 0 to 10^12 as radar_ml allows)."},
+    "timestamp": {
+      "type": "string",
+      "maxLength": 40,
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$",
+      "description": "RFC 3339 date-time with an explicit timezone, as produced by JavaScript Date.toISOString() (e.g. 2026-10-12T00:00:00.000Z). radar_ml requires a timezone. The viewer requires at most 40 characters that Date.parse accepts."
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096,
+      "pattern": "\\S",
+      "description": "Non-blank string of at most 4096 characters (radar_ml text())."
+    },
+    "short_text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "\\S",
+      "not": {"pattern": "[\\u0000-\\u001f]"},
+      "description": "Viewer text(): non-blank, at most 100 characters, no C0 control characters."
+    },
+    "note_text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "\\S",
+      "not": {"pattern": "[\\u0000-\\u001f]"},
+      "description": "Viewer text(x,200): non-blank, at most 200 characters, no C0 control characters."
+    },
+    "xyz_m": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {"type": "number"},
+      "description": "[x, y, z] in metres in the sensor frame (sensor_xyz_m) or the declared world frame (world_xyz_m); y is the forward axis."
+    },
+
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "protocol", "coordinate_frame", "timing_basis"],
+      "description": "Origin of the radar data. Keys are the union of both producers. The viewer adds capture_version/firmware_version/build_id and camera_import adds kind.",
+      "properties": {
+        "sha256": {"$ref": "#/$defs/sha256", "description": "Viewer: SHA-256 of the exact original-radar-capture JSON text that was loaded. camera_import: SHA-256 of radar_ml canonical JSON over the session-start/end file hashes and every completed-file receipt (raw lanes and video). It identifies the source; it does not authenticate it."},
+        "protocol": {"const": "original-radar-v2", "description": "Firmware wire protocol."},
+        "coordinate_frame": {"const": "sensor_xyz_m", "description": "Detections use sensor-frame coordinates in metres."},
+        "timing_basis": {"const": "sensor_relative_us", "description": "Times are sensor-clock microseconds relative to each segment's origin."},
+        "capture_version": {"type": "integer", "const": 2, "description": "Viewer only. Version of the original-radar-capture file that was imported."},
+        "firmware_version": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/short_text"}], "description": "Viewer only. Firmware version from the capture's self-test/identity report, or null."},
+        "build_id": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/short_text"}], "description": "Viewer only. Firmware build id from the capture's self-test/identity report, or null."},
+        "kind": {"const": "verified-local-camera-radar-bundle", "description": "camera_import only. Marks a verified local camera+radar recording bundle and selects the camera_import profile."}
+      }
+    },
+
+    "mount_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bracket_top_mm", "down_tilt_mdeg", "antenna_offset_mm", "confirmed"],
+      "description": "Declared (not measured) sensor mounting, as confirmed by the operator.",
+      "properties": {
+        "bracket_top_mm": {"type": "integer", "minimum": 100, "maximum": 5000, "description": "Height of the bracket top above the floor, millimetres."},
+        "down_tilt_mdeg": {"type": "integer", "minimum": -45000, "maximum": 45000, "description": "Downward tilt, millidegrees."},
+        "antenna_offset_mm": {"anyOf": [{"type": "null"}, {"type": "integer", "minimum": -1000, "maximum": 1000}], "description": "Vertical antenna offset from the bracket top in millimetres, or null if unknown."},
+        "confirmed": {"const": true, "description": "The operator confirmed the declared mount."}
+      }
+    },
+
+    "session": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "participant_group", "synthetic", "config_identity"],
+      "description": "Outer recording session. All of its segments form one indivisible train/test split group in radar_ml. Keys are the union of both producers. name, prompt, viewer_version and mount_input are viewer only.",
+      "properties": {
+        "id": {"$ref": "#/$defs/text", "description": "Outer session id. This is not the firmware session_id. Viewer: the operator id or 'session-' plus the first 20 hex characters of source.sha256 (at most 100 characters). camera_import: the bundle's session-start session_id."},
+        "name": {"$ref": "#/$defs/short_text", "description": "Viewer only. Human-readable session name."},
+        "participant_group": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/text"}], "description": "Participant group pseudonym, or null. Null is valid export metadata but blocks a radar_ml split. camera_import always emits a string."},
+        "prompt": {"enum": ["walking", "standing", "sitting", "transition", "unknown"], "description": "Viewer only. The activity the operator prompted. It is never label truth."},
+        "synthetic": {"type": "boolean", "description": "Explicit declaration that the data is synthetic (true) or a real recording (false)."},
+        "viewer_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?$", "description": "Viewer only. Viewer release that produced the export, e.g. 0.9.0-preview.5."},
+        "mount_input": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/mount_input"}], "description": "Viewer only. Declared mounting copied from the capture, or null."},
+        "config_identity": {"$ref": "#/$defs/text", "description": "Configuration identity, excluding random session ids. Viewer: canonical JSON text of {protocol, firmware_version, build_id, profile, mount_input}, at most 2000 characters. camera_import: SHA-256 of radar_ml canonical JSON of {firmware_version, build_id, mount, range_bin_m, velocity_bin_mps}."}
+      }
+    },
+
+    "segment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "session_id", "frames"],
+      "description": "One sensor timebase. Keys are the union of both producers. connection_epoch, data_generation, config_generation and origin_timestamp_us are viewer only. Segment ids must be unique within the file (not expressible here). The consumer requires at most 100000 frames across all segments.",
+      "properties": {
+        "id": {"$ref": "#/$defs/text", "description": "Segment id. Viewer: 'segment-N'. camera_import: 'camera-<video file>-<firmware session_id>'."},
+        "session_id": {"type": "integer", "minimum": 0, "description": "Firmware session_id of the radar run. This is not session.id. radar_ml also tolerates a string, but neither producer emits one."},
+        "connection_epoch": {"$ref": "#/$defs/uint", "description": "Viewer only. Host connection epoch of the admitted frames."},
+        "data_generation": {"$ref": "#/$defs/uint", "description": "Viewer only. Host data-port generation of the admitted frames."},
+        "config_generation": {"$ref": "#/$defs/uint", "description": "Viewer only. Firmware config_generation."},
+        "origin_timestamp_us": {"$ref": "#/$defs/uint", "description": "Viewer only. Firmware timestamp_us of the segment's first frame, in microseconds. frames[].relative_us counts from this value."},
+        "frames": {"type": "array", "minItems": 1, "maxItems": 100000, "items": {"$ref": "#/$defs/frame_common"}, "description": "Frames in sensor-time order. relative_us and sequence must strictly increase (not expressible here)."}
+      }
+    },
+
+    "frame_common": {
+      "type": "object",
+      "required": ["relative_us", "sequence", "detections"],
+      "description": "Fields that radar_ml.validate requires of every frame. Each producer profile defines the full frame shape. Frames that fail radar_ml's measurement gates make windows unusable; they do not make the file invalid.",
+      "properties": {
+        "relative_us": {"$ref": "#/$defs/time_us", "description": "Sensor microseconds since the segment's first frame; the first frame has 0. Strictly increasing within a segment."},
+        "sequence": {"type": "integer", "minimum": 0, "description": "Firmware frame sequence number. Strictly increasing within a segment. Gaps are diagnosed, not filled."},
+        "detections": {"type": "array", "maxItems": 3, "items": {"type": "object"}, "description": "At most 3 reported detections."}
+      }
+    },
+
+    "label": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "segment_id", "start_us", "end_us", "task", "label", "review_status", "reviewer", "reviewed_at", "source", "timing_uncertainty_ms"],
+      "description": "One annotated interval. Keys are the union of both producers; camera_proposal_index is camera_import only. Rules not expressible here: id is unique; segment_id names an existing segment; start_us < end_us; end_us <= the last frames[].relative_us of that segment (camera_import also clips start_us to observed frames). review_status 'reviewed' requires source 'human', a non-null reviewer and a timezone-qualified reviewed_at. Only reviewed human labels from the task's training vocabulary (not 'unknown') supply training truth in radar_ml. The task-to-label vocabulary rule is encoded below.",
+      "properties": {
+        "id": {"$ref": "#/$defs/text", "description": "Label id, unique within the file. Viewer: 'label-N'. camera_import: 'camera-<index in the review file>'."},
+        "segment_id": {"$ref": "#/$defs/text", "description": "Id of the segment whose timebase start_us/end_us use."},
+        "start_us": {"$ref": "#/$defs/time_us", "description": "Interval start, microseconds relative to the segment origin. Must be < end_us."},
+        "end_us": {"type": "integer", "minimum": 1, "maximum": 1000000000000, "description": "Interval end, microseconds relative to the segment origin. Must be > start_us and <= the segment's last frame relative_us."},
+        "task": {"enum": ["activity", "transition"], "description": "Annotation axis. Activity states and transition events are separate tasks, not mutually exclusive classes."},
+        "label": {"enum": ["walking", "standing", "sitting", "unknown", "stand_up", "sit_down", "motion_onset", "none"], "description": "Label from the task's vocabulary. activity: walking, standing, sitting, unknown. transition: stand_up, sit_down, motion_onset, none, unknown. 'unknown' never supplies training truth. radar_ml would also accept null, but neither producer emits it."},
+        "review_status": {"enum": ["reviewed", "unreviewed", "excluded"], "description": "Human review state. 'reviewed' requires source 'human' plus reviewer and reviewed_at."},
+        "reviewer": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/text"}], "description": "Reviewer pseudonym, or null. It is required (non-null) when review_status is 'reviewed', and in viewer exports also when it is 'excluded'."},
+        "reviewed_at": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/timestamp"}], "description": "Time of the review decision, or null. It is required (non-null, with a timezone) when review_status is 'reviewed'."},
+        "source": {"enum": ["human", "machine"], "description": "Who asserted the label. The viewer emits only 'human'. camera_import emits 'machine' for unreviewed camera proposals and 'human' for reviewed labels."},
+        "timing_uncertainty_ms": {"anyOf": [{"type": "null"}, {"type": "number", "minimum": 0, "maximum": 60000}], "description": "Boundary timing uncertainty in milliseconds (0 to 60000), or null. radar_ml then applies a 250 ms inward buffer. The viewer emits null. camera_import emits the alignment uncertainty plus the review boundary uncertainty."},
+        "camera_proposal_index": {"anyOf": [{"type": "null"}, {"type": "integer", "minimum": 0}], "description": "camera_import only. The camera review label's proposal_index: the index of the machine proposal this interval started from, or null for a manually added interval. camera_import copies it from the review file without checking it."}
+      },
+      "allOf": [
+        {"if": {"required": ["task"], "properties": {"task": {"const": "activity"}}},
+         "then": {"properties": {"label": {"enum": ["walking", "standing", "sitting", "unknown"]}}}},
+        {"if": {"required": ["task"], "properties": {"task": {"const": "transition"}}},
+         "then": {"properties": {"label": {"enum": ["stand_up", "sit_down", "motion_onset", "none", "unknown"]}}}}
+      ]
+    },
+
+    "audit_value": {"anyOf": [{"type": "null"}, {"type": "number"}, {"$ref": "#/$defs/note_text"}], "description": "Audit payload value: null, a number, or viewer text of at most 200 characters."},
+    "audit_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "action", "at"],
+      "description": "Viewer only. One edit to the review. Each entry except an undo carries details. An undo entry carries reverted_revision instead.",
+      "properties": {
+        "revision": {"type": "integer", "minimum": 1, "maximum": 9007199254740991, "description": "1-based position in the audit log."},
+        "action": {"type": "string", "minLength": 1, "maxLength": 150, "pattern": "\\S", "not": {"pattern": "[\\u0000-\\u001f]"}, "description": "Edit kind. The current viewer emits 'begin', 'end', 'review:<label id>:<reviewed|excluded|unreviewed>', 'sync_marker' and 'undo' ('edit' is the unused default)."},
+        "details": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/audit_details"}], "description": "Arguments of the edit."},
+        "at": {"$ref": "#/$defs/timestamp", "description": "Host wall-clock time of the edit (Date.toISOString())."},
+        "reverted_revision": {"type": "integer", "minimum": 1, "description": "Undo entries only. The revision whose prior state was restored."}
+      }
+    },
+    "audit_details": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Arguments of a viewer edit: begin {segment_id,start_us,task,label}; end {segment_id,start_us,task,label,end_us}; review {id,status,reviewer,previous}; sync_marker {segment_id,relative_us,note}.",
+      "properties": {
+        "segment_id": {"$ref": "#/$defs/audit_value"},
+        "start_us": {"$ref": "#/$defs/audit_value", "description": "Microseconds."},
+        "task": {"$ref": "#/$defs/audit_value"},
+        "label": {"$ref": "#/$defs/audit_value"},
+        "end_us": {"$ref": "#/$defs/audit_value", "description": "Microseconds."},
+        "id": {"$ref": "#/$defs/audit_value"},
+        "status": {"$ref": "#/$defs/audit_value"},
+        "reviewer": {"$ref": "#/$defs/audit_value"},
+        "relative_us": {"$ref": "#/$defs/audit_value", "description": "Microseconds."},
+        "note": {"$ref": "#/$defs/audit_value"},
+        "previous": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "segment_id", "start_us", "end_us", "task", "label", "review_status", "reviewer", "reviewed_at", "source", "timing_uncertainty_ms"],
+          "description": "Review edits only. Snapshot of the label before the edit.",
+          "properties": {
+            "id": {"$ref": "#/$defs/audit_value"},
+            "segment_id": {"$ref": "#/$defs/audit_value"},
+            "start_us": {"$ref": "#/$defs/audit_value", "description": "Microseconds."},
+            "end_us": {"$ref": "#/$defs/audit_value", "description": "Microseconds."},
+            "task": {"$ref": "#/$defs/audit_value"},
+            "label": {"$ref": "#/$defs/audit_value"},
+            "review_status": {"$ref": "#/$defs/audit_value"},
+            "reviewer": {"$ref": "#/$defs/audit_value"},
+            "reviewed_at": {"$ref": "#/$defs/audit_value"},
+            "source": {"$ref": "#/$defs/audit_value"},
+            "timing_uncertainty_ms": {"$ref": "#/$defs/audit_value", "description": "Milliseconds."}
+          }
+        }
+      }
+    },
+
+    "sync_marker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["segment_id", "relative_us", "note", "clock", "synchronized", "external_time_ms", "uncertainty_ms"],
+      "description": "Viewer only. A note at a sensor time. It is explicitly not synchronised to any external clock. segment_id must name an existing segment, and relative_us must not exceed that segment's last frame relative_us (not expressible here).",
+      "properties": {
+        "segment_id": {"$ref": "#/$defs/short_text"},
+        "relative_us": {"$ref": "#/$defs/time_us", "description": "Microseconds relative to the segment origin."},
+        "note": {"$ref": "#/$defs/note_text", "description": "Operator note, at most 200 characters."},
+        "clock": {"const": "sensor_relative_us"},
+        "synchronized": {"const": false, "description": "Always false in v1. No external clock mapping is claimed."},
+        "external_time_ms": {"type": "null", "description": "Always null in v1 (would be milliseconds)."},
+        "uncertainty_ms": {"type": "null", "description": "Always null in v1 (would be milliseconds)."}
+      }
+    },
+
+    "viewer_frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "relative_us", "sequence", "quality", "complete", "capture_fault", "missed_frames", "deadline_misses", "truncated", "detections"],
+      "description": "Viewer reduced frame. It holds only the fields the viewer copies from raw-byte-corroborated admitted frames.",
+      "properties": {
+        "index": {"$ref": "#/$defs/uint", "description": "0-based position within the segment."},
+        "relative_us": {"$ref": "#/$defs/time_us", "description": "Sensor microseconds since the segment origin."},
+        "sequence": {"$ref": "#/$defs/uint"},
+        "quality": {"$ref": "#/$defs/uint", "description": "Firmware quality bit mask. radar_ml rejects windows with mask & 19."},
+        "complete": {"type": "boolean"},
+        "capture_fault": {"$ref": "#/$defs/uint"},
+        "missed_frames": {"$ref": "#/$defs/uint"},
+        "deadline_misses": {"$ref": "#/$defs/uint"},
+        "truncated": {"type": "boolean", "description": "True when the firmware detected more targets than it reported."},
+        "detections": {"type": "array", "maxItems": 3, "items": {"$ref": "#/$defs/viewer_detection"}}
+      }
+    },
+    "viewer_detection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["range_m", "velocity_mps", "power", "sensor_xyz_m", "spatial_flags"],
+      "properties": {
+        "range_m": {"type": "number", "minimum": 0, "maximum": 1000, "description": "Radial range, metres."},
+        "velocity_mps": {"type": "number", "minimum": -1000, "maximum": 1000, "description": "Radial velocity, metres per second."},
+        "power": {"type": "number", "minimum": 0, "maximum": 1e100, "description": "Native firmware power units. This is not SNR."},
+        "sensor_xyz_m": {"anyOf": [{"type": "null"}, {"allOf": [{"$ref": "#/$defs/xyz_m"}, {"items": {"minimum": -1000, "maximum": 1000}}]}], "description": "Exploratory sensor-frame coordinates in metres, or null when the viewer judged the spatial estimate invalid (zero phasors, invalid flags, negative forward y, or a range mismatch)."},
+        "spatial_flags": {"$ref": "#/$defs/uint", "description": "Firmware spatial flag bits. Bits 0 and 1 (mask 3) mean a valid estimate."}
+      }
+    },
+    "viewer_segment": {
+      "required": ["id", "connection_epoch", "data_generation", "session_id", "config_generation", "origin_timestamp_us", "frames"],
+      "description": "Viewer segment. One is created per (connection_epoch, data_generation, pair_nonce, config_generation, firmware session_id). The viewer emits at most 256 frames per segment and at most 256 frames in total across segments (not expressible here).",
+      "properties": {
+        "id": {"$ref": "#/$defs/short_text"},
+        "session_id": {"$ref": "#/$defs/uint"},
+        "frames": {"maxItems": 256, "items": {"$ref": "#/$defs/viewer_frame"}}
+      }
+    },
+    "viewer_label": {
+      "description": "Viewer label. source is always 'human' because the viewer only records operator intervals. Rules not expressible here: when review_status is 'unreviewed', reviewer and reviewed_at must both be null; when it is 'reviewed' or 'excluded', both must be non-null.",
+      "properties": {
+        "id": {"$ref": "#/$defs/short_text"},
+        "segment_id": {"$ref": "#/$defs/short_text"},
+        "source": {"const": "human"},
+        "reviewer": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/short_text"}]},
+        "camera_proposal_index": {"$ref": "#/$defs/absent"}
+      }
+    },
+    "viewer_diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["control_parse_issues", "data_parse_issues", "dropped_parse_issue_details", "control_fault_reports", "rejected_admission_entries", "unadmitted_data_records", "missing_sequence_frames", "fault_frames", "truncated_frames", "invalid_coordinate_detections", "capture_overflow", "stop_unconfirmed", "final_state", "dropped_accepted_data_frames", "unsaved_byte_count", "dropped_event_count", "reported_control_issue_count", "reported_data_issue_count"],
+      "description": "Viewer capture diagnostics computed by loadCapture(). They are counts and messages only and never positions.",
+      "properties": {
+        "control_parse_issues": {"type": "array", "maxItems": 512, "items": {"type": "string"}, "description": "Control-lane parse issue messages ('<message> at line N'). At most 512 are kept."},
+        "data_parse_issues": {"type": "array", "maxItems": 512, "items": {"type": "string"}, "description": "Data-lane parse issue messages ('<message> at line N'). At most 512 are kept."},
+        "dropped_parse_issue_details": {"$ref": "#/$defs/uint", "description": "Issue messages dropped beyond the 512-per-lane limit."},
+        "control_fault_reports": {"$ref": "#/$defs/uint"},
+        "rejected_admission_entries": {"$ref": "#/$defs/uint"},
+        "unadmitted_data_records": {"$ref": "#/$defs/uint"},
+        "missing_sequence_frames": {"$ref": "#/$defs/uint"},
+        "fault_frames": {"$ref": "#/$defs/uint"},
+        "truncated_frames": {"$ref": "#/$defs/uint"},
+        "invalid_coordinate_detections": {"$ref": "#/$defs/uint"},
+        "capture_overflow": {"type": "boolean"},
+        "stop_unconfirmed": {"type": "boolean"},
+        "final_state": {"enum": ["idle", "starting", "running", "stopping", "fault", "unknown"]},
+        "dropped_accepted_data_frames": {"$ref": "#/$defs/uint"},
+        "unsaved_byte_count": {"$ref": "#/$defs/uint", "description": "Bytes the capture tool could not save (control plus data)."},
+        "dropped_event_count": {"$ref": "#/$defs/uint"},
+        "reported_control_issue_count": {"$ref": "#/$defs/uint"},
+        "reported_data_issue_count": {"$ref": "#/$defs/uint"}
+      }
+    },
+    "viewer_provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["admission", "authenticated", "coordinates", "power_units", "clock_sync", "license_status", "raw_and_video_included"],
+      "description": "Viewer provenance statements. The viewer emits fixed text for each.",
+      "properties": {
+        "admission": {"const": "imported-host-claim-raw-byte-corroborated"},
+        "authenticated": {"const": false},
+        "coordinates": {"type": "string", "description": "Currently 'exploratory sensor coordinates; no measured phase/axis calibration'."},
+        "power_units": {"type": "string", "description": "Currently 'native; not SNR'."},
+        "clock_sync": {"const": "unmeasured"},
+        "license_status": {"type": "string", "description": "Rights statement. This is not consent metadata."},
+        "raw_and_video_included": {"const": false, "description": "Raw bytes and video are never embedded in the derived dataset."}
+      }
+    },
+
+    "viewer_profile": {
+      "description": "Profile for files from the viewer, Review.dataset() in original_sessions.js. These are the files its Resume feature (validateDataset) accepts. Every key is closed and every label is human-sourced.",
+      "required": ["annotation_audit", "sync_markers", "diagnostics", "provenance", "dataset_sha256"],
+      "properties": {
+        "source": {"required": ["capture_version", "firmware_version", "build_id"]},
+        "session": {
+          "required": ["name", "prompt", "viewer_version", "mount_input"],
+          "properties": {
+            "id": {"$ref": "#/$defs/short_text"},
+            "participant_group": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/short_text"}]},
+            "config_identity": {"maxLength": 2000, "not": {"pattern": "[\\u0000-\\u001f]"}}
+          }
+        },
+        "segments": {"items": {"$ref": "#/$defs/viewer_segment"}},
+        "labels": {"maxItems": 10000, "items": {"$ref": "#/$defs/viewer_label"}},
+        "diagnostics": {"$ref": "#/$defs/viewer_diagnostics"},
+        "provenance": {"$ref": "#/$defs/viewer_provenance"}
+      }
+    },
+
+    "camera_frame": {
+      "type": "object",
+      "required": ["protocol", "type", "channel", "pair_nonce", "config_generation", "session_id", "sequence", "timestamp_us", "relative_us", "complete", "capture_fault", "missed_frames", "deadline_misses", "quality", "count", "detected_count", "truncated", "detections"],
+      "additionalProperties": true,
+      "description": "camera_import frame: the raw firmware original-radar-v2 frame record copied verbatim from the verified data lane, plus relative_us. Additional properties are allowed because camera_import does not strip raw fields, and radar_ml ignores fields it does not read. The firmware fields known from json_output.c are modeled below. The ones not required here are emitted by the firmware but missing from the test fixtures.",
+      "properties": {
+        "protocol": {"const": "original-radar-v2"},
+        "type": {"const": "frame"},
+        "channel": {"const": "data"},
+        "pair_nonce": {"$ref": "#/$defs/nonce32", "description": "Equal to provenance.alignment.radar_run.pair_nonce."},
+        "config_generation": {"type": "integer", "minimum": 0, "description": "Equal to provenance.alignment.radar_run.config_generation."},
+        "session_id": {"type": "integer", "minimum": 0, "description": "Firmware session id. Equal to the segment session_id."},
+        "sequence": {"type": "integer", "minimum": 0},
+        "timestamp_us": {"type": "integer", "minimum": 0, "description": "Raw firmware sensor time in microseconds. relative_us = timestamp_us - the first frame's timestamp_us."},
+        "relative_us": {"$ref": "#/$defs/time_us", "description": "Added by camera_import: sensor microseconds since the segment's first frame."},
+        "complete": {"type": "boolean"},
+        "capture_fault": {"type": "integer", "minimum": 0},
+        "missed_frames": {"type": "integer", "minimum": 0},
+        "deadline_misses": {"type": "integer", "minimum": 0},
+        "quality": {"type": "integer", "minimum": 0, "description": "Firmware quality bit mask."},
+        "count": {"type": "integer", "minimum": 0, "maximum": 3, "description": "Number of reported detections. Equal to the length of detections."},
+        "detected_count": {"type": "integer", "minimum": 0, "maximum": 8, "description": "Number of detections the firmware found. At least count."},
+        "truncated": {"type": "boolean", "description": "Equal to (detected_count > count)."},
+        "detections": {"type": "array", "maxItems": 3, "items": {"$ref": "#/$defs/camera_detection"}},
+        "frame_events": {"type": "integer", "minimum": 0},
+        "processing_us": {"type": "integer", "minimum": 0, "description": "Firmware frame processing time, microseconds."},
+        "previous_tx_us": {"type": "integer", "minimum": 0, "description": "Previous UART transmit time, microseconds."},
+        "session_mode": {"enum": ["continuous", "bounded"]},
+        "session_seconds": {"type": "integer", "minimum": 0, "description": "Bounded session length in seconds (0 means continuous)."},
+        "keepalive_lease_ms": {"type": "integer", "minimum": 0, "description": "Keepalive lease, milliseconds."},
+        "timestamp_basis": {"type": "string", "description": "Firmware clock basis of timestamp_us, e.g. 'session_elapsed'."},
+        "mount": {
+          "type": "object",
+          "description": "Firmware-echoed declared mount.",
+          "properties": {
+            "bracket_top_m": {"type": "number", "description": "Metres."},
+            "down_tilt_deg": {"type": "number", "description": "Degrees."},
+            "antenna_offset_m": {"type": ["number", "null"], "description": "Metres, or null if unknown."},
+            "antenna_height_m": {"type": ["number", "null"], "description": "Metres, or null if unknown."},
+            "world_height_valid": {"type": "boolean"}
+          }
+        },
+        "range_bin_m": {"type": "number", "exclusiveMinimum": 0, "description": "Range bin size, metres."},
+        "velocity_bin_mps": {"type": "number", "exclusiveMinimum": 0, "description": "Velocity bin size, metres per second."},
+        "profile_energy": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "number", "minimum": 0}}
+      }
+    },
+    "camera_detection": {
+      "type": "object",
+      "required": ["range_m", "velocity_mps", "sensor_xyz_m", "spatial_flags"],
+      "additionalProperties": true,
+      "description": "Raw firmware detection, copied verbatim. Additional raw fields pass through. power, phasors, world_xyz_m and activity are emitted by the firmware but missing from the test fixtures.",
+      "properties": {
+        "range_m": {"type": "number", "minimum": 0, "description": "Radial range, metres."},
+        "velocity_mps": {"type": "number", "description": "Radial velocity, metres per second."},
+        "sensor_xyz_m": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/xyz_m"}], "description": "Firmware sensor-frame estimate in metres, or null."},
+        "spatial_flags": {"type": "integer", "minimum": 0, "description": "Firmware spatial flag bits. Mask 3 means a valid estimate."},
+        "power": {"type": "number", "minimum": 0, "description": "Native firmware power units. This is not SNR."},
+        "phasors": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "number"}}, "description": "Per-RX [real, imag] phasors."},
+        "world_xyz_m": {"anyOf": [{"type": "null"}, {"$ref": "#/$defs/xyz_m"}], "description": "World-frame estimate in metres, or null when world height is not valid."},
+        "activity": {"type": "null", "description": "Always null. The firmware never classifies activity."}
+      }
+    },
+    "camera_segment": {
+      "required": ["id", "session_id", "frames"],
+      "description": "camera_import segment. It holds only the frames inside the human-matched alignment window of the matched radar run.",
+      "properties": {
+        "id": {"pattern": "^camera-.+-[0-9]+$"},
+        "connection_epoch": {"$ref": "#/$defs/absent"},
+        "data_generation": {"$ref": "#/$defs/absent"},
+        "config_generation": {"$ref": "#/$defs/absent"},
+        "origin_timestamp_us": {"$ref": "#/$defs/absent"},
+        "frames": {"minItems": 2, "items": {"$ref": "#/$defs/camera_frame"}}
+      }
+    },
+    "camera_label": {
+      "required": ["camera_proposal_index"],
+      "description": "camera_import label. It is always an activity interval mapped from video seconds through the affine alignment. Rules not expressible here: unreviewed labels are source 'machine'; reviewed labels are source 'human' with reviewer and reviewed_at. camera_import copies reviewer and reviewed_at from the review file even for unreviewed labels, so an unreviewed camera label may carry a reviewer, unlike the viewer.",
+      "properties": {
+        "id": {"pattern": "^camera-[0-9]+$"},
+        "task": {"const": "activity"},
+        "label": {"enum": ["sitting", "standing", "walking", "unknown"]},
+        "review_status": {"enum": ["reviewed", "unreviewed"]}
+      }
+    },
+    "camera_file_receipt": {
+      "type": "object",
+      "required": ["schema", "version", "file", "kind", "session_id", "complete_file", "byte_count", "sha256"],
+      "additionalProperties": true,
+      "description": "radar-camera-file completed-file receipt (<file>.meta.json), copied verbatim. camera_import checked byte_count and sha256 against the file bytes. Additional recorder fields pass through.",
+      "properties": {
+        "schema": {"const": "radar-camera-file"},
+        "version": {"type": "integer", "const": 1},
+        "file": {"type": "string", "minLength": 1, "pattern": "^[^/\\\\]+$", "description": "Bundle-relative file name with no directory part."},
+        "kind": {"enum": ["camera", "radar-control", "radar-data"]},
+        "session_id": {"$ref": "#/$defs/text", "description": "Bundle session id. Equal to session.id."},
+        "complete_file": {"const": true},
+        "byte_count": {"type": "integer", "minimum": 0, "description": "File size in bytes."},
+        "sha256": {"$ref": "#/$defs/sha256", "description": "SHA-256 of the file bytes."},
+        "global_byte_start": {"type": "integer", "minimum": 0, "description": "Offset of this file's first byte in the concatenated lane, bytes."},
+        "global_byte_end": {"type": "integer", "minimum": 0, "description": "Offset just past this file's last byte in the concatenated lane, bytes."},
+        "started_at": {"type": "object", "description": "Recorder host clock reading ({host_utc_ms, host_monotonic_ms}, milliseconds). These are absolute host times; review them before publishing."},
+        "ended_at": {"type": "object", "description": "Recorder host clock reading ({host_utc_ms, host_monotonic_ms}, milliseconds)."},
+        "camera_clock_alignment": {"type": "string", "description": "Recorder statement, e.g. 'unmeasured'."}
+      }
+    },
+    "camera_alignment": {
+      "type": "object",
+      "required": ["status", "method", "radar_run", "anchors", "video_to_sensor_scale", "video_to_sensor_offset_us", "uncertainty_us", "valid_video_start_seconds", "valid_video_end_seconds"],
+      "additionalProperties": true,
+      "description": "Camera review alignment, copied verbatim from the review file. camera_import re-fits it from the anchors and rejects any mismatch. The mapping is sensor_us = video_to_sensor_offset_us + video_to_sensor_scale * video_seconds * 1e6. Additional review fields pass through.",
+      "properties": {
+        "status": {"const": "human-matched-events"},
+        "method": {"const": "affine-fit-v1"},
+        "radar_run": {
+          "type": "object",
+          "required": ["pair_nonce", "config_generation", "session_id"],
+          "description": "The firmware radar run whose frames were imported.",
+          "properties": {
+            "pair_nonce": {"$ref": "#/$defs/nonce32"},
+            "config_generation": {"type": "integer"},
+            "session_id": {"type": "integer"}
+          }
+        },
+        "anchors": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 1000,
+          "description": "Human-matched events in both clocks. They span at least 1 second and increase in both clocks (not expressible here).",
+          "items": {
+            "type": "object",
+            "required": ["video_seconds", "sensor_timestamp_us", "uncertainty_ms"],
+            "properties": {
+              "video_seconds": {"type": "number", "minimum": 0, "description": "Video time, seconds."},
+              "sensor_timestamp_us": {"type": "integer", "minimum": 0, "description": "Raw firmware timestamp_us, microseconds."},
+              "uncertainty_ms": {"type": "number", "exclusiveMinimum": 0, "maximum": 60000, "description": "Matching uncertainty, milliseconds."}
+            }
+          }
+        },
+        "video_to_sensor_scale": {"type": "number", "minimum": 0.99, "maximum": 1.01, "description": "Clock scale. camera_import rejects a deviation from 1 greater than 1%."},
+        "video_to_sensor_offset_us": {"type": "number", "description": "Clock offset, microseconds."},
+        "uncertainty_us": {"type": "number", "minimum": 0, "description": "Maximum fit residual plus the largest anchor uncertainty, microseconds."},
+        "valid_video_start_seconds": {"type": "number", "minimum": 0, "description": "First anchor's video time, seconds. Nothing earlier is mapped."},
+        "valid_video_end_seconds": {"type": "number", "minimum": 0, "description": "Last anchor's video time, seconds. Nothing later is mapped."},
+        "drift_ppm": {"type": "number", "description": "Clock drift, parts per million (camera review tool)."},
+        "max_residual_us": {"type": "number", "minimum": 0, "description": "Maximum anchor fit residual, microseconds (camera review tool)."},
+        "physical_sync_accuracy_independently_verified": {"const": false}
+      }
+    },
+    "camera_provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["review_sha256", "video_receipt", "raw_receipts", "alignment", "machine_proposals", "camera", "source_bytes_verified", "authenticity_verified", "physical_sync_accuracy_independently_verified"],
+      "description": "camera_import provenance. Byte integrity was verified. Authenticity and physical sync accuracy were not.",
+      "properties": {
+        "review_sha256": {"$ref": "#/$defs/sha256", "description": "SHA-256 of the camera review file bytes."},
+        "video_receipt": {"allOf": [{"$ref": "#/$defs/camera_file_receipt"}, {"properties": {"kind": {"const": "camera"}}}], "description": "Receipt of the reviewed video file. The video bytes are not embedded."},
+        "raw_receipts": {
+          "type": "array",
+          "minItems": 2,
+          "description": "Receipts of every radar-control and radar-data raw lane file, in lane order. Their offsets are contiguous (not expressible here).",
+          "items": {"allOf": [{"$ref": "#/$defs/camera_file_receipt"}, {"required": ["global_byte_start", "global_byte_end"], "properties": {"kind": {"enum": ["radar-control", "radar-data"]}, "file": {"pattern": "^radar-(control|data)-[0-9]{6}\\.jsonl$"}}}]}
+        },
+        "alignment": {"$ref": "#/$defs/camera_alignment"},
+        "machine_proposals": {
+          "type": "array",
+          "description": "Camera model proposals, copied verbatim from the review file (default []). They are never label truth.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {"type": "string"},
+              "start_seconds": {"type": "number", "description": "Video time, seconds."},
+              "end_seconds": {"type": "number", "description": "Video time, seconds."},
+              "activity_confidence": {"type": ["number", "null"]}
+            }
+          }
+        },
+        "camera": {"type": ["object", "null"], "description": "Camera description copied from session-start.json (for example actual_label and settings), or null. It may contain a device label; review it before publishing."},
+        "source_bytes_verified": {"const": true},
+        "authenticity_verified": {"const": false},
+        "physical_sync_accuracy_independently_verified": {"const": false}
+      }
+    },
+    "camera_diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["measurement_gates"],
+      "properties": {
+        "measurement_gates": {"type": "string", "description": "Statement that radar_ml.prepare gates are unchanged and camera predictions are not admitted automatically."}
+      }
+    },
+
+    "camera_import_profile": {
+      "description": "Profile for files from the recorder, camera_import.py convert(). It is selected by source.kind. There is exactly one segment, all labels are activity labels, and viewer-only keys are forbidden. The viewer's Resume rejects these files.",
+      "required": ["diagnostics", "provenance"],
+      "properties": {
+        "source": {
+          "required": ["kind"],
+          "properties": {"capture_version": {"$ref": "#/$defs/absent"}, "firmware_version": {"$ref": "#/$defs/absent"}, "build_id": {"$ref": "#/$defs/absent"}}
+        },
+        "session": {
+          "properties": {
+            "name": {"$ref": "#/$defs/absent"},
+            "prompt": {"$ref": "#/$defs/absent"},
+            "viewer_version": {"$ref": "#/$defs/absent"},
+            "mount_input": {"$ref": "#/$defs/absent"},
+            "participant_group": {"type": "string"},
+            "config_identity": {"$ref": "#/$defs/sha256"}
+          }
+        },
+        "segments": {"maxItems": 1, "items": {"$ref": "#/$defs/camera_segment"}},
+        "labels": {"items": {"$ref": "#/$defs/camera_label"}},
+        "annotation_audit": {"$ref": "#/$defs/absent"},
+        "sync_markers": {"$ref": "#/$defs/absent"},
+        "dataset_sha256": {"$ref": "#/$defs/absent"},
+        "diagnostics": {"$ref": "#/$defs/camera_diagnostics"},
+        "provenance": {"$ref": "#/$defs/camera_provenance"}
+      }
+    }
+  }
+}
