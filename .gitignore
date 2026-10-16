@@ -6,4 +6,4 @@ private/
 input-manifest.json
 node_modules/
 __pycache__/
-tests/ui-*.png
+tests/*.png
