@@ -1,4 +1,4 @@
-# Reusable motion and UART modules — v0.5
+# Reusable motion and UART modules (introduced in v0.5)
 
 Canonical companion code repository:
 https://github.com/MASTER246C/iwr6843aop-activity-recorder

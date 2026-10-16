@@ -1,4 +1,4 @@
-# Local offline ML workflow for Radar Studio v0.6
+# Local offline ML workflow for Radar Studio (introduced in v0.6)
 
 **Mount height is configurable. Current user-reported reference: 4 feet (1.2192 m) from floor to the flat TOP of the bracket, excluding screws.**
 
@@ -507,8 +507,8 @@ The runner includes 19 suites, including feature extraction, model validation,
 review overlays, CLI integration and mocked offline UI behavior. Fixtures and
 labels in these suites are synthetic. The runner explicitly excludes optional
 real-browser rendering and hardware acceptance; software test success cannot
-establish either. Consult the current [TEST_PLAN.md](TEST_PLAN.md) and
-[VERIFICATION.txt](VERIFICATION.txt) for release-level verification status rather
+establish either. Consult the current [TEST_PLAN.md](https://github.com/MASTER246C/radar-studio-chromebook/blob/main/TEST_PLAN.md) and
+[VERIFICATION.txt](https://github.com/MASTER246C/radar-studio-chromebook/blob/main/VERIFICATION.txt) for release-level verification status rather
 than treating this guide as a hardware test report.
 
 The original sensing roadmap still needs protocol verification, real captures,

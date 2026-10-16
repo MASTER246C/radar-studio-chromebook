@@ -115,6 +115,22 @@
     {
       "path": "tools/release_manifest.py",
       "sha256": "0c5e38caea12efe44714a4a7852935d671fc4e37bf837af87dadde565e80a4ad"
+    },
+    {
+      "path": "MOTION_LAB.md",
+      "sha256": "888fe80dd0b0b1ed5ab02afebb7ebe277ec64dc93c1b41ee21b0f92a3b78e9f6"
+    },
+    {
+      "path": "OFFLINE_ML.md",
+      "sha256": "6fb75ef26b35c6c87b87462580170aeb25194c0055dc648bd26071dec3200240"
+    },
+    {
+      "path": "RECORDER_API.md",
+      "sha256": "d4e9374f5fd29f03ba615cb7c49547902f98488fe76ed216b965163cd1de3ffa"
+    },
+    {
+      "path": "tools/check_links.py",
+      "sha256": "efe092d66c3c162f94736b72468508f8be1983bc024976f220a725436a12afa5"
     }
   ],
   "integration_viewer_version": "v0.9.0-preview.3",

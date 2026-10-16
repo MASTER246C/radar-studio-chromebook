@@ -1,4 +1,4 @@
-# Motion Signature Lab — v0.5
+# Motion Signature Lab (introduced in v0.5)
 
 **Mount height is configurable. Current user-reported reference: 4 feet (1.2192 m) from floor to the flat TOP of the bracket, excluding screws.**
 
@@ -46,7 +46,7 @@ Vendor SDKs, libraries, examples, tools and firmware retain their separate terms
 
 1. Start the complete v0.5 folder using `sh start-local.sh`, then open
    `http://localhost:8000` in the ordinary ChromeOS Chrome browser. See
-   [QUICKSTART.md](QUICKSTART.md) for the server/serial setup and confirm v0.5
+   [QUICKSTART.md](https://github.com/MASTER246C/radar-studio-chromebook/blob/main/QUICKSTART.md) for the server/serial setup and confirm v0.5
    in the app header.
 2. Choose the exact profile matching the firmware already on your board. The
    initial classifier supports the people-tracking and people-tracking/vitals
@@ -648,10 +648,10 @@ restrictions. That is an unperformed browser check, not a passed rendering test;
 consult the verification record for the deterministic checks actually completed.
 
 - [README.md](README.md): viewer setup, existing demo coverage and licensing
-- [DEVELOPING.md](DEVELOPING.md): architecture and developer checks
-- [TEST_PLAN.md](TEST_PLAN.md) and [VERIFICATION.txt](VERIFICATION.txt): what was
+- [DEVELOPING.md](https://github.com/MASTER246C/radar-studio-chromebook/blob/main/DEVELOPING.md): architecture and developer checks
+- [TEST_PLAN.md](https://github.com/MASTER246C/radar-studio-chromebook/blob/main/TEST_PLAN.md) and [VERIFICATION.txt](https://github.com/MASTER246C/radar-studio-chromebook/blob/main/VERIFICATION.txt): what was
   actually tested and what still needs a physical board/browser
-- [PROVENANCE.txt](PROVENANCE.txt): original code and third-party boundary
+- [PROVENANCE.txt](https://github.com/MASTER246C/radar-studio-chromebook/blob/main/PROVENANCE.txt): original code and third-party boundary
 - [CHANGELOG.md](CHANGELOG.md): historical release changes
 
 
