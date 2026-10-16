@@ -11,10 +11,10 @@ const mount={bracket_top_mm:1219,down_tilt_mdeg:0,antenna_offset_mm:null,confirm
 const encoded=r=>new TextEncoder().encode(JSON.stringify(r)+'\n');
 const plain=x=>JSON.parse(JSON.stringify(x));
 async function mock({old=false,timeoutMs=100}={}){
- let clock=1800000000000,mode='bounded',seconds=5,state='idle',paired=false,hold=false,reject=false;
+ let clock=1800000000000,wallOffset=0,mode='bounded',seconds=5,state='idle',paired=false,hold=false,reject=false;
  const writes=[],status=()=>({...common,type:'status',state,configured:true,fault:0,frames:0,firmware_version:old?policy.firmwareVersion:policy.continuous.firmwareVersion,build_id:old?policy.buildId:policy.continuous.buildId,selftest_version:2,selftest_ok:true,selftest_mask:0,capture_fault:0,rf_fault:0,rf_error:0,deadline_misses:0,control_tx_fault:false,data_tx_fault:false,paired,pair_nonce:paired?nonce:'',config_generation:1,session_id:1,session_mode:mode,session_seconds:seconds,keepalive_lease_ms:seconds===0?5000:0});
  const ack=(command,extra={})=>({...common,type:'ack',command,state,configured:true,code:0,...extra});
- const s=new Session({rfPolicy:policy,rfEnabled:true,timeoutMs,now:()=>clock});
+ const s=new Session({rfPolicy:policy,rfEnabled:true,timeoutMs,now:()=>clock+wallOffset,monotonic:()=>clock});
  s.attach(async bytes=>{const text=new TextDecoder().decode(bytes).trim(),[command,arg]=text.split(' ');writes.push(text);
   if(command==='session'){mode=arg==='continuous'?'continuous':'bounded';seconds=arg==='continuous'?0:Number(arg);}
   if(command==='pair')s.ingestData(encoded({...status(),type:'data_probe',channel:'data',pair_nonce:nonce}));
@@ -26,7 +26,7 @@ async function mock({old=false,timeoutMs=100}={}){
   s.ingest(encoded(ack(command)));
  });s.attachData();await s.status();
  const frame=(sequence,extra={})=>({protocol:'original-radar-v2',type:'frame',channel:'data',pair_nonce:nonce,config_generation:1,session_id:1,sequence,timestamp_us:(sequence+1)*200000,complete:true,missed_frames:0,capture_fault:0,quality:44,frame_events:sequence+1,processing_us:19000,previous_tx_us:16000,deadline_misses:0,mount:{bracket_top_m:1.219,down_tilt_deg:0,antenna_offset_m:null,antenna_height_m:null,world_height_valid:false},range_bin_m:.1953,velocity_bin_mps:.30811,profile_energy:[1,1,1],detected_count:0,count:0,truncated:false,detections:[],session_mode:mode,session_seconds:seconds,keepalive_lease_ms:seconds===0?5000:0,timestamp_basis:'session_elapsed',...extra});
- return {s,writes,status,ack,frame,advance(ms){clock+=ms;},hold(value=true){hold=value;},reject(){reject=true;},async start(){await s.configure(0,mount);await s.pair(nonce);await s.start();}};
+ return {s,writes,status,ack,frame,advance(ms){clock+=ms;},stepWall(ms){wallOffset+=ms;},hold(value=true){hold=value;},reject(){reject=true;},async start(){await s.configure(0,mount);await s.pair(nonce);await s.start();}};
 }
 test('byte window retains exact suffix and global offsets with oversized and fragmented chunks',()=>{
  const w=new ByteWindow(5);w.push(Uint8Array.of(1,2,3));w.push(Uint8Array.of(4,5,6,7,8,9));assert.deepEqual([...w.bytes()],[5,6,7,8,9]);assert.equal(w.start,4);assert.equal(w.end,9);assert.equal(w.length,5);
@@ -56,4 +56,17 @@ test('continuous mode, sequence, timestamp, tuple and acquisition faults revoke 
 });
 test('stale data and lost data connection stop acceptance independently of window eviction',async()=>{
  for(const loss of ['silence','disconnect']){const m=await mock();await m.start();m.s.ingestData(encoded(m.frame(0)));if(loss==='silence'){m.advance(1001);m.s.checkDataFreshness();}else m.s.detachData();assert.equal(m.s.activeStream,null);assert.equal(m.s.unconfirmed,true);}
+});
+test('wall-clock steps do not stop a healthy continuous run',async()=>{
+ const m=await mock();await m.start();
+ for(let i=0;i<50;i++){m.advance(200);if(i===10)m.stepWall(-3600000);if(i===30)m.stepWall(7200000);m.s.ingestData(encoded(m.frame(i)));if(i%5===0)await m.s.heartbeat();m.s.checkDataFreshness();}
+ assert.equal(m.s.transportFault,false);assert.notEqual(m.s.activeStream,null);assert.equal(m.s.frames,50);assert.equal(m.writes.filter(w=>w.startsWith('keepalive')).length,10);
+});
+test('long runs keep setup events and the most recent events, counting the gap',async()=>{
+ const m=await mock();const before=m.s.events.length;let emitted=0;m.s.onEvent=()=>emitted++;await m.start();const setup=plain(m.s.events.slice(0,5));
+ for(let i=0;i<6000;i++){m.advance(200);m.s.ingestData(encoded(m.frame(i)));if(i%5===0)await m.s.heartbeat();m.s.checkDataFreshness();}
+ await m.s.stop();const snap=m.s.snapshot();
+ assert(snap.events.length<=2048);assert(snap.dropped_event_count>0);assert.equal(snap.events.length+snap.dropped_event_count,before+emitted);
+ assert.deepEqual(plain(snap.events.slice(0,5)),setup);assert(snap.events.some(e=>e.type==='stopped_confirmed'));
+ const times=plain(snap.events.map(e=>e.host_utc_ms));assert.deepEqual(times,[...times].sort((a,b)=>a-b));
 });
