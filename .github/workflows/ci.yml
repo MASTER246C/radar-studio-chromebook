@@ -1,0 +1,52 @@
+name: CI
+# Deterministic software checks only. No radar, serial port, camera or credentials are used.
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Fixtures regenerate byte-for-byte
+        run: |
+          for builder in tests/build_*.py; do python3 -B "$builder"; done
+          git diff --exit-code -- tests/
+      - name: Deterministic test suites
+        run: node tests/run-all.js
+      - name: Shared files match SHARED_MODULES.json
+        run: node tools/check-shared-modules.js
+      - name: RELEASE_MANIFEST.json matches tracked files
+        run: python3 -B tools/release_manifest.py RELEASE_MANIFEST.json
+      - name: Markdown links
+        run: python3 -B tools/check_links.py
+      - name: Viewer dataset exports match the shared JSON Schema
+        run: |
+          python3 -m pip install --quiet 'jsonschema>=4.18,<5'
+          out="$RUNNER_TEMP/dataset-samples"
+          node tests/make_dataset_samples.js "$out"
+          python3 -B schemas/check_schema.py schemas/original-radar-dataset.v1.schema.json "$out"/*.json
+  browser:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Install Playwright outside the source tree
+        run: |
+          npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.56.1
+          "$RUNNER_TEMP/pw/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Real Chromium checks (synthetic data, mocked Web Serial)
+        env:
+          NODE_PATH: ${{ runner.temp }}/pw/node_modules
+        run: |
+          for test in tests/*.optional.test.js; do echo "== $test"; node "$test"; done
