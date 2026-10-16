@@ -22,14 +22,19 @@
   "contains_trained_radar_model": false,
   "files": [
     {
+      "path": ".git-blame-ignore-revs",
+      "bytes": 174,
+      "sha256": "5a2806b4bb731f304f92a3eccc3f5a0a53852d3071c1f493bfe069bb1c19e92b"
+    },
+    {
       "path": ".gitattributes",
       "bytes": 78,
       "sha256": "3df6947bba919230667524549841334b516dd7b483b7bf48f294dd4b136293a5"
     },
     {
       "path": ".github/workflows/ci.yml",
-      "bytes": 1963,
-      "sha256": "078896290ca70e474411946eedd41fc0ee9f42554ab020481500bdc6462f0bc4"
+      "bytes": 2144,
+      "sha256": "2aade557498cbad6bd63e85d1bf47897e74e17593aaa00875cbbda7892ba19ee"
     },
     {
       "path": ".gitignore",
@@ -133,8 +138,8 @@
     },
     {
       "path": "DEVELOPING.md",
-      "bytes": 22708,
-      "sha256": "b06a781598422af7e60e21893c280ac7b703aba24bb0339075352fe09fd9d3e9"
+      "bytes": 22818,
+      "sha256": "36ebfe276d9cc9160fb5b2a30fe0203098d4f24ee39a9247890f934a1abe08ee"
     },
     {
       "path": "DOWNLOADS.md",
